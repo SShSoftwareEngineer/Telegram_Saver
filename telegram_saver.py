@@ -1,7 +1,18 @@
 from telethon import TelegramClient
 
 
-def get_chat_list():
+# from dotenv import load_dotenv
+# import telegram
+#
+# load_dotenv()
+#
+# bot = telegram.Bot(token=os.environ.get('TELEGRAM_TOKEN'))
+
+def get_chat_list() -> list:
+    pass
+
+
+def get_chat_history(chat_id: int):
     pass
 
 
