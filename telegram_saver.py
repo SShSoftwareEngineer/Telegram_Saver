@@ -1,12 +1,6 @@
 from telethon import TelegramClient
+from flask import Flask, request
 
-
-# from dotenv import load_dotenv
-# import telegram
-#
-# load_dotenv()
-#
-# bot = telegram.Bot(token=os.environ.get('TELEGRAM_TOKEN'))
 
 def get_chat_list() -> list:
     pass
@@ -20,5 +14,14 @@ def main():
     pass
 
 
+app = Flask(__name__)
+
+
+@app.route('/', methods=['GET', 'POST'])
+def index() -> str:
+    return jsonify({})
+
+
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
+    # main()
