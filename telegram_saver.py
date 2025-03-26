@@ -1,3 +1,4 @@
+import os
 from typing import Any
 
 from telethon import TelegramClient
@@ -33,12 +34,18 @@ async def get_chat_messages(chat_id: int):
 
 
 async def main():
-    chat_list = client.iter_dialogs()
-    async for chat in chat_list:
-        print(chat.id, '   ', chat.name)
-        messages_list = client.iter_messages(chat.id)
-        async for message in messages_list:
+    dialogs = client.iter_dialogs()
+    async for dialog in dialogs:
+        print(dialog.id, '   ', dialog.title)
+        messages = client.iter_messages(dialog, limit=10)
+        async for message in messages:
             print(message.id, '   ', message.text)
+            if message.media:
+                file_name = await message.download_media()
+                file_name_full = os.path.join('media', f'{dialog.id}_{message.id}_{file_name}')
+                os.rename(file_name, file_name_full)
+                print(message.date)
+                print(f'Медиафайл сохранен в: {file_name_full}')
 
 
 # app = Flask(__name__)
@@ -54,10 +61,10 @@ if __name__ == "__main__":
 
     # Loading confidential Telegram API parameters / Загрузка конфиденциальных параметров Telegram API
     private_settings = load_env('.env')
-    client = (TelegramClient(session='.session',  # MemorySession(),
-                             api_id=private_settings['APP_API_ID'],
-                             api_hash=private_settings['APP_API_HASH']).start(private_settings['PHONE'],
-                                                                              private_settings['PASSWORD']))
+    client = TelegramClient(session='.session',  # MemorySession(),
+                            api_id=private_settings['APP_API_ID'],
+                            api_hash=private_settings['APP_API_HASH']).start(private_settings['PHONE'],
+                                                                             private_settings['PASSWORD'])
     with client:
         client.loop.run_until_complete(main())
 
@@ -68,4 +75,4 @@ if __name__ == "__main__":
 # Экспорт выделенных постов в ХТМЛ файл, выделенных по условию (продумать условия)
 # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
 # Установить отдельно предельные размеры для файлов и медиа разных типов
-# Установить фильтры: количество последних сообщений, диапазон дат, теги(?)
+# Установить фильтры: количество последних сообщений, диапазон дат, по ключевому слову, теги(?)
