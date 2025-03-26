@@ -156,7 +156,6 @@ cython_debug/
 Lib/
 Scripts/
 Support Materials/
-.idea/
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
@@ -165,9 +164,13 @@ Support Materials/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
+media/
+
 /notes.txt
 /pyvenv.cfg
 /.Database Scheme.vpp.lck
 /Database Scheme.vpp.*
 /Config Scheme.vpp.*
 /.session
+/infa.docx
+/~$infa.docx
