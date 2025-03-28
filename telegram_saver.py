@@ -1,8 +1,11 @@
 import os
+import re
 from typing import Any
 
 from telethon import TelegramClient
 from flask import Flask, request
+
+CHAT_MEDIA_DIR = 'chat_media'
 
 
 def load_env(file_path: str) -> dict:
@@ -33,19 +36,52 @@ async def get_chat_messages(chat_id: int):
     pass
 
 
+def clean_file_name(file_name):
+    """
+    Очищает имя файла/директории от недопустимых символов
+
+    Args:
+        filename (str): Исходное имя чата
+
+    Returns:
+        str: Безопасное имя для файловой системы
+    """
+    # Удаляем или заменяем недопустимые символы
+    clean_filename = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+    # Заменяем множественные пробелы
+    clean_filename = re.sub(r'\s+', '_', clean_filename)
+    # Убираем лишние точки и пробелы в начале и конце
+    clean_filename = clean_filename.strip('. ')
+    return clean_filename
+
+
 async def main():
     dialogs = client.iter_dialogs()
     async for dialog in dialogs:
         print(dialog.id, '   ', dialog.title)
-        messages = client.iter_messages(dialog, limit=10)
+        messages = client.iter_messages(dialog, limit=5)
         async for message in messages:
             print(message.id, '   ', message.text)
+            # Сохранение медиафайлов
             if message.media:
+                media_path = os.path.join(CHAT_MEDIA_DIR, clean_file_name(f'{dialog.title}_{dialog.id}'),
+                                          f'{message.date.strftime("%Y.%m.%d_%H-%M-%S")}_{message.id}')
+                os.makedirs(media_path, exist_ok=True)
                 file_name = await message.download_media()
-                file_name_full = os.path.join('media', f'{dialog.id}_{message.id}_{file_name}')
-                os.rename(file_name, file_name_full)
-                print(message.date)
-                print(f'Медиафайл сохранен в: {file_name_full}')
+                file_name = clean_file_name(file_name)
+                os.replace(file_name, os.path.join(media_path, file_name))
+                if message.video:
+                    if message.video.thumbs:
+                        thumb_name = await message.download_media(thumb=-1)
+                        os.replace(thumb_name, f'{os.path.join(media_path, file_name)}_thumb.jpg')
+
+
+# text
+# date
+# photo
+# video
+# video.thumbs
+# audio
 
 
 # app = Flask(__name__)
