@@ -164,7 +164,7 @@ Support Materials/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
-chat_media/
+dialog_media/
 
 /notes.txt
 /pyvenv.cfg
@@ -174,3 +174,4 @@ chat_media/
 /.session
 /infa.docx
 /~$infa.docx
+/Идеи.docx

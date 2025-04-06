@@ -4,22 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="94847414-2441-485a-9611-84334fc06c9c" name="Changes" comment="The program structure is being developed">
+    <list default="true" id="621cecfa-9a35-4a71-b85d-b1efe8efaf15" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/Telegram Saver.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Telegram Saver.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/aws.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/material_theme_project_new.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Database Scheme.vpp" beforeDir="false" afterPath="$PROJECT_DIR$/Database Scheme.vpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/database_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/database_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/telegram_saver.py" beforeDir="false" afterPath="$PROJECT_DIR$/telegram_saver.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="package.json" />
-        <option value="Python Script" />
-      </list>
-    </option>
   </component>
   <component name="FlaskConsoleOptions" custom-start-script="import sys; print('Python %s on %s' % (sys.version, sys.platform)); sys.path.extend([WORKING_DIR_AND_PYTHON_PATHS])&#10;from flask.cli import ScriptInfo, NoAppException&#10;for module in [&quot;main.py&quot;, &quot;wsgi.py&quot;, &quot;app.py&quot;]:&#10;    try: locals().update(ScriptInfo(app_import_path=module, create_app=None).load_app().make_shell_context()); print(&quot;\nFlask App: %s&quot; % app.import_name); break&#10;    except NoAppException: pass">
     <envs>
@@ -51,35 +49,51 @@
   &quot;customColor&quot;: &quot;&quot;,
   &quot;associatedIndex&quot;: 1
 }</component>
-  <component name="ProjectId" id="2nf1hrNm95p92NoBmUVdT5BjQWw" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true">
-    <ConfirmationsSetting value="1" id="Add" />
-  </component>
+  <component name="ProjectId" id="2vLwFZ66HNXlRNhB4UGTC43m0Pq" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;Python.telegram_saver.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Kolobok/Работа в IT/Python Practices/Test Project&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Python.Telegram Saver.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "last_opened_file_path": "D:/Kolobok/Work in IT/Python Practices/Job Posting Parser",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="D:\Kolobok\Работа в IT\Python Practices\Telegram Saver\interface" />
-      <recent name="D:\Kolobok\Работа в IT\Python Practices\Telegram Saver\interface\routes" />
-    </key>
+}]]></component>
+  <component name="RunManager">
+    <configuration name="Telegram Saver" type="PythonConfigurationType" factoryName="Python">
+      <module name="Telegram Saver" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/telegram_saver.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
@@ -92,112 +106,23 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="94847414-2441-485a-9611-84334fc06c9c" name="Changes" comment="" />
-      <created>1729349439754</created>
+      <changelist id="621cecfa-9a35-4a71-b85d-b1efe8efaf15" name="Changes" comment="" />
+      <created>1743937561432</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1729349439754</updated>
-      <workItem from="1729349442108" duration="1052000" />
-      <workItem from="1730295333480" duration="660000" />
-      <workItem from="1737755298486" duration="14000" />
-      <workItem from="1742663827395" duration="415000" />
-      <workItem from="1742664259085" duration="11584000" />
-      <workItem from="1742746598705" duration="2996000" />
-      <workItem from="1742768102582" duration="5319000" />
-      <workItem from="1742855367481" duration="214000" />
-      <workItem from="1742901951620" duration="17710000" />
-      <workItem from="1742999801436" duration="98000" />
-      <workItem from="1742999914943" duration="13697000" />
-      <workItem from="1743177637457" duration="11199000" />
-      <workItem from="1743260840854" duration="210000" />
-      <workItem from="1743265241169" duration="1566000" />
-      <workItem from="1743281602467" duration="39000" />
-      <workItem from="1743281646885" duration="259000" />
-      <workItem from="1743281952661" duration="256000" />
-      <workItem from="1743454302378" duration="732000" />
-      <workItem from="1743533506738" duration="21855000" />
-      <workItem from="1743676818766" duration="20467000" />
-      <workItem from="1743704481017" duration="5907000" />
+      <updated>1743937561432</updated>
+      <workItem from="1743937562956" duration="24000" />
+      <workItem from="1743937593887" duration="1566000" />
+      <workItem from="1743939253631" duration="132000" />
+      <workItem from="1743939393870" duration="3399000" />
+      <workItem from="1743947693003" duration="1912000" />
     </task>
-    <task id="LOCAL-00001" summary="Some file updated">
-      <option name="closed" value="true" />
-      <created>1729350289521</created>
-      <option name="number" value="00001" />
-      <option name="presentableId" value="LOCAL-00001" />
-      <option name="project" value="LOCAL" />
-      <updated>1729350289521</updated>
-    </task>
-    <task id="LOCAL-00002" summary="Web interface structure developed&#10;requirements.txt added">
-      <option name="closed" value="true" />
-      <created>1742767562651</created>
-      <option name="number" value="00002" />
-      <option name="presentableId" value="LOCAL-00002" />
-      <option name="project" value="LOCAL" />
-      <updated>1742767562651</updated>
-    </task>
-    <task id="LOCAL-00003" summary="Database Scheme added&#10;Many files updated">
-      <option name="closed" value="true" />
-      <created>1742939700918</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1742939700918</updated>
-    </task>
-    <task id="LOCAL-00004" summary="Database structure updated&#10;Program structure updated">
-      <option name="closed" value="true" />
-      <created>1743026363171</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1743026363171</updated>
-    </task>
-    <task id="LOCAL-00005" summary="Program structure developer">
-      <option name="closed" value="true" />
-      <created>1743199516594</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1743199516594</updated>
-    </task>
-    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
-  <component name="VcsManagerConfiguration">
-    <MESSAGE value="Some file updated" />
-    <MESSAGE value="Web interface structure developed&#10;requirements.txt added" />
-    <MESSAGE value="Database Scheme added&#10;Many files updated" />
-    <MESSAGE value="Database structure updated&#10;Program structure updated" />
-    <MESSAGE value="The program structure is being developed" />
-    <MESSAGE value="The program structure is being developed" />
-    <option name="LAST_COMMIT_MESSAGE" value="The program structure is being developed" />
-  </component>
-  <component name="XDebuggerManager">
-    <watches-manager>
-      <configuration name="PythonConfigurationType">
-        <watch expression="message.audio" />
-        <watch expression="message.file" language="Python" />
-        <watch expression="message.photo" language="Python" />
-        <watch expression="message.media" language="Python" />
-        <watch expression="message.video" language="Python" />
-        <watch expression="message.file.name" language="Python" />
-      </configuration>
-    </watches-manager>
-  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Telegram_Saver$telegram_saver.coverage" NAME="telegram_saver Coverage Results" MODIFIED="1743709934215" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Telegram_Saver$Telegram_Saver.coverage" NAME="Telegram Saver Coverage Results" MODIFIED="1743949892741" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>
