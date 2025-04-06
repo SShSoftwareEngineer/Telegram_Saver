@@ -3,22 +3,15 @@ import re
 from typing import Any
 
 from telethon import TelegramClient
-from flask import Flask, request
+# from flask import Flask, request
 
-CHAT_MEDIA_DIR = 'chat_media'
-FILE_MAX_SIZE = 10 * 1024 * 1024
+from database_handler import Message, Dialog, Group, File, FileType, session
+
+DIALOG_MEDIA_DIR = 'dialog_media'
+MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 def load_env(file_path: str) -> dict:
-    """
-    Loading confidential data for working with the Telegram API from the `.env` file.
-    Загрузка конфиденциальных данных для работы с Telegram API из файла .env
-
-    Arguments:
-    file_path (str): a confidential data file name
-    Returns:
-    dict: a confidential data dictionary
-    """
     env_vars = {}
     with open(file_path, 'r', encoding='utf-8') as file_env:
         for line in file_env:
@@ -28,9 +21,9 @@ def load_env(file_path: str) -> dict:
     return env_vars
 
 
-async def get_chat_list() -> Any:
-    chat_list = await client.iter_dialogs()
-    return chat_list
+async def get_dialog_list() -> Any:
+    dialog_list = client.iter_dialogs()
+    return dialog_list
 
 
 async def get_chat_messages(chat_id: int):
@@ -63,7 +56,7 @@ async def main():
         print(dialog.title, '   ', dialog.id)
         # Получаем название директории для файлов данного диалога
         dialog_dir = clean_file_name(f'{dialog.title}_{dialog.id}')
-        dialog_path = os.path.join(CHAT_MEDIA_DIR, dialog_dir)
+        dialog_path = os.path.join(DIALOG_MEDIA_DIR, dialog_dir)
         os.makedirs(dialog_path, exist_ok=True)
         # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
         messages = client.iter_messages(dialog, limit=3)
@@ -75,7 +68,7 @@ async def main():
                 if message.file:
                     if message.file.size:
                         file_size = message.file.size
-                if file_size < FILE_MAX_SIZE:
+                if file_size < MAX_FILE_SIZE:
                     local_message_date = message.date.astimezone()
                     file_name_base = f'{local_message_date.strftime("%Y.%m.%d_%H-%M-%S")}_{message.grouped_id}_{message.id}'
                     file_name_ext = None
@@ -100,13 +93,6 @@ async def main():
                             if not os.path.exists(file_name):
                                 await client.download_media(message, file=file_name, thumb=-1)
 
-    # text
-    # date
-    # photo
-    # video
-    # video.thumbs
-    # audio
-
     # app = Flask(__name__)
     #
     #
@@ -124,14 +110,14 @@ if __name__ == "__main__":
                             api_id=private_settings['APP_API_ID'],
                             api_hash=private_settings['APP_API_HASH']).start(
         private_settings['PHONE'], private_settings['PASSWORD'])
-    with client:
-        client.loop.run_until_complete(main())
+    # with client:
+    #     client.loop.run_until_complete(main())
 
     # Оставлять архивные подписки в базе
     # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
     # Режимы: просмотр базы с возможностью удаления
     # Режимы: синхронизация чата и базы с условиями (продумать условия)
-    # Экспорт выделенных постов в Excel файл, выделенных по условию (продумать условия)
+    # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
     # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
     # Установить отдельно предельные размеры для файлов и медиа разных типов
     # Установить фильтры: количество последних сообщений, диапазон дат, по ключевому слову, теги(?)
