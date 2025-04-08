@@ -21,15 +21,6 @@ def load_env(file_path: str) -> dict:
     return env_vars
 
 
-async def get_dialog_list() -> Any:
-    dialog_list = client.iter_dialogs()
-    return dialog_list
-
-
-async def get_chat_messages(chat_id: int):
-    pass
-
-
 def clean_file_name(file_name: str | None) -> str | None:
     """
     Очищает имя файла/директории от недопустимых символов
@@ -110,8 +101,8 @@ if __name__ == "__main__":
                             api_id=private_settings['APP_API_ID'],
                             api_hash=private_settings['APP_API_HASH']).start(
         private_settings['PHONE'], private_settings['PASSWORD'])
-    # with client:
-    #     client.loop.run_until_complete(main())
+    with client:
+        client.loop.run_until_complete(main())
 
     # Оставлять архивные подписки в базе
     # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
@@ -120,4 +111,4 @@ if __name__ == "__main__":
     # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
     # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
     # Установить отдельно предельные размеры для файлов и медиа разных типов
-    # Установить фильтры: количество последних сообщений, диапазон дат, по ключевому слову, теги(?)
+    # Установить фильтры: непрочитанные сообщения, диапазон дат, поиск по тегам, поиск по тексту
