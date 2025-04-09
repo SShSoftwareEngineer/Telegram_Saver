@@ -1,0 +1,9 @@
+<ul class="list-group">
+    {% for dialog in dialogs %}
+        <li hx-get="/messages/{{ dialog.id }}"
+            hx-target="#message-list"
+            hx-trigger="click">
+            {{ dialog.title }}
+        </li>
+    {% endfor %}
+</ul>

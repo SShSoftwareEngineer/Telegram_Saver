@@ -1,0 +1,10 @@
+<ul class="list-group">
+    {% for message in messages %}
+        <li hx-get="/message/{{ message.id }}"
+            hx-target="#message-details"
+            hx-trigger="click">
+            <small>{{ message.date.strftime('%d.%m.%Y %H:%M') }}</small><br>
+            {{ message.text[:100] + '...' if message.text and message.text|length > 100 else message.text or '[Медиа]' }}
+        </li>
+    {% endfor %}
+</ul>
