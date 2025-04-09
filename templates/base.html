@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Viewer</title>
+    <script src="{{ url_for('static', filename='js/htmx.min.1.9.12.js') }}"></script>
+</head>
+
+<body>
+<table style="width:100%">
+    <tr>
+        <td style="width:33%">
+            {#  Dialogs Column  #}
+            <div class="dialogs-column" id="dialog-list">
+                <h3>Chats</h3>
+                {% include 'dialogs.html' %}
+            </div>
+        </td>
+        <td style="width:33%">
+            {#  Messages Column  #}
+            <div class="messages-column" id="message-list">
+                <h3>Messages</h3>
+                {% include 'messages.html' %}
+            </div>
+        </td>
+        <td style="width:33%">
+            {#  Message Details Column  #}
+            <div class="details-column" id="message-details">
+                <h3>Message Detail</h3>
+                {% include 'messages.html' %}
+            </div>
+        </td>
+    </tr>
+</table>
+</body>
+</html>

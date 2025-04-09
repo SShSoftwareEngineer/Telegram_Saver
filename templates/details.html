@@ -1,0 +1,25 @@
+<span>
+    От: {{ message.sender or 'Неизвестно' }}<br>
+    Дата: {{ message.date.strftime('%d.%m.%Y %H:%M:%S') }}
+
+    {% if message.text %}
+        <p>{{ message.text }}</p>
+    {% endif %}
+
+    {% if message.media %}
+        <div class="message-media">
+        {% if message.media.type == 'photo' %}
+            <img src="/media/{{ message.media.file_id }}" class="img-fluid" alt="Фото">
+        {% elif message.media.type == 'video' %}
+            <video controls class="img-fluid">
+                <source src="/media/{{ message.media.file_id }}" type="video/mp4">
+                Ваш браузер не поддерживает видео.
+            </video>
+        {% elif message.media.type == 'document' %}
+            <a href="/media/{{ message.media.file_id }}" class="btn btn-primary">
+                Скачать документ: {{ message.media.file_name }}
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</span>
