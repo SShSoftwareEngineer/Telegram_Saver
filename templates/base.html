@@ -9,28 +9,33 @@
 </head>
 
 <body>
-<table style="width:100%">
+<table style="width: 100%; border: 1px solid black;">
     <tr>
-        <td style="width:33%">
+        <td id="dialogs" style="text-align: center; width:33%; border: 1px solid black;">
+            <h3>Chats</h3>
+        </td>
+        <td id="messages" style="text-align: center; width:33%; border: 1px solid black;">
+            <h3>Messages</h3>
+        </td>
+        <td id="details" style="text-align: center; width:33%; border: 1px solid black;">
+            <h3>Message Details</h3>
+        </td>
+    </tr>
+</table>
+
+<table style="width: 100%; border: 1px solid black;">
+    <tr>
+        <td id="dialogs" style="width:33%; border: 1px solid black;">
             {#  Dialogs Column  #}
-            <div class="dialogs-column" id="dialog-list">
-                <h3>Chats</h3>
-                {% include 'dialogs.html' %}
-            </div>
+            {% include "dialogs.html" %}
         </td>
-        <td style="width:33%">
+        <td id="messages" style="width:33%; border: 1px solid black;">
             {#  Messages Column  #}
-            <div class="messages-column" id="message-list">
-                <h3>Messages</h3>
-                {% include 'messages.html' %}
-            </div>
+            <div id="result-div"></div>
         </td>
-        <td style="width:33%">
+        <td id="details" style="width:33%; border: 1px solid black;">
             {#  Message Details Column  #}
-            <div class="details-column" id="message-details">
-                <h3>Message Detail</h3>
-                {% include 'messages.html' %}
-            </div>
+            <div id="result-div2"></div>
         </td>
     </tr>
 </table>

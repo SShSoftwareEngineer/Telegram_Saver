@@ -8,27 +8,25 @@ tg_saver = Flask(__name__)
 
 
 @tg_saver.route("/")
-def home():
-    # chats = get_chats()  # Получаем список чатов
-    dialogs = [f'Dialog {x}' for x in range(1, 10)]
-    return render_template("base.html", dialogs=dialogs)
+def index():
+    return render_template("base.html")
 
 
 @tg_saver.route('/dialogs')
 def get_chats():
-    # chats = telegram.get_chats()
-    dialogs = [f'Dialog {x}' for x in range(11, 20)]
+    # dialogs = telegram.get_dialogs()
+    dialogs = ['<a href="#" hx-get="/load_dialog/1" hx-target="#result-div">Dialog 1</a>' for x in range(1, 10)]
     return render_template('dialogs.html', dialogs=dialogs)
 
 
 @tg_saver.route("/dialogs/<int:dialog_id>")
-def post_detail(post_id):
+def get_messages(post_id):
     # messages = get_posts(dialog_id)  # Получаем посты чата
-    messages = [f'Message {x}' for x in range(1, 10)]
+    messages = [f'Message {x}' for x in range(1, 110)]
     return render_template("messages.html", messages=messages)
 
 
-@tg_saver.route('/message/<message_id>')
+@tg_saver.route('/message/<int:message_id>')
 def get_message_details(message_id):
     # message = telegram.get_message_details(message_id)
     message = {'sender': 'sender',
@@ -37,8 +35,14 @@ def get_message_details(message_id):
     return render_template('details.html', message=message)
 
 
+@tg_saver.route('/load_dialog/<item_id>')
+def load_dialog(item_id):
+    # Возвращаем только часть HTML, которая заменит целевой элемент
+    return f"<p>Результат: {item_id}</p>"
+
+
 if __name__ == '__main__':
-    tg_saver.run(debug=True)
+    tg_saver.run(debug=True, use_reloader=False)
 
     # Оставлять архивные подписки в базе
     # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
