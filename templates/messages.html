@@ -1,3 +1,12 @@
+<ul>
+  {% for msg in messages %}
+    <li hx-get="/details/{{ msg.id }}" hx-target="#details" hx-trigger="click" hx-swap="innerHTML">
+        {{ msg }}
+    </li>
+  {% endfor %}
+</ul>
+
+{#
 <ul class="list-group">
     {% for message in messages %}
         <li hx-get="/message/{{ message.id }}"
@@ -8,3 +17,5 @@
         </li>
     {% endfor %}
 </ul>
+
+#}
