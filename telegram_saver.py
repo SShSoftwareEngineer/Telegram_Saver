@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Flask, render_template, request
 
-# from your_telegram_module import get_chats, get_posts, get_post
+from telegram_handler import get_dialogs #, get_posts, get_post
 
 tg_saver = Flask(__name__)
 
@@ -43,6 +43,7 @@ def load_dialog(item_id):
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
+
 
     # Оставлять архивные подписки в базе
     # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)

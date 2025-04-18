@@ -1,21 +1,7 @@
 <ul>
-  {% for msg in messages %}
-    <li hx-get="/details/{{ msg.id }}" hx-target="#details" hx-trigger="click" hx-swap="innerHTML">
-        {{ msg }}
-    </li>
-  {% endfor %}
-</ul>
-
-{#
-<ul class="list-group">
-    {% for message in messages %}
-        <li hx-get="/message/{{ message.id }}"
-            hx-target="#message-details"
-            hx-trigger="click">
-            <small>{{ message.date.strftime('%d.%m.%Y %H:%M') }}</small><br>
-            {{ message.text[:100] + '...' if message.text and message.text|length > 100 else message.text or '[Медиа]' }}
+    {% for message in range(11, 21) %}
+        <li>
+            <a href="#" hx-get="/load_message/{{ message }}" hx-target="#result-div">Load message {{ message }}</a>
         </li>
     {% endfor %}
 </ul>
-
-#}
