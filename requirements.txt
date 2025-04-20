@@ -2,6 +2,6 @@ telethon
 cryptg
 pillow
 SQLAlchemy
-aiohttp
 hachoir
 Flask
+asgiref

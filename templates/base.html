@@ -6,6 +6,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Viewer</title>
     <script src="{{ url_for('static', filename='js/htmx.min.1.9.12.js') }}"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 1px;
+            padding: 0;
+        }
+
+        table {
+            width: 100%;
+            height: 100%;
+            border: 1px solid black;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 120%;
+        }
+
+        td {
+            border: 1px solid #ddd;
+            padding: 0;
+            vertical-align: top;
+            height: 100%;
+        }
+
+        .content {
+            overflow-y: auto;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+<table>
+    <thead>
+    <tr>
+        <th>Chats</th>
+        <th>Messages</th>
+        <th>Message Details</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>
+            <div class="content">
+                {% set context = dialogs %}
+                {% include "dialogs.html" with context %}
+            </div>
+        </td>
+        <td>
+            <div class="content" id="result-div1">
+                {% set context = messages %}
+                {% include "messages.html" with context %}
+            </div>
+        </td>
+        <td>
+            <div class="content" id="result-div2">
+
+            </div>
+        </td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>
+
+{#
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Viewer</title>
+    <script src="{{ url_for('static', filename='js/htmx.min.1.9.12.js') }}"></script>
 </head>
 
 <body>
@@ -22,22 +104,22 @@
         </td>
     </tr>
 </table>
-
-<table style="width: 100%; border: 1px solid black;">
-    <tr>
-        <td id="dialogs" style="width:33%; border: 1px solid black;">
-            {#  Dialogs Column  #}
-            {% include "dialogs.html" %}
-        </td>
-        <td id="messages" style="width:33%; border: 1px solid black;">
-            {#  Messages Column  #}
-            <div id="result-div"></div>
-        </td>
-        <td id="details" style="width:33%; border: 1px solid black;">
-            {#  Message Details Column  #}
-            <div id="result-div2"></div>
-        </td>
-    </tr>
-</table>
+<div class="h-[80vh] overflow-y-auto">
+    <table style="width: 100%; border: 1px solid black;">
+        <tr>
+            <td id="dialogs" style="width:33%; border: 1px solid black;">
+                <div style="overflow-y: auto;">
+                </div>
+            </td>
+            <td id="messages" style="width:33%; border: 1px solid black;">
+                <div id="result-div"></div>
+            </td>
+            <td id="details" style="width:33%; border: 1px solid black;">
+                <div id="result-div2"></div>
+            </td>
+        </tr>
+    </table>
+</div>
 </body>
 </html>
+#}
