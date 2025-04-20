@@ -1,7 +1,7 @@
-<ul>
-    {% for message in range(11, 21) %}
+<ol>
+    {% for message in messages %}
         <li>
-            <a href="#" hx-get="/load_message/{{ message }}" hx-target="#result-div">Load message {{ message }}</a>
+            <a href="#" hx-get="/messages/{{ message.id }}" hx-target="#result-div2">{{ message.text[:50] }}</a>
         </li>
     {% endfor %}
-</ul>
+</ol>

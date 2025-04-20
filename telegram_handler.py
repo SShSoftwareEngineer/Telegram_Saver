@@ -1,3 +1,5 @@
+import asyncio
+
 from telethon import TelegramClient, utils
 from telethon.tl.types import Chat, User, Channel, Message
 import os
@@ -5,66 +7,62 @@ import re
 from typing import List, Union, Optional, Dict, Any
 
 DB_MEDIA_DIR = 'chats_media'
+TELEGRAM_SETTINGS_FILE = '.env'
 MAX_FILE_SIZE = 10 * 1024 * 1024
+
+# Создаем и сохраняем цикл событий
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 
 class TelegramHandler:
-    # Используется паттерн Singleton для подключения к Telegram
-    _instance = None
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(TelegramHandler, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+    def __init__(self):
+        # if self._initialized:
+        #     return
+        self._settings = {}
+        with open(TELEGRAM_SETTINGS_FILE, 'r', encoding='utf-8') as file_env:
+            for line in file_env:
+                if not line.strip().startswith('#') and '=' in line:
+                    key, value = line.strip().split('=')
+                    self._settings[key] = value
+        self.client = TelegramClient(self._settings['SESSION_NAME'], int(self._settings['API_ID']),
+                                     self._settings['API_HASH'], loop=loop)
+        self.client.start(self._settings['PHONE'], self._settings['PASSWORD'])
 
-    def __init__(self, session_name: str = None, api_id: int = None, api_hash: str = None, phone: str = None,
-                 password: str = None):
-        if self._initialized:
-            return
-        self.client = TelegramClient(session_name, api_id, api_hash)
-        self.client.start(phone, password)
-        self._initialized = True
-
-    def clean_file_name(file_name: str | None) -> str | None:
+    def get_entity(self, entity_id: int) -> Any:
         """
-        Очищает имя файла/директории от недопустимых символов
+        Получение сущности по id
         """
-        clean_filename = None
-        if file_name:
-            # Удаляем или заменяем недопустимые символы
-            clean_filename = re.sub(r'[<>:"/\\|?*]', '_', file_name)
-            # Заменяем множественные пробелы
-            clean_filename = re.sub(r'\s+', '_', clean_filename)
-            # Убираем лишние точки и пробелы в начале и конце
-            clean_filename = clean_filename.strip('. ')
-        return clean_filename
+        entity = loop.run_until_complete(self.client.get_entity(entity_id))
+        return entity
 
-    async def get_dialog_list(self) -> List[Dict[str, Any]]:
+    def get_dialog_list(self) -> List[Dict[str, Any]]:
         """
         Получение списка всех диалогов
         """
-        dialogs = await self.client.get_dialogs()
         # TODO: здесь дописать фильтры
+        dialogs = loop.run_until_complete(self.client.get_dialogs())
         result = []
         for dialog in dialogs:
             dialog_info = {
                 'id': dialog.id,
-                'title': dialog.title if dialog.title else dialog.name if dialog.name else None,
+                'title': dialog.title if dialog.title else dialog.name if dialog.name else 'No title',
                 'username': dialog.entity.username if dialog.entity.username else None,
                 'unread_count': dialog.unread_count,
                 'last_message_date': dialog.date.isoformat('_', 'seconds') if dialog.date else None,
-                'entity_type': self._get_entity_type(dialog),
             }
             result.append(dialog_info)
+        result.sort(key=lambda x: x['title'])
         return result
 
-    async def get_chat_messages(self, chat_id: int, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_dialog_messages(self, dialog_id: int) -> List[Dict[str, Any]]:
         """
         Получение сообщений из заданного чата
         """
         # TODO: здесь дописать все фильтры: limit, по дате, по ids
-        messages = await self.client.get_messages(chat_id, limit=limit)
+        dialog = self.get_entity(dialog_id)
+        messages = loop.run_until_complete(self.client.get_messages(dialog, limit=10))
         result = []
         for message in messages:
             message_info = {
@@ -72,7 +70,6 @@ class TelegramHandler:
                 'text': message.text,
                 'date': message.date.isoformat('_', 'seconds') if message.date else None,
                 'has_media': message.media is not None,
-                'media_type': self._get_media_type(message) if message.media else None,
                 'views': message.views,
                 'grouped_id': message.grouped_id,
             }
@@ -103,25 +100,44 @@ class TelegramHandler:
         return 'unknown'
 
 
-def load_env(file_path: str) -> dict:
-    env_vars = {}
-    with open(file_path, 'r', encoding='utf-8') as file_env:
-        for line in file_env:
-            if not line.strip().startswith('#') and '=' in line:
-                key, value = line.strip().split('=')
-                env_vars[key] = value
-    return env_vars
+# def load_env(file_path: str) -> dict:
+#     env_vars = {}
+#     with open(file_path, 'r', encoding='utf-8') as file_env:
+#         for line in file_env:
+#             if not line.strip().startswith('#') and '=' in line:
+#                 key, value = line.strip().split('=')
+#                 env_vars[key] = value
+#     return env_vars
 
 
-# Loading confidential Telegram API parameters / Загрузка конфиденциальных параметров Telegram API
-private_settings = load_env('.env')
+def clean_file_name(file_name: str | None) -> str | None:
+    """
+    Очищает имя файла/директории от недопустимых символов
+    """
+    clean_filename = None
+    if file_name:
+        # Удаляем или заменяем недопустимые символы
+        clean_filename = re.sub(r'[<>:"/\\|?*]', '_', file_name)
+        # Заменяем множественные пробелы
+        clean_filename = re.sub(r'\s+', '_', clean_filename)
+        # Убираем лишние точки и пробелы в начале и конце
+        clean_filename = clean_filename.strip('. ')
+    return clean_filename
 
-# Создание Telegram клиента
-telegram_handler = TelegramHandler(session_name='.session',  # MemorySession(),
-                                   api_id=private_settings['APP_API_ID'],
-                                   api_hash=private_settings['APP_API_HASH'],
-                                   phone=private_settings['PHONE'],
-                                   password=private_settings['PASSWORD'])
+
+# # Loading confidential Telegram API parameters / Загрузка конфиденциальных параметров Telegram API
+# private_settings = load_env('.env')
+
+# # Создание клиента Telegram
+# tg_handler = TelegramHandler(session_name='.session',
+#                              api_id=private_settings['APP_API_ID'],
+#                              api_hash=private_settings['APP_API_HASH'],
+#                              phone=private_settings['PHONE'],
+#                              password=private_settings['PASSWORD'])
+
+# Временное
+# dialogs= asyncio.run(tg_handler.get_dialog_list())
+# pass
 
 if __name__ == "__main__":
     pass
