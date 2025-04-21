@@ -1,7 +1,9 @@
 <ol>
     {% for message in messages %}
         <li>
-            <a href="#" hx-get="/messages/{{ message.id }}" hx-target="#result-div2">{{ message.text[:50] }}</a>
+            <a href="#" hx-get="/messages/{{ message.dialog_id }}/{{ message.id }}"
+               hx-target="#details">{{ message.date }}</a><br>
+            {{ message.text[:80] }}
         </li>
     {% endfor %}
 </ol>

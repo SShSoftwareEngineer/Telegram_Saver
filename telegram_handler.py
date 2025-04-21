@@ -50,7 +50,7 @@ class TelegramHandler:
                 'title': dialog.title if dialog.title else dialog.name if dialog.name else 'No title',
                 'username': dialog.entity.username if dialog.entity.username else None,
                 'unread_count': dialog.unread_count,
-                'last_message_date': dialog.date.isoformat('_', 'seconds') if dialog.date else None,
+                'last_message_date': dialog.date.isoformat(' ', 'seconds') if dialog.date else None,
             }
             result.append(dialog_info)
         result.sort(key=lambda x: x['title'])
@@ -66,15 +66,31 @@ class TelegramHandler:
         result = []
         for message in messages:
             message_info = {
+                'dialog_id': dialog_id,
                 'id': message.id,
-                'text': message.text,
-                'date': message.date.isoformat('_', 'seconds') if message.date else None,
+                'text': message.text if message.text else 'No text',
+                'date': message.date.astimezone().isoformat(' ', 'seconds')[:19] if message.date else '',
                 'has_media': message.media is not None,
                 'views': message.views,
                 'grouped_id': message.grouped_id,
             }
             result.append(message_info)
         return result
+
+    def get_message_detail(self, dialog_id: int, message_id: int) -> dict:
+        """
+        Получение сообщения по id диалога и id сообщения
+        """
+        message = loop.run_until_complete(self.client.get_messages(dialog_id, ids=message_id))
+
+        details = {
+            'dialog_id': dialog_id,
+            'id': message.id,
+            'text': message.text if message.text else 'No text',
+            'date': message.date.astimezone().isoformat(' ', 'seconds')[:19] if message.date else '',
+            'grouped_id': message.grouped_id,
+        }
+        return details
 
     async def download_media(self, chat_id: int, message_id: int, path: str) -> Optional[str]:
         """
@@ -100,16 +116,6 @@ class TelegramHandler:
         return 'unknown'
 
 
-# def load_env(file_path: str) -> dict:
-#     env_vars = {}
-#     with open(file_path, 'r', encoding='utf-8') as file_env:
-#         for line in file_env:
-#             if not line.strip().startswith('#') and '=' in line:
-#                 key, value = line.strip().split('=')
-#                 env_vars[key] = value
-#     return env_vars
-
-
 def clean_file_name(file_name: str | None) -> str | None:
     """
     Очищает имя файла/директории от недопустимых символов
@@ -124,20 +130,6 @@ def clean_file_name(file_name: str | None) -> str | None:
         clean_filename = clean_filename.strip('. ')
     return clean_filename
 
-
-# # Loading confidential Telegram API parameters / Загрузка конфиденциальных параметров Telegram API
-# private_settings = load_env('.env')
-
-# # Создание клиента Telegram
-# tg_handler = TelegramHandler(session_name='.session',
-#                              api_id=private_settings['APP_API_ID'],
-#                              api_hash=private_settings['APP_API_HASH'],
-#                              phone=private_settings['PHONE'],
-#                              password=private_settings['PASSWORD'])
-
-# Временное
-# dialogs= asyncio.run(tg_handler.get_dialog_list())
-# pass
 
 if __name__ == "__main__":
     pass
@@ -160,9 +152,6 @@ if __name__ == "__main__":
 #         os.makedirs(dialog_path, exist_ok=True)
 #     return dialogs
 #
-# def get_dialogs():
-#     with client:
-#         client.loop.run_until_complete(get_dialog_list())
 #
 #
 # # async def main():

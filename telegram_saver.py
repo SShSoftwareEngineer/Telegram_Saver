@@ -15,19 +15,16 @@ def index():
 
 
 @tg_saver.route("/dialogs/<string:dialog_id>")
-async def get_messages(dialog_id):
+def get_messages(dialog_id):
     # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
     messages = tg_handler.get_dialog_messages(int(dialog_id))
     return render_template("messages.html", messages=messages)
 
 
-@tg_saver.route('/message/<int:message_id>')
-async def get_message_details(message_id):
-    # message = telegram.get_message_details(message_id)
-    message = {'sender': 'sender',
-               'date': datetime.now().strftime('%d.%m.%Y %H:%M:%S'),
-               'text': 'text text text text text text text text text text text text text text text text text text text'}
-    return render_template('details.html', message=message)
+@tg_saver.route('/messages/<string:dialog_id>/<string:message_id>')
+def get_message_details(dialog_id, message_id):
+    details = tg_handler.get_message_detail(int(dialog_id), int(message_id))
+    return render_template("details.html", details=details)
 
 
 @tg_saver.route('/load_dialog/<item_id>')
