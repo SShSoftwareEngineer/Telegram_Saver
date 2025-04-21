@@ -56,19 +56,19 @@
     <tbody>
     <tr>
         <td>
-            <div class="content">
+            <div class="content" id="dialogs">
                 {% set context = dialogs %}
                 {% include "dialogs.html" with context %}
             </div>
         </td>
         <td>
-            <div class="content" id="result-div1">
+            <div class="content" id="messages">
                 {% set context = messages %}
                 {% include "messages.html" with context %}
             </div>
         </td>
         <td>
-            <div class="content" id="result-div2">
+            <div class="content" id="details">
 
             </div>
         </td>
@@ -77,49 +77,3 @@
 </table>
 </body>
 </html>
-
-{#
-
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Viewer</title>
-    <script src="{{ url_for('static', filename='js/htmx.min.1.9.12.js') }}"></script>
-</head>
-
-<body>
-<table style="width: 100%; border: 1px solid black;">
-    <tr>
-        <td id="dialogs" style="text-align: center; width:33%; border: 1px solid black;">
-            <h3>Chats</h3>
-        </td>
-        <td id="messages" style="text-align: center; width:33%; border: 1px solid black;">
-            <h3>Messages</h3>
-        </td>
-        <td id="details" style="text-align: center; width:33%; border: 1px solid black;">
-            <h3>Message Details</h3>
-        </td>
-    </tr>
-</table>
-<div class="h-[80vh] overflow-y-auto">
-    <table style="width: 100%; border: 1px solid black;">
-        <tr>
-            <td id="dialogs" style="width:33%; border: 1px solid black;">
-                <div style="overflow-y: auto;">
-                </div>
-            </td>
-            <td id="messages" style="width:33%; border: 1px solid black;">
-                <div id="result-div"></div>
-            </td>
-            <td id="details" style="width:33%; border: 1px solid black;">
-                <div id="result-div2"></div>
-            </td>
-        </tr>
-    </table>
-</div>
-</body>
-</html>
-#}

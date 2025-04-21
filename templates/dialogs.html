@@ -1,7 +1,7 @@
 <ol>
     {% for dialog in dialogs %}
         <li>
-            <a href="#" hx-get="/dialogs/{{ dialog.id }}" hx-target="#result-div1">{{ dialog.title}} {{dialog.id }}</a>
+            <a href="#" hx-get="/dialogs/{{ dialog.id }}" hx-target="#messages">{{ dialog.title}}</a>
         </li>
     {% endfor %}
 </ol>
