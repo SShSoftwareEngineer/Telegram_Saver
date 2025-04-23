@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Viewer</title>
+    <script src="{{ url_for('static', filename='js/htmx.min.1.9.12.js') }}"></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 1px;
+            padding: 0;
+        }
+
+        /* Стили для вкладок */
+        .tabs {
+            overflow: hidden;
+            background-color: #f1f1f1;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .tab-button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 16px;
+        }
+
+        .tab-button:hover {
+            background-color: #ccc;
+        }
+
+        .tab-button.active {
+            background-color: #bbb;
+        }
+
+        /* Стили для содержимого вкладок */
+        .tab-content {
+            display: none;
+            padding: 0;
+            height: calc(100% - 46px); /* Вычитаем высоту панели вкладок */
+        }
+
+        /* Стили для таблицы */
+        table {
+            width: 100%;
+            height: 100%;
+            border: 1px solid black;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        /* Стили строк */
+        th {
+            background-color: #f2f2f2;
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 120%;
+        }
+
+        /* Стили колонок */
+        td {
+            border: 1px solid #ddd;
+            padding: 0;
+            vertical-align: top;
+            height: 100%;
+        }
+
+        .content {
+            overflow-y: auto;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+
+<body>
+<!-- Кнопки вкладок -->
+<div class="tabs">
+    <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
+    <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
+    <button class="tab-button" onclick="openTab(event, 'tab3')">Sorting, filtering and other settings</button>
+</div>
+
+<!-- Содержимое вкладок -->
+<div id="tab1" class="tab-content" style="display: block;">
+    <table>
+        <thead>
+        <tr>
+            <th>Chats</th>
+            <th>Messages</th>
+            <th>Message Details</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                <div class="content" id="dialogs">
+                    {% set context = dialogs %}
+                    {% include "dialogs.html" with context %}
+                </div>
+            </td>
+            <td>
+                <div class="content" id="messages">
+                    {% set context = messages %}
+                    {% include "messages.html" with context %}
+                </div>
+            </td>
+            <td>
+                <div class="content" id="details">
+
+                </div>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<div id="tab2" class="tab-content">
+    <h2>Содержимое второй вкладки</h2>
+    <p>Здесь может быть любой другой контент.</p>
+</div>
+
+<div id="tab3" class="tab-content">
+    <table>
+        <thead>
+        <tr>
+            <th>Telegram settings</th>
+            <th>Database settings</th>
+            <th>Other settings</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>
+                <div hx-post="/tg_sorting_selection" hx-trigger="change from:input[type=radio]" hx-target="#result-div">
+                    <div>
+                        <input type="radio" id="option1" name="options" value="option1" checked>
+                        <label for="option1">Sort by title in ascending order</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option2" name="options" value="option2">
+                        <label for="option2">Sort by title in descending order</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option3" name="options" value="option3">
+                        <label for="option3">Sort by update date in ascending order</label>
+                    </div>
+
+                    <div>
+                        <input type="radio" id="option4" name="options" value="option4">
+                        <label for="option4">Sort by update date in descending order</label>
+                    </div>
+
+                    <div id="result-div"></div>
+                </div>
+            </td>
+            <td>
+            </td>
+            <td>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<script>
+    function openTab(evt, tabName) {
+        // Скрываем все содержимое вкладок
+        var tabContents = document.getElementsByClassName("tab-content");
+        for (var i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = "none";
+        }
+
+        // Убираем класс "active" со всех кнопок вкладок
+        var tabButtons = document.getElementsByClassName("tab-button");
+        for (var i = 0; i < tabButtons.length; i++) {
+            tabButtons[i].className = tabButtons[i].className.replace(" active", "");
+        }
+
+        // Показываем текущую вкладку и добавляем класс "active" к кнопке
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+</script>
+</body>
+</html>
