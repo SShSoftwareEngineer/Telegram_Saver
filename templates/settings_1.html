@@ -1,0 +1,70 @@
+<!-- Telegram dialogs sort order radiobuttons -->
+<div>
+    <h3>Telegram dialogs sort order</h3>
+    <div>
+        <input type="radio" id="option1" name="tg_dialog_sort" value="option1" checked
+               hx-trigger="change"
+               hx-post="/tg_sorting_selection" hx-vals='{"choice": "0"}' hx-target="#result-div">
+        <label for="option1">Sort by title in ascending order</label>
+    </div>
+    <div>
+        <input type="radio" id="option2" name="tg_dialog_sort" value="option2" hx-trigger="change"
+               hx-post="/tg_sorting_selection" hx-vals='{"choice": "1"}' hx-target="#result-div">
+        <label for="option2">Sort by title in descending order</label>
+    </div>
+    <div>
+        <input type="radio" id="option3" name="tg_dialog_sort" value="option3" hx-trigger="change"
+               hx-post="/tg_sorting_selection" hx-vals='{"choice": "2"}' hx-target="#result-div">
+        <label for="option3">Sort by update date in ascending order</label>
+    </div>
+    <div>
+        <input type="radio" id="option4" name="tg_dialog_sort" value="option4" hx-trigger="change"
+               hx-post="/tg_sorting_selection" hx-vals='{"choice": "3"}' hx-target="#result-div">
+        <label for="option4">Sort by update date in descending order</label>
+    </div>
+    <!-- Dialog types selection radiobuttons -->
+    <div>
+        <h3>Dialog types selection</h3>
+        <div>
+            <input type="radio" id="option1" name="tg_dialog_types" value="option1" checked
+                   hx-trigger="change" hx-post="/tg_sorting_selection"
+                   hx-vals='{"choice": "0"}' hx-target="#result-div">
+            <label for="option1">All dialogs</label>
+        </div>
+        <div>
+            <input type="radio" id="option2" name="tg_dialog_types" value="option2" hx-trigger="change"
+                   hx-post="/tg_sorting_selection" hx-vals='{"choice": "1"}'
+                   hx-target="#result-div">
+            <label for="option2">Channels</label>
+        </div>
+        <div>
+            <input type="radio" id="option3" name="tg_dialog_types" value="option3" hx-trigger="change"
+                   hx-post="/tg_sorting_selection" hx-vals='{"choice": "2"}'
+                   hx-target="#result-div">
+            <label for="option3">Chats</label>
+        </div>
+        <div>
+            <input type="radio" id="option4" name="tg_dialog_types" value="option4" hx-trigger="change"
+                   hx-post="/tg_sorting_selection" hx-vals='{"choice": "3"}'
+                   hx-target="#result-div">
+            <label for="option4">Users</label>
+        </div>
+        <!-- Элемент для отображения результата -->
+        <div id="result-div"></div>
+    </div>
+    <!-- Filtering by dialog title -->
+    <br>
+    <div>
+        <input type="text"
+               id="tg_dialog_filter-input"
+               name="tg_dialog_filter"
+               placeholder="Filter by chat name..."
+               hx-post="/tg_dialog_filter"
+               hx-trigger="keyup changed delay:500ms"
+               hx-target="#filtered-results">
+        <!-- Контейнер для отображения отфильтрованных результатов -->
+        <div id="filtered-results">
+            <!-- Изначальные или отфильтрованные результаты будут здесь -->
+        </div>
+    </div>
+</div>

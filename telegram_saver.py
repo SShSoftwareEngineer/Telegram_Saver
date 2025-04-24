@@ -10,30 +10,35 @@ tg_handler = TelegramHandler()
 
 @tg_saver.route("/")
 def index():
-    # Получаем список диалогов
-    dialogs = tg_handler.get_dialog_list()
-    return render_template("index.html", dialogs=dialogs)
+    return render_template("index.html")
 
 
-@tg_saver.route("/dialogs/<string:dialog_id>")
-def get_messages(dialog_id):
+@tg_saver.route("/tg_dialogs")
+def get_tg_dialogs():
     # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
-    messages = tg_handler.get_dialog_messages(int(dialog_id))
-    return render_template("messages.html", messages=messages)
+    tg_dialogs = tg_handler.get_dialog_list()
+    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
-@tg_saver.route('/messages/<string:dialog_id>/<string:message_id>')
-def get_message_details(dialog_id, message_id):
+@tg_saver.route("/tg_messages/<string:dialog_id>")
+def get_tg_messages(dialog_id):
+    # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
+    tg_messages = tg_handler.get_dialog_messages(int(dialog_id))
+    return render_template("tg_messages.html", tg_messages=tg_messages)
+
+
+@tg_saver.route('/tg_details/<string:dialog_id>/<string:message_id>')
+def get_tg_details(dialog_id, message_id):
     # Получаем детальную информацию о сообщении
-    details = tg_handler.get_message_detail(int(dialog_id), int(message_id))
-    return render_template("details.html", details=details)
+    tg_details = tg_handler.get_message_detail(int(dialog_id), int(message_id))
+    return render_template("tg_details.html", tg_details=tg_details)
 
 
 @tg_saver.route('/tg_sorting_selection', methods=['POST'])
-def load_dialog(item_id):
+def tg_sorting_selection():
     # Обработка порядка сортировки списка диалогов
-    choice = request.form.get('options')
-    return f"<p>Результат: choice</p>"
+    choice = request.form.get('choice')
+    return f"<p>Результат: {choice}</p>"
 
 
 if __name__ == '__main__':
