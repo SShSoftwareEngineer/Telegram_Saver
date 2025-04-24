@@ -1,0 +1,9 @@
+<ol>
+    {% for tg_message in tg_messages %}
+        <li>
+            <a href="#" hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.id }}"
+               hx-target="#tg_details">{{ tg_message.date }}</a><br>
+            {{ tg_message.text[:80] }}
+        </li>
+    {% endfor %}
+</ol>

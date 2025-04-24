@@ -1,0 +1,7 @@
+<ol>
+    {% for tg_dialog in tg_dialogs %}
+        <li>
+            <a href="#" hx-get="/tg_messages/{{ tg_dialog.id }}" hx-target="#tg_messages">{{ tg_dialog.title}}</a>
+        </li>
+    {% endfor %}
+</ol>

@@ -103,19 +103,18 @@
         <tbody>
         <tr>
             <td>
-                <div class="content" id="dialogs">
-                    {% set context = dialogs %}
-                    {% include "dialogs.html" with context %}
+                <div class="content" id="tg_dialogs" hx-get="/tg_dialogs" hx-trigger="load">
+                    <div class="loading">Load dialogs list...</div>
                 </div>
             </td>
             <td>
-                <div class="content" id="messages">
-                    {% set context = messages %}
-                    {% include "messages.html" with context %}
+                <div class="content" id="tg_messages">
+                    {% set context = tg_messages %}
+                    {% include "tg_messages.html" with context %}
                 </div>
             </td>
             <td>
-                <div class="content" id="details">
+                <div class="content" id="tg_details">
 
                 </div>
             </td>
@@ -141,33 +140,13 @@
         <tbody>
         <tr>
             <td>
-                <div hx-post="/tg_sorting_selection" hx-trigger="change from:input[type=radio]" hx-target="#result-div">
-                    <div>
-                        <input type="radio" id="option1" name="options" value="option1" checked>
-                        <label for="option1">Sort by title in ascending order</label>
-                    </div>
-
-                    <div>
-                        <input type="radio" id="option2" name="options" value="option2">
-                        <label for="option2">Sort by title in descending order</label>
-                    </div>
-
-                    <div>
-                        <input type="radio" id="option3" name="options" value="option3">
-                        <label for="option3">Sort by update date in ascending order</label>
-                    </div>
-
-                    <div>
-                        <input type="radio" id="option4" name="options" value="option4">
-                        <label for="option4">Sort by update date in descending order</label>
-                    </div>
-
-                    <div id="result-div"></div>
-                </div>
+                {% include "settings_1.html" %}
             </td>
             <td>
+                Колонка 2
             </td>
             <td>
+                Колонка 3
             </td>
         </tr>
         </tbody>
