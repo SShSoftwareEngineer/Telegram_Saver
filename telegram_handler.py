@@ -18,17 +18,63 @@ asyncio.set_event_loop(loop)
 class TelegramHandler:
 
     def __init__(self):
-        # if self._initialized:
-        #     return
-        self._settings = {}
+        self._dialog_sorting = {'field': 'title', 'reverse': False}
+        self._dialog_type_filter = None
+        self._dialog_title_filter = None
+        self._connection_settings = {}
         with open(TELEGRAM_SETTINGS_FILE, 'r', encoding='utf-8') as file_env:
             for line in file_env:
                 if not line.strip().startswith('#') and '=' in line:
                     key, value = line.strip().split('=')
-                    self._settings[key] = value
-        self.client = TelegramClient(self._settings['SESSION_NAME'], int(self._settings['API_ID']),
-                                     self._settings['API_HASH'], loop=loop)
-        self.client.start(self._settings['PHONE'], self._settings['PASSWORD'])
+                    self._connection_settings[key] = value
+        self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
+                                     int(self._connection_settings['API_ID']),
+                                     self._connection_settings['API_HASH'], loop=loop)
+        self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
+
+    @property
+    def dialog_sorting(self) -> dict:
+        """
+        Возвращает текущие настройки сортировки диалогов
+        """
+        return self._dialog_sorting
+
+    @dialog_sorting.setter
+    def dialog_sorting(self, value: str):
+        """
+        Устанавливает настройки сортировки списка диалогов Telegram
+        """
+        match value:
+            case '0':
+                self._dialog_sorting = {'field': 'title', 'reverse': False}
+            case '1':
+                self._dialog_sorting = {'field': 'title', 'reverse': True}
+            case '2':
+                self._dialog_sorting = {'field': 'last_message_date', 'reverse': False}
+            case '3':
+                self._dialog_sorting = {'field': 'last_message_date', 'reverse': True}
+
+    @property
+    def dialog_type_filter(self) -> str:
+        """
+        Возвращает текущий фильтр по типу диалогов
+        """
+        return self._dialog_type_filter
+
+    @dialog_type_filter.setter
+    def dialog_type_filter(self, value: str):
+        """
+        Устанавливает фильтр по типу диалогов
+        """
+        match value:
+            case '0':
+                self._dialog_type_filter = None
+            case '1':
+                self._dialog_type_filter = 'is_channel'
+            case '2':
+                self._dialog_type_filter = 'is_group'
+            case '3':
+                self._dialog_type_filter = 'is_user'
 
     def get_entity(self, entity_id: int) -> Any:
         """
@@ -36,6 +82,16 @@ class TelegramHandler:
         """
         entity = loop.run_until_complete(self.client.get_entity(entity_id))
         return entity
+
+    def check_dialog_filters(self, dialog_info: dict) -> bool:
+        """
+        Проверка фильтров для информации о диалоге
+        """
+        result = True
+        if self.dialog_type_filter:
+            if not dialog_info[self.dialog_type_filter]:
+                result = False
+        return result
 
     def get_dialog_list(self) -> List[Dict[str, Any]]:
         """
@@ -51,9 +107,13 @@ class TelegramHandler:
                 'username': dialog.entity.username if dialog.entity.username else None,
                 'unread_count': dialog.unread_count,
                 'last_message_date': dialog.date.isoformat(' ', 'seconds') if dialog.date else None,
+                'is_user': dialog.is_user,
+                'is_group': dialog.is_group,
+                'is_channel': dialog.is_channel,
             }
-            result.append(dialog_info)
-        result.sort(key=lambda x: x['title'])
+            if self.check_dialog_filters(dialog_info):
+                result.append(dialog_info)
+        result.sort(key=lambda x: x[self.dialog_sorting['field']], reverse=self.dialog_sorting['reverse'])
         return result
 
     def get_dialog_messages(self, dialog_id: int) -> List[Dict[str, Any]]:

@@ -34,11 +34,27 @@ def get_tg_details(dialog_id, message_id):
     return render_template("tg_details.html", tg_details=tg_details)
 
 
-@tg_saver.route('/tg_sorting_selection', methods=['POST'])
-def tg_sorting_selection():
-    # Обработка порядка сортировки списка диалогов
-    choice = request.form.get('choice')
-    return f"<p>Результат: {choice}</p>"
+@tg_saver.route('/tg_dialog_sorting', methods=['POST'])
+def tg_dialog_sorting():
+    # Обработка выбора сортировки списка диалогов
+    tg_handler.dialog_sorting = request.form.get('choice')
+    tg_dialogs = tg_handler.get_dialog_list()
+    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
+
+
+@tg_saver.route('/tg_dialog_type_filter', methods=['POST'])
+def tg_dialog_type_filter():
+    # Обработка выбора фильтра типа диалогов
+    tg_handler.dialog_type_filter = request.form.get('choice')
+    tg_dialogs = tg_handler.get_dialog_list()
+    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
+
+@tg_saver.route('/tg_dialog_title_filter', methods=['POST'])
+def tg_dialog_title_filter():
+    # Обработка фильтра по названию диалогов
+    tg_handler.dialog_type_filter = request.form.get('choice')
+    tg_dialogs = tg_handler.get_dialog_list()
+    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
 if __name__ == '__main__':
@@ -52,3 +68,4 @@ if __name__ == '__main__':
     # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
     # Установить отдельно предельные размеры для файлов и медиа разных типов
     # Установить фильтры: непрочитанные сообщения, диапазон дат, поиск по тегам, поиск по тексту
+# Добавить инструкцию по получению своих параметров Телеграм
