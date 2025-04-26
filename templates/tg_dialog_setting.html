@@ -1,0 +1,64 @@
+<!-- Telegram dialogs sort field radiobuttons -->
+<div>
+    <h3>Telegram dialogs sort field</h3>
+    <input type="radio" id="sort_field_0" name="sort_field" value="0" checked>
+    <label for="sort_field_0">Sort by title</label>
+</div>
+<div>
+    <input type="radio" id="sort_field_1" name="sort_field" value="1">
+    <label for="sort_field_1">Sort by update date</label>
+</div>
+
+<!-- Telegram dialogs sort order radiobuttons -->
+<div>
+    <h3>Telegram dialogs sort order</h3>
+    <input type="radio" id="sort_order_0" name="sort_order" value="0" checked>
+    <label for="sort_order_0">Sort by ascending</label>
+</div>
+<div>
+    <input type="radio" id="sort_order_1" name="sort_order" value="1">
+    <label for="sort_order_1">Sort by descending</label>
+</div>
+
+<!-- Dialog types selection radiobuttons -->
+<div>
+    <h3>Dialog types filter</h3>
+    <input type="radio" id="type_filter_0" name="type_filter" value="0" checked>
+    <label for="type_filter_0">All chats</label>
+</div>
+<div>
+    <input type="radio" id="type_filter_1" name="type_filter" value="1">
+    <label for="type_filter_1">Channels</label>
+</div>
+<div>
+    <input type="radio" id="type_filter_2" name="type_filter" value="2">
+    <label for="type_filter_2">Groups</label>
+</div>
+<div>
+    <input type="radio" id="type_filter_3" name="type_filter" value="3">
+    <label for="type_filter_3">Users</label>
+</div>
+
+<!-- Filtering by dialog title -->
+<br>
+<div hx-ext="class-tools">
+    <label for="title_filter">Filter by chat name</label><br>
+    <input type="text"
+           id="title_filter"
+           name="title_filter"
+           placeholder="Filter by chat name...">
+    <button type="button"
+            hx-on:click="document.getElementById('title_filter').value = ''"
+            class="clear-button">
+        ✖
+    </button>
+</div>
+
+<!-- Apply dialog filters button -->
+<br>
+<button hx-post="/tg_dialog_apply_filters"
+        hx-include="input[name='sort_field']:checked, input[name='sort_order']:checked,
+                input[name='type_filter']:checked, input[name='title_filter']"
+        hx-target="#tg_dialogs">
+    Apply dialog filters
+</button>

@@ -4,9 +4,14 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="823ee821-981a-4e0d-b00b-f65e10ea7e2b" name="Changes" comment="Settings page modified&#10;Some templates modified">
+    <list default="true" id="823ee821-981a-4e0d-b00b-f65e10ea7e2b" name="Changes" comment="Chat list filters and sorting have been implemented&#10;Some templates modified">
+      <change afterPath="$PROJECT_DIR$/templates/tg_dialog_setting.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/Telegram Saver.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/Telegram Saver.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/telegram_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/telegram_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/telegram_saver.py" beforeDir="false" afterPath="$PROJECT_DIR$/telegram_saver.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/templates/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/settings_1.html" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -126,7 +131,8 @@
       <workItem from="1745434602413" duration="8012000" />
       <workItem from="1745508478121" duration="17880000" />
       <workItem from="1745596074179" duration="3192000" />
-      <workItem from="1745603908924" duration="614000" />
+      <workItem from="1745603908924" duration="10510000" />
+      <workItem from="1745657001723" duration="30841000" />
     </task>
     <task id="LOCAL-00001" summary="Chat list implemented&#10;Messages list implemented&#10;HTML templates modified">
       <option name="closed" value="true" />
@@ -160,7 +166,15 @@
       <option name="project" value="LOCAL" />
       <updated>1745527991275</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Chat list filters and sorting have been implemented&#10;Some templates modified">
+      <option name="closed" value="true" />
+      <created>1745615518511</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1745615518511</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -182,18 +196,28 @@
     <MESSAGE value="Message details implemented" />
     <MESSAGE value="A three-tab interface has been implemented&#10;Display settings added" />
     <MESSAGE value="Settings page modified&#10;Some templates modified" />
-    <option name="LAST_COMMIT_MESSAGE" value="Settings page modified&#10;Some templates modified" />
+    <MESSAGE value="Chat list filters and sorting have been implemented&#10;Some templates modified" />
+    <option name="LAST_COMMIT_MESSAGE" value="Chat list filters and sorting have been implemented&#10;Some templates modified" />
   </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/telegram_saver.py</url>
+          <line>50</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
-        <watch expression="request.form" language="Python" />
-        <watch expression="request.form.to_dict()" language="Python" />
-        <watch expression="request" language="Python" />
+        <watch expression="request.form.get('sort_field')" />
+        <watch expression="request.form.get('sort_order')" />
+        <watch expression="request.form.get('type_filter')" />
       </configuration>
     </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Telegram_Saver$Telegram_Saver.coverage" NAME="Telegram Saver Coverage Results" MODIFIED="1745596250395" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/Telegram_Saver$Telegram_Saver.coverage" NAME="Telegram Saver Coverage Results" MODIFIED="1745700630751" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
   </component>
 </project>
