@@ -34,27 +34,28 @@ def get_tg_details(dialog_id, message_id):
     return render_template("tg_details.html", tg_details=tg_details)
 
 
-@tg_saver.route('/tg_dialog_sorting', methods=['POST'])
-def tg_dialog_sorting():
-    # Обработка выбора сортировки списка диалогов
-    tg_handler.dialog_sorting = request.form.get('choice')
+@tg_saver.route('/tg_dialog_apply_filters', methods=['POST'])
+def tg_dialog_apply_filters():
+    # Обработка сортировки и фильтра списка диалогов Telegram
+    tg_handler.dialog_sort_filter.sort_field = request.form.get('sort_field')
+    tg_handler.dialog_sort_filter.sort_order = request.form.get('sort_order')
+    tg_handler.dialog_sort_filter.type_filter = request.form.get('type_filter')
+    tg_handler.dialog_sort_filter.title_filter = request.form.get('title_filter')
     tg_dialogs = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
-@tg_saver.route('/tg_dialog_type_filter', methods=['POST'])
-def tg_dialog_type_filter():
-    # Обработка выбора фильтра типа диалогов
-    tg_handler.dialog_type_filter = request.form.get('choice')
+@tg_saver.route('/tg_message_apply_filters', methods=['POST'])
+def tg_message_apply_filters():
+    # Обработка сортировки и фильтра списка сообщений диалога Telegram
+    tg_handler.message_sort_filter.sort_order = request.form.get('mes_sort_order')
+    tg_handler.message_sort_filter.date_from = request.form.get('date_from')
+    tg_handler.message_sort_filter.text_filter = request.form.get('text_filter')
+    tg_handler.message_sort_filter.limit = request.form.get('limit_filter')
+
     tg_dialogs = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
-@tg_saver.route('/tg_dialog_title_filter', methods=['POST'])
-def tg_dialog_title_filter():
-    # Обработка фильтра по названию диалогов
-    tg_handler.dialog_type_filter = request.form.get('choice')
-    tg_dialogs = tg_handler.get_dialog_list()
-    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
 if __name__ == '__main__':

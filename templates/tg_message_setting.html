@@ -1,0 +1,72 @@
+<!-- Dialog messages sort order radiobuttons -->
+<div>
+    <h3>Telegram messages sort order</h3>
+    <input type="radio" id="mes_sort_order_0" name="mes_sort_order" value="0" checked>
+    <label for="mes_sort_order_0">Sort by ascending</label>
+</div>
+<div>
+    <input type="radio" id="mes_sort_order_1" name="mes_sort_order" value="1">
+    <label for="mes_sort_order_1">Sort by descending</label>
+</div>
+
+<!-- Filtering by offset date -->
+<br>
+<div>
+    <label for="date_from">Date from (DD/MM/YYYY)</label><br>
+    <input type="text"
+           id="date_from"
+           name="date_from"
+           placeholder="DD/MM/YYYY"
+           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
+           oninput="validateDate(this)"
+           title="Введите дату в формате ДД/ММ/ГГГГ">
+    <button type="button"
+            onclick="document.getElementById('date_from').value = ''"
+            class="clear-button">
+        ✖
+    </button>
+</div>
+
+<!-- Filtering by message text -->
+<br>
+<div hx-ext="class-tools">
+    <label for="text_filter">Filter by message text</label><br>
+    <input type="text"
+           id="text_filter"
+           name="text_filter"
+           placeholder="Filter by message text...">
+    <button type="button"
+            hx-on:click="document.getElementById('text_filter').value = ''"
+            class="clear-button">
+        ✖
+    </button>
+</div>
+
+
+<!-- Filtering by message limit -->
+<br>
+<div hx-ext="class-tools">
+    <label for="limit_filter">Limit of messages</label><br>
+    <input type="number"
+           id="limit_filter"
+           name="limit_filter"
+           placeholder="Enter integer number..."
+           step="1"
+           oninput="this.value = this.value.replace(/[^0-9]/g, '');"
+           pattern="\d*">
+    <button type="button"
+            hx-on:click="document.getElementById('limit_filter').value = ''"
+            class="clear-button">
+        ✖
+    </button>
+</div>
+
+
+<!-- Apply message filters button -->
+<br>
+<button hx-post="/tg_message_apply_filters"
+        hx-include="input[name='mes_sort_order']:checked, input[name='date_from']:checked,
+                input[name='text_filter']:checked, input[name='limit_filter']"
+        hx-target="#tg_messages">
+    Apply message filters
+</button>
