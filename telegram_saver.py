@@ -10,7 +10,8 @@ tg_handler = TelegramHandler()
 
 @tg_saver.route("/")
 def index():
-    return render_template("index.html")
+    tg_dialogs = tg_handler.get_dialog_list()
+    return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
 @tg_saver.route("/tg_dialogs")
@@ -55,7 +56,6 @@ def tg_message_apply_filters():
 
     tg_dialogs = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
-
 
 
 if __name__ == '__main__':
