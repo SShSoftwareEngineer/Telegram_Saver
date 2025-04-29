@@ -1,9 +1,9 @@
 <span id="chats-count-display" hx-swap-oob="true">{{ tg_dialogs|length }}</span>
-<ol>
+
+<ul style="list-style-type: none; padding-left: 0;">
     {% for tg_dialog in tg_dialogs %}
-        <li>
+        <li style="margin-bottom: 8px;">
             <a href="#" hx-get="/tg_messages/{{ tg_dialog.id }}" hx-target="#tg_messages">{{ tg_dialog.title }}</a>
         </li>
     {% endfor %}
-    {% set dialog_count = tg_dialogs|length %}
-</ol>
+</ul>

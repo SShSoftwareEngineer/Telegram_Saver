@@ -95,7 +95,7 @@
         <thead>
         <tr>
             <th id="chats-header">Chats (<span id="chats-count-display">{{ tg_dialogs|length }}</span>)</th>
-            <th>Messages</th>
+            <th id="chats-header">Messages (<span id="messages-count-display">{{ tg_messages|length }}</span>)</th>
             <th>Message Details</th>
         </tr>
         </thead>
@@ -103,10 +103,8 @@
         <tr>
             <td>
                 <div class="content" id="tg_dialogs">
-                    <div class="content" id="tg_messages">
-                        {% set context = tg_dialogs %}
-                        {% include "tg_dialogs.html" with context %}
-                    </div>
+                    {% set context = tg_dialogs %}
+                    {% include "tg_dialogs.html" with context %}
                 </div>
             </td>
             <td>

@@ -1,9 +1,15 @@
-<ol>
+<span id="messages-count-display" hx-swap-oob="true">{{ tg_messages|length }}</span>
+
+<ul style="list-style-type: none; padding-left: 0;">
+    {% set trim_to = 140 %}
     {% for tg_message in tg_messages %}
-        <li>
+        <li style="margin-bottom: 9px;">
             <a href="#" hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.id }}"
                hx-target="#tg_details">{{ tg_message.date }}</a><br>
-            {{ tg_message.text[:80] }}
+            {{ tg_message.text[:trim_to] }}
+            {% if tg_message.text|length > trim_to %}
+                ...
+            {% endif %}
         </li>
     {% endfor %}
-</ol>
+</ul>

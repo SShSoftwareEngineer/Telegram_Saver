@@ -1,5 +1,7 @@
 import asyncio
+from calendar import month
 from dataclasses import dataclass
+from datetime import datetime
 
 from telethon import TelegramClient, utils
 from telethon.tl.types import Chat, User, Channel, Message
@@ -10,6 +12,7 @@ from typing import List, Union, Optional, Dict, Any
 DB_MEDIA_DIR = 'chats_media'
 TELEGRAM_SETTINGS_FILE = '.env'
 MAX_FILE_SIZE = 10 * 1024 * 1024
+MESSAGE_LIMIT = 10
 
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
@@ -39,7 +42,7 @@ class TgMessageSortFilter:
         self._sort_order = 'asc' if value == '0' else 'desc'
 
     @property
-    def date_from(self) -> Optional[str]:
+    def date_from(self) -> Optional[datetime]:
         """
         Возвращает минимальную дату сообщения для фильтрации
         """
@@ -50,7 +53,13 @@ class TgMessageSortFilter:
         """
         Устанавливает минимальную дату сообщения для фильтрации
         """
-        self._date_from = value if value else None
+        day, month, year = value.split('/.-')
+        try:
+            if value:
+                self._date_from = datetime.strptime(value, '%d/%m/%Y')
+            else:
+                self._date_from = None
+
 
     @property
     def text_filter(self) -> Optional[str]:
@@ -81,7 +90,25 @@ class TgMessageSortFilter:
         try:
             self._limit = int(value)
         except ValueError:
-            self._limit = 10
+            self._limit = MESSAGE_LIMIT
+
+    # def check_message_filters(self, message_info: dict) -> bool:
+    #     """
+    #     Проверка фильтров по названию и по типу для конкретного сообщения
+    #     """
+    #     title_filter_result = True
+    #     if self.title_filter:
+    #         title_filter_result = str(dialog_info['title']).lower().find(self.title_filter.lower()) != -1
+    #     type_filter_result = True
+    #     if self.type_filter:
+    #         type_filter_result = dialog_info[self.type_filter]
+    #     return all([title_filter_result, type_filter_result])
+
+    # def sort_message_list(self, message_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    #     """
+    #     Сортировка списка сообщения по заданному полю в заданном порядке
+    #     """
+    #     return sorted(message_list, key=lambda x: x['date'], reverse=self.sort_order)
 
 
 @dataclass
@@ -202,7 +229,7 @@ class TelegramHandler:
 
     def get_dialog_list(self) -> List[Dict[str, Any]]:
         """
-        Получение списка всех диалогов
+        Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
         dialogs = loop.run_until_complete(self.client.get_dialogs())
         dialog_list = []
@@ -223,12 +250,17 @@ class TelegramHandler:
 
     def get_dialog_messages(self, dialog_id: int) -> List[Dict[str, Any]]:
         """
-        Получение сообщений из заданного чата
+        Получение списка сообщений из заданного чата с учетом фильтров и сортировки
         """
         # TODO: здесь дописать все фильтры: limit, по дате, по ids
         dialog = self.get_entity(dialog_id)
-        messages = loop.run_until_complete(self.client.get_messages(dialog, limit=10))
-        result = []
+        message_filter = {'entity ': dialog,
+                          'limit': self.message_sort_filter.limit if self.message_sort_filter.limit else MESSAGE_LIMIT,
+                          'reverse': self.message_sort_filter.sort_order,}
+        if self.message_sort_filter.date_from:
+            message_filter['min_id'] = self.message_sort_filter.date_from
+        messages = loop.run_until_complete(self.client.get_messages(dialog, MESSAGE_LIMIT))
+        message_list = []
         for message in messages:
             message_info = {
                 'dialog_id': dialog_id,
@@ -239,8 +271,10 @@ class TelegramHandler:
                 'views': message.views,
                 'grouped_id': message.grouped_id,
             }
-            result.append(message_info)
-        return result
+            message_list.append(message_info)
+            if self.message_sort_filter.check_message_filters(message_info):
+                message_list.append(message_info)
+        return self.message_sort_filter.sort_message_list(message_list)
 
     def get_message_detail(self, dialog_id: int, message_id: int) -> dict:
         """
