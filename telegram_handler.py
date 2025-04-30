@@ -12,7 +12,7 @@ from typing import List, Union, Optional, Dict, Any
 DB_MEDIA_DIR = 'chats_media'
 TELEGRAM_SETTINGS_FILE = '.env'
 MAX_FILE_SIZE = 10 * 1024 * 1024
-MESSAGE_LIMIT = 10
+MESSAGE_LIMIT = 20
 
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
@@ -22,9 +22,9 @@ asyncio.set_event_loop(loop)
 @dataclass
 class TgMessageSortFilter:
     _sort_order: str = 'asc'
-    _date_from: Optional[str] = None
+    _date_from: Optional[datetime] = None
     _text_filter: Optional[str] = None
-    _limit: int = 10
+    _limit: int = MESSAGE_LIMIT
 
     @property
     def sort_order(self) -> bool:
@@ -53,13 +53,16 @@ class TgMessageSortFilter:
         """
         Устанавливает минимальную дату сообщения для фильтрации
         """
-        day, month, year = value.split('/.-')
-        try:
-            if value:
-                self._date_from = datetime.strptime(value, '%d/%m/%Y')
-            else:
-                self._date_from = None
-
+        if value:
+            date_split = re.split(r'[/.-]', value)
+            if len(date_split)==3:
+                from_day, from_month, from_year = date_split
+                try:
+                    self._date_from = datetime(int(from_year), int(from_month), int(from_day))
+                except ValueError:
+                    self._date_from = None
+        else:
+            self._date_from = None
 
     @property
     def text_filter(self) -> Optional[str]:
@@ -91,24 +94,6 @@ class TgMessageSortFilter:
             self._limit = int(value)
         except ValueError:
             self._limit = MESSAGE_LIMIT
-
-    # def check_message_filters(self, message_info: dict) -> bool:
-    #     """
-    #     Проверка фильтров по названию и по типу для конкретного сообщения
-    #     """
-    #     title_filter_result = True
-    #     if self.title_filter:
-    #         title_filter_result = str(dialog_info['title']).lower().find(self.title_filter.lower()) != -1
-    #     type_filter_result = True
-    #     if self.type_filter:
-    #         type_filter_result = dialog_info[self.type_filter]
-    #     return all([title_filter_result, type_filter_result])
-
-    # def sort_message_list(self, message_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    #     """
-    #     Сортировка списка сообщения по заданному полю в заданном порядке
-    #     """
-    #     return sorted(message_list, key=lambda x: x['date'], reverse=self.sort_order)
 
 
 @dataclass
@@ -205,6 +190,7 @@ class TgDialogSortFilter:
 class TelegramHandler:
     dialog_sort_filter: TgDialogSortFilter
     message_sort_filter: TgMessageSortFilter
+    current_dialog_id: int
 
     def __init__(self):
         self.dialog_sort_filter = TgDialogSortFilter()
@@ -248,18 +234,19 @@ class TelegramHandler:
                 dialog_list.append(dialog_info)
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
 
-    def get_dialog_messages(self, dialog_id: int) -> List[Dict[str, Any]]:
+    def get_message_list(self, dialog_id: int) -> List[Dict[str, Any]]:
         """
         Получение списка сообщений из заданного чата с учетом фильтров и сортировки
         """
-        # TODO: здесь дописать все фильтры: limit, по дате, по ids
         dialog = self.get_entity(dialog_id)
-        message_filter = {'entity ': dialog,
+        message_filter = {'entity': dialog,
                           'limit': self.message_sort_filter.limit if self.message_sort_filter.limit else MESSAGE_LIMIT,
-                          'reverse': self.message_sort_filter.sort_order,}
+                          'reverse': self.message_sort_filter.sort_order, }
         if self.message_sort_filter.date_from:
-            message_filter['min_id'] = self.message_sort_filter.date_from
-        messages = loop.run_until_complete(self.client.get_messages(dialog, MESSAGE_LIMIT))
+            message_filter['offset_date'] = self.message_sort_filter.date_from
+        if self.message_sort_filter.text_filter:
+            message_filter['search'] = self.message_sort_filter.text_filter
+        messages = loop.run_until_complete(self.client.get_messages(**message_filter))
         message_list = []
         for message in messages:
             message_info = {
@@ -272,9 +259,7 @@ class TelegramHandler:
                 'grouped_id': message.grouped_id,
             }
             message_list.append(message_info)
-            if self.message_sort_filter.check_message_filters(message_info):
-                message_list.append(message_info)
-        return self.message_sort_filter.sort_message_list(message_list)
+        return message_list
 
     def get_message_detail(self, dialog_id: int, message_id: int) -> dict:
         """
@@ -300,19 +285,19 @@ class TelegramHandler:
             return None
         return await self.client.download_media(message, path)
 
-    def _get_entity_type(entity) -> str:
-        """
-        Определение типа сущности Telethon
-        """
-        if isinstance(entity, User):
-            return 'user'
-        elif isinstance(entity, Chat):
-            return 'group'
-        elif isinstance(entity, Channel):
-            if entity.megagroup:
-                return 'supergroup'
-            return 'channel'
-        return 'unknown'
+    # def _get_entity_type(entity) -> str:
+    #     """
+    #     Определение типа сущности Telethon
+    #     """
+    #     if isinstance(entity, User):
+    #         return 'user'
+    #     elif isinstance(entity, Chat):
+    #         return 'group'
+    #     elif isinstance(entity, Channel):
+    #         if entity.megagroup:
+    #             return 'supergroup'
+    #         return 'channel'
+    #     return 'unknown'
 
 
 def clean_file_name(file_name: str | None) -> str | None:
