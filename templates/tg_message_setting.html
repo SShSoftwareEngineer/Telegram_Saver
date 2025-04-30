@@ -18,7 +18,7 @@
            name="date_from"
            placeholder="DD/MM/YYYY"
            pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-           oninput="validateDate(this)"
+            {#           oninput="validateDate(this)"#}
            title="Enter date as DD/MM/YYYY">
     <button type="button"
             onclick="document.getElementById('date_from').value = ''"
@@ -65,8 +65,8 @@
 <!-- Apply message filters button -->
 <br>
 <button hx-post="/tg_message_apply_filters"
-        hx-include="input[name='mes_sort_order']:checked, input[name='date_from']:checked,
-                input[name='text_filter']:checked, input[name='limit_filter']"
+        hx-include="input[name='mes_sort_order']:checked, input[name='date_from'],
+                    input[name='text_filter'], input[name='limit_filter']"
         hx-target="#tg_messages">
     Apply message filters
 </button>

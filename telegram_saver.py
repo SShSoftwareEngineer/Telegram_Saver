@@ -24,7 +24,8 @@ def get_tg_dialogs():
 @tg_saver.route("/tg_messages/<string:dialog_id>")
 def get_tg_messages(dialog_id):
     # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
-    tg_messages = tg_handler.get_dialog_messages(int(dialog_id))
+    tg_handler.current_dialog_id = int(dialog_id)
+    tg_messages = tg_handler.get_message_list(int(dialog_id))
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
@@ -53,9 +54,8 @@ def tg_message_apply_filters():
     tg_handler.message_sort_filter.date_from = request.form.get('date_from')
     tg_handler.message_sort_filter.text_filter = request.form.get('text_filter')
     tg_handler.message_sort_filter.limit = request.form.get('limit_filter')
-
-    tg_dialogs = tg_handler.get_dialog_list()
-    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
+    tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
+    return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
 if __name__ == '__main__':

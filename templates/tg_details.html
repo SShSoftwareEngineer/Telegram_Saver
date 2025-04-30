@@ -1,4 +1,4 @@
 <span>
     {{ tg_details.date }}<br>
-    {{ tg_details.text }}
+    {{ tg_details.text|replace('\n', '<br>')|safe }}
 </span>
