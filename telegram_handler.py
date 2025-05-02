@@ -23,8 +23,24 @@ asyncio.set_event_loop(loop)
 class TgMessageSortFilter:
     _sort_order: str = 'asc'
     _date_from: Optional[datetime] = None
+    _date_to: Optional[datetime] = None
     _text_filter: Optional[str] = None
     _limit: int = MESSAGE_LIMIT
+
+    @staticmethod
+    def set_date(date_str: str) -> Optional[datetime]:
+        """
+        Декодирование даты из строки
+        """
+        if date_str:
+            date_split = re.split(r'[/.-]', date_str)
+            if len(date_split) == 3:
+                dd, mm, yyyy = date_split
+                try:
+                    return datetime(int(yyyy), int(mm), int(dd))
+                except ValueError:
+                    return None
+        return None
 
     @property
     def sort_order(self) -> bool:
@@ -51,23 +67,28 @@ class TgMessageSortFilter:
     @date_from.setter
     def date_from(self, value: str):
         """
-        Устанавливает минимальную дату сообщения для фильтрации
+        Устанавливает дату, с которой получать сообщения
         """
-        if value:
-            date_split = re.split(r'[/.-]', value)
-            if len(date_split)==3:
-                from_day, from_month, from_year = date_split
-                try:
-                    self._date_from = datetime(int(from_year), int(from_month), int(from_day))
-                except ValueError:
-                    self._date_from = None
-        else:
-            self._date_from = None
+        self._date_from = self.set_date(value)
+
+    @property
+    def date_to(self) -> Optional[datetime]:
+        """
+        Возвращает дату, с которой получать сообщения
+        """
+        return self._date_to
+
+    @date_to.setter
+    def date_to(self, value: str):
+        """
+        Устанавливает дату, до которой получать сообщения
+        """
+        self._date_to = self.set_date(value)
 
     @property
     def text_filter(self) -> Optional[str]:
         """
-        Возвращает текущий фильтр по названию диалогов
+        Возвращает дату, до которой получать сообщения
         """
         return self._text_filter
 
@@ -243,7 +264,16 @@ class TelegramHandler:
                           'limit': self.message_sort_filter.limit if self.message_sort_filter.limit else MESSAGE_LIMIT,
                           'reverse': self.message_sort_filter.sort_order, }
         if self.message_sort_filter.date_from:
-            message_filter['offset_date'] = self.message_sort_filter.date_from
+            message_from = loop.run_until_complete(
+                self.client.get_messages(offset_date=self.message_sort_filter.date_from, limit=1))
+            if message_from:
+                message_filter['min_id'] = message_from[0].id
+        if self.message_sort_filter.date_to:
+            message_to = loop.run_until_complete(
+                self.client.get_messages(offset_date=self.message_sort_filter.date_from, limit=1))
+            if message_to:
+                message_filter['max_id'] = message_to[0].id
+
         if self.message_sort_filter.text_filter:
             message_filter['search'] = self.message_sort_filter.text_filter
         messages = loop.run_until_complete(self.client.get_messages(**message_filter))

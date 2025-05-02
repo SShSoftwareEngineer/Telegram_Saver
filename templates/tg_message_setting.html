@@ -9,16 +9,15 @@
     <label for="mes_sort_order_1">Sort by date in descending</label>
 </div>
 
-<!-- Filtering by offset date -->
+<!-- Filtering by date from -->
 <br>
 <div>
-    <label for="date_from">Date from (DD/MM/YYYY)</label><br>
+    <label for="date_from">Date from</label><br>
     <input type="text"
            id="date_from"
            name="date_from"
            placeholder="DD/MM/YYYY"
            pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-            {#           oninput="validateDate(this)"#}
            title="Enter date as DD/MM/YYYY">
     <button type="button"
             onclick="document.getElementById('date_from').value = ''"
@@ -26,6 +25,24 @@
         ✖
     </button>
 </div>
+
+<!-- Filtering by date to -->
+<br>
+<div>
+    <label for="date_to">Date to</label><br>
+    <input type="text"
+           id="date_to"
+           name="date_to"
+           placeholder="DD/MM/YYYY"
+           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
+           title="Enter date as DD/MM/YYYY">
+    <button type="button"
+            onclick="document.getElementById('date_to').value = ''"
+            class="clear-button">
+        ✖
+    </button>
+</div>
+
 
 <!-- Filtering by message text -->
 <br>
@@ -65,7 +82,7 @@
 <!-- Apply message filters button -->
 <br>
 <button hx-post="/tg_message_apply_filters"
-        hx-include="input[name='mes_sort_order']:checked, input[name='date_from'],
+        hx-include="input[name='mes_sort_order']:checked, input[name='date_from'], input[name='date_to'],
                     input[name='text_filter'], input[name='limit_filter']"
         hx-target="#tg_messages">
     Apply message filters
