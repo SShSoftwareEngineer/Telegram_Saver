@@ -1,12 +1,12 @@
 <!-- Dialog messages sort order radiobuttons -->
 <div>
     <h3>Telegram messages sort order</h3>
-    <input type="radio" id="mes_sort_order_0" name="mes_sort_order" value="0" checked>
-    <label for="mes_sort_order_0">Sort by date in ascending</label>
+    <input type="radio" id="mess_reverse_0" name="mess_reverse" value="0" checked>
+    <label for="mess_reverse_0">Sort by date in ascending</label>
 </div>
 <div>
-    <input type="radio" id="mes_sort_order_1" name="mes_sort_order" value="1">
-    <label for="mes_sort_order_1">Sort by date in descending</label>
+    <input type="radio" id="mess_reverse_1" name="mess_reverse" value="1">
+    <label for="mess_reverse_1">Sort by date in descending</label>
 </div>
 
 <!-- Filtering by date from -->
@@ -47,13 +47,13 @@
 <!-- Filtering by message text -->
 <br>
 <div hx-ext="class-tools">
-    <label for="text_filter">Filter by message text</label><br>
+    <label for="search">Filter by message text</label><br>
     <input type="text"
-           id="text_filter"
-           name="text_filter"
+           id="search"
+           name="search"
            placeholder="Filter by message text...">
     <button type="button"
-            hx-on:click="document.getElementById('text_filter').value = ''"
+            hx-on:click="document.getElementById('search').value = ''"
             class="clear-button">
         ✖
     </button>
@@ -63,16 +63,16 @@
 <!-- Filtering by message limit -->
 <br>
 <div hx-ext="class-tools">
-    <label for="limit_filter">Limit of messages</label><br>
+    <label for="limit">Limit of messages</label><br>
     <input type="number"
-           id="limit_filter"
-           name="limit_filter"
-           placeholder="Enter integer number, default 10"
+           id="limit"
+           name="limit"
+           placeholder="Enter integer number, default 20"
            step="1"
            oninput="this.value = this.value.replace(/[^0-9]/g, '');"
            pattern="\d*">
     <button type="button"
-            hx-on:click="document.getElementById('limit_filter').value = ''"
+            hx-on:click="document.getElementById('limit').value = ''"
             class="clear-button">
         ✖
     </button>
@@ -82,8 +82,8 @@
 <!-- Apply message filters button -->
 <br>
 <button hx-post="/tg_message_apply_filters"
-        hx-include="input[name='mes_sort_order']:checked, input[name='date_from'], input[name='date_to'],
-                    input[name='text_filter'], input[name='limit_filter']"
+        hx-include="input[name='mess_reverse']:checked, input[name='date_from'], input[name='date_to'],
+                    input[name='search'], input[name='limit']"
         hx-target="#tg_messages">
     Apply message filters
 </button>

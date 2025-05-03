@@ -25,6 +25,7 @@ def get_tg_dialogs():
 def get_tg_messages(dialog_id):
     # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
     tg_handler.current_dialog_id = int(dialog_id)
+    tg_handler.message_sort_filter.set_default_filters()
     tg_messages = tg_handler.get_message_list(int(dialog_id))
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
@@ -39,10 +40,13 @@ def get_tg_details(dialog_id, message_id):
 @tg_saver.route('/tg_dialog_apply_filters', methods=['POST'])
 def tg_dialog_apply_filters():
     # Обработка сортировки и фильтра списка диалогов Telegram
-    tg_handler.dialog_sort_filter.sort_field = request.form.get('sort_field')
-    tg_handler.dialog_sort_filter.sort_order = request.form.get('sort_order')
-    tg_handler.dialog_sort_filter.type_filter = request.form.get('type_filter')
-    tg_handler.dialog_sort_filter.title_filter = request.form.get('title_filter')
+    dial_filter = tg_handler.dialog_sort_filter
+    form = request.form
+    dial_filter.sort_field(form.get('sort_field'))
+    dial_filter.reverse(form.get('reverse'))
+    dial_filter.type_filter(form.get('type_filter'))
+    dial_filter.title_filter(form.get('title_filter'))
+
     tg_dialogs = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
@@ -50,10 +54,14 @@ def tg_dialog_apply_filters():
 @tg_saver.route('/tg_message_apply_filters', methods=['POST'])
 def tg_message_apply_filters():
     # Обработка сортировки и фильтра списка сообщений диалога Telegram
-    tg_handler.message_sort_filter.sort_order = request.form.get('mes_sort_order')
-    tg_handler.message_sort_filter.date_from = request.form.get('date_from')
-    tg_handler.message_sort_filter.text_filter = request.form.get('text_filter')
-    tg_handler.message_sort_filter.limit = request.form.get('limit_filter')
+    mess_filter = tg_handler.message_sort_filter
+    form = request.form
+    mess_filter.reverse(form.get('mess_reverse'))
+    mess_filter.date_from(form.get('date_from'))
+    mess_filter.date_to(form.get('date_to'))
+    mess_filter.search(form.get('search'))
+    mess_filter.limit(form.get('limit'))
+
     tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
@@ -69,4 +77,5 @@ if __name__ == '__main__':
     # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
     # Установить отдельно предельные размеры для файлов и медиа разных типов
     # Установить фильтры: непрочитанные сообщения, диапазон дат, поиск по тегам, поиск по тексту
+    # Сделать гиперссылки в сообщениях
 # Добавить инструкцию по получению своих параметров Телеграм
