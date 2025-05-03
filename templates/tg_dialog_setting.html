@@ -1,6 +1,6 @@
 <!-- Telegram dialogs sort field radiobuttons -->
 <div>
-    <h3>Telegram dialogs sort field</h3>
+    <h3>Chats sortable field</h3>
     <input type="radio" id="sort_field_0" name="sort_field" value="0" checked>
     <label for="sort_field_0">Sort by title</label>
 </div>
@@ -11,18 +11,18 @@
 
 <!-- Telegram dialogs sort order radiobuttons -->
 <div>
-    <h3>Telegram dialogs sort order</h3>
-    <input type="radio" id="sort_order_0" name="sort_order" value="0" checked>
-    <label for="sort_order_0">Sort by ascending</label>
+    <h3>Chats sort order</h3>
+    <input type="radio" id="reverse_0" name="reverse" value="0" checked>
+    <label for="reverse_0">Sort by ascending</label>
 </div>
 <div>
-    <input type="radio" id="sort_order_1" name="sort_order" value="1">
-    <label for="sort_order_1">Sort by descending</label>
+    <input type="radio" id="reverse_1" name="reverse" value="1">
+    <label for="reverse_1">Sort by descending</label>
 </div>
 
 <!-- Dialog types selection radiobuttons -->
 <div>
-    <h3>Dialog types filter</h3>
+    <h3>Chat types filter</h3>
     <input type="radio" id="type_filter_0" name="type_filter" value="0" checked>
     <label for="type_filter_0">All chats</label>
 </div>
@@ -57,7 +57,7 @@
 <!-- Apply dialog filters button -->
 <br>
 <button hx-post="/tg_dialog_apply_filters"
-        hx-include="input[name='sort_field']:checked, input[name='sort_order']:checked,
+        hx-include="input[name='sort_field']:checked, input[name='reverse']:checked,
                 input[name='type_filter']:checked, input[name='title_filter']"
         hx-target="#tg_dialogs">
     Apply dialog filters
