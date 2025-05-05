@@ -1,4 +1,8 @@
 <span>
-    {{ tg_details.date }}<br>
-    {{ tg_details.text|replace('\n', '<br>')|safe }}
+    <div style="text-align: center;">{{ tg_details.date }}</div><br>
+    {{ tg_details.text|replace('\n', '<br>')|safe }}<br>
+    {% if tg_details.media %}
+        <img src="{{ url_for('cache_media', filename=tg_details.media) }}" alt="Photo">
+    {% endif %}
+
 </span>
