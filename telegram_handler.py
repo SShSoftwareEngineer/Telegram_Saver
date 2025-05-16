@@ -1,18 +1,13 @@
 import asyncio
 import os
-from dataclasses import dataclass
-from datetime import datetime
-
-from telethon import TelegramClient
 import re
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 from typing import List, Union, Optional, Dict, Any
+from telethon import TelegramClient
+from config.config import ProjectDirs, Constants, FieldNames
 
-CHATS_MEDIA = r'chats_media'
-DB_MEDIA_DIR = fr'{CHATS_MEDIA}\database'
-CACHE_MEDIA_DIR = fr'{CHATS_MEDIA}\cache'
-TELEGRAM_SETTINGS_FILE = '.env'
-MAX_FILE_SIZE = 10 * 1024 * 1024
-MESSAGE_LIMIT = 20
+# MESSAGE_LIMIT = 1500
 
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
@@ -95,17 +90,18 @@ class TgMessageSortFilter:
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
     _search: Optional[str] = None
-    _limit: int = MESSAGE_LIMIT
+
+    # _limit: int = MESSAGE_LIMIT
 
     def set_default_filters(self):
         """
         Устанавливает фильтры по умолчанию
         """
         self._reverse = False
-        self._date_from = None
+        self._date_from = datetime.now() - timedelta(days=30)
         self._date_to = None
         self._search = None
-        self._limit = MESSAGE_LIMIT
+        # self._limit = MESSAGE_LIMIT
 
     @staticmethod
     def set_date(date_str: str) -> Optional[datetime]:
@@ -146,14 +142,14 @@ class TgMessageSortFilter:
         """
         self._search = value if value else None
 
-    def limit(self, value: str):
-        """
-        Устанавливает максимальное количество последних сообщений для фильтрации
-        """
-        try:
-            self._limit = int(value)
-        except ValueError:
-            self._limit = MESSAGE_LIMIT
+    # def limit(self, value: str):
+    #     """
+    #     Устанавливает максимальное количество последних сообщений для фильтрации
+    #     """
+    #     try:
+    #         self._limit = int(value)
+    #     except ValueError:
+    #         self._limit = MESSAGE_LIMIT
 
     def get_filters(self) -> Dict[str, Union[str, int]]:
         """
@@ -164,7 +160,7 @@ class TgMessageSortFilter:
             'date_from': self._date_from,
             'date_to': self._date_to,
             'search': self._search,
-            'limit': self._limit
+            # 'limit': self._limit
         }
 
 
@@ -172,13 +168,13 @@ class TelegramHandler:
     dialog_sort_filter: TgDialogSortFilter
     message_sort_filter: TgMessageSortFilter
     current_dialog_id: int
-    url_pattern = re.compile(r"\[(.*?)\]\((.*?)\)")
+    message_group_list: Dict[str, Dict[str, Any]]
 
     def __init__(self):
         self.dialog_sort_filter = TgDialogSortFilter()
         self.message_sort_filter = TgMessageSortFilter()
         self._connection_settings = {}
-        with open(TELEGRAM_SETTINGS_FILE, 'r', encoding='utf-8') as file_env:
+        with open(ProjectDirs.telegram_settings_file, 'r', encoding='utf-8') as file_env:
             for line in file_env:
                 if not line.strip().startswith('#') and '=' in line:
                     key, value = line.strip().split('=')
@@ -199,38 +195,42 @@ class TelegramHandler:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
+        print('Chats list loading...')
         dialogs = loop.run_until_complete(self.client.get_dialogs())
         dialog_list = []
         for dialog in dialogs:
+            field = FieldNames.DIALOG_INFO
             dialog_info = {
-                'id': dialog.id,
-                'title': dialog.title if dialog.title else dialog.name if dialog.name else 'No title',
-                'username': dialog.entity.username if dialog.entity.username else None,
-                'unread_count': dialog.unread_count,
-                'last_message_date': dialog.date.isoformat(' ', 'seconds') if dialog.date else None,
-                'is_user': dialog.is_user,
-                'is_group': dialog.is_group,
-                'is_channel': dialog.is_channel,
+                field['id']: dialog.id,
+                field['title']: dialog.title if dialog.title else dialog.name if dialog.name else 'No title',
+                field['user']: dialog.entity.username if dialog.entity.username else None,
+                field['unread_count']: dialog.unread_count,
+                field['last_message_date']: dialog.date.isoformat(' ', 'seconds') if dialog.date else None,
+                field['is_user']: dialog.is_user,
+                field['is_group']: dialog.is_group,
+                field['is_channel']: dialog.is_channel,
             }
             if self.dialog_sort_filter.check_filters(dialog_info):
                 dialog_list.append(dialog_info)
+        print(f'{len(dialog_list)} chats loaded')
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
 
-    def get_message_list(self, dialog_id: int) -> List[Dict[str, Any]]:
+    def get_message_list(self, dialog_id: int) -> Dict[str, Dict[str, Any]]:
         """
-        Получение списка сообщений из заданного чата с учетом фильтров и сортировки
+        Получение списка сообщений из заданного чата с учетом фильтров, сортировки и группировки
         """
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
         # Получаем текущие данные фильтра сообщений
         message_filters = self.message_sort_filter.get_filters()
         message_filters['entity'] = dialog
-        # Устанавливаем параметры фильтрации по дате через id сообщения
+        # Устанавливаем параметры фильтрации по дате через id сообщений
         if message_filters.get('date_from'):
             message_from = loop.run_until_complete(
                 self.client.get_messages(entity=dialog, offset_date=message_filters.get('date_from'), limit=1))
             if message_from:
                 message_filters['min_id'] = message_from[0].id
+                # message_filters.pop('limit')
         message_filters.pop('date_from')
         if message_filters.get('date_to'):
             message_to = loop.run_until_complete(
@@ -242,97 +242,155 @@ class TelegramHandler:
         # Удаление и восстановление фильтра поиска по тексту сообщения
         search_filter = message_filters.get('search')
         message_filters.pop('search')
+        print('Message list loading...')
+        # Выборка сообщений по фильтрам
         messages = loop.run_until_complete(self.client.get_messages(**message_filters))
         message_filters['search'] = search_filter
-        # Выборка сообщений по фильтрам
-        message_list = []
+        # message_filters['limit'] = MESSAGE_LIMIT
+        # Создание списка сообщений с учетом группировки и фильтра по тексту
+        message_list = dict()
         for message in messages:
+            # Применение фильтра по тексту сообщения
             if message_filters.get('search'):
                 if not message_filters.get('search').lower() in message.text.lower():
                     continue
-            message_info = {
-                'dialog_id': dialog_id,
-                'id': message.id,
-                'text': message.text,
-                'date': message.date.astimezone().isoformat(' ', 'seconds')[:19] if message.date else '',
-                'sender_id': message.sender_id,
-                'grouped_id': message.grouped_id,
-                'photo': message.photo is not None,
-                'video': message.video is not None,
-                'document': message.document is not None,
-            }
-            message_list.append(message_info)
+            # Составление списка сообщений с учетом группировки по message.grouped_id
+            group_id = str(message.grouped_id) if message.grouped_id else f'None_{message.id}'
+            if group_id not in message_list:
+                message_list[group_id] = dict(dialog_id=dialog_id,
+                                              sender_id=message.sender_id,
+                                              date=message.date.astimezone(),
+                                              ids=[message.id],
+                                              text=[message.text] if message.text else [],
+                                              photo=[], video=[], document=[])
+            else:
+                message_list[group_id]['date'] = min(
+                    [message_list[group_id]['date'], message.date.astimezone()])
+                message_list[group_id]['ids'].append(message.id)
+                if message.text:
+                    message_list[group_id]['text'].append(message.text)
+            message_list[group_id]['photo'] = [True] if (
+                    message_list[group_id]['photo'] == [True] or message.photo is not None) else []
+            message_list[group_id]['video'] = [True] if (
+                    message_list[group_id]['video'] == [True] or message.video is not None) else []
+            message_list[group_id]['document'] = [True] if (
+                    (message_list[group_id]['document'] == [
+                        True] or message.document is not None) and message.video is None) else []
+        print(f'{len(message_list)} messages loaded')
+        self.message_group_list = message_list
         return message_list
 
-    def get_message_detail(self, dialog_id: int, message_id: int) -> dict:
+    def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
         """
-        Получение сообщения по id диалога и id сообщения
+        Получение сообщения по id диалога и id группы сообщений
         """
-        message = loop.run_until_complete(self.client.get_messages(dialog_id, ids=message_id))
-        details = {
-            'dialog_id': dialog_id,
-            'id': message.id,
-            'date': message.date.astimezone().isoformat(' ', 'seconds')[:19] if message.date else '',
-            'text': None,
-            'media': None,
-            'grouped_id': message.grouped_id,
-        }
-        # Скачивание медиафайлов
-        media_file_name = clean_file_name(f'{dialog_id}_{message_id}')
-        self.get_media(message, media_file_name, max_video_size=0)
-        details['media'] = media_file_name
-
-        продумать с именем файла
-
-        # Преобразование текстовых гиперссылок в стандартные
-        if message.text:
-            matches = self.url_pattern.findall(message.text)
+        print('Message details loading...')
+        # Получаем текущую группу сообщений по id
+        current_message_group = self.message_group_list.get(message_group_id)
+        details = dict(dialog_id=current_message_group['dialog_id'],
+                       date=current_message_group['date'],
+                       text='\n\n'.join(current_message_group['text']),
+                       photo=[],
+                       video=[],
+                       video_thumbnail=[],
+                       audio=[],
+                       document=[],
+                       )
+        # Преобразование текстовых гиперссылок в активные
+        if details['text']:
+            message_text = details['text']
+            matches = Constants.text_with_url_pattern.findall(details['text'])
             if matches:
-                message_text = message.text
                 for match in matches:
                     message_text = message_text.replace(f'[{match[0]}]({match[1]})',
                                                         f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
-            else:
-                message_text = message.text
-        else:
-            message_text = 'No text'
-        details['text'] = message_text
+            details['text'] = message_text
+        # Скачивание медиафайлов
+        messages_by_ids = loop.run_until_complete(self.client.get_messages(dialog_id, ids=current_message_group['ids']))
+        for message in messages_by_ids:
+            if message.file:
+                # Получение информации о размере файла
+                file_size = float('inf')
+                if message.file.size:
+                    file_size = message.file.size
+                # Получение расширения и имени файла
+                if message.photo or message.video:
+                    file_ext = '.jpg'
+                else:
+                    file_ext = getattr(message.file, 'ext', None)
+                downloading_result = None
+                if not message.video:
+                    # Получение файла, если это не видео
+                    file_name = clean_file_name(f'{dialog_id}_{message.id}{file_ext}')
+                    file = os.path.join(ProjectDirs.cache_media_dir, file_name)
+                    if os.path.exists(file):
+                        downloading_result = file
+                    else:
+                        if file_size <= Constants.max_download_file_size:
+                            downloading_result = loop.run_until_complete(self.client.download_media(message, file=file))
+                else:
+                    # Получение thumbnail видео
+                    file_name = clean_file_name(f'{dialog_id}_{message.id}_thumb.jpg')
+                    file = os.path.join(ProjectDirs.cache_media_dir, file_name)
+                    if os.path.exists(file):
+                        downloading_result = file
+                    else:
+                        if message.video.thumbs:
+                            downloading_result = loop.run_until_complete(
+                                self.client.download_media(message, file=file, thumb=-1))
+                if downloading_result:
+                    downloading_result = os.path.basename(downloading_result)
+                    if message.photo:
+                        details['photo'].append(downloading_result)
+                    if message.video:
+                        details['video_thumbnail'].append(downloading_result)
+                    if message.audio:
+                        details['audio'].append(downloading_result)
+                    if message.document and not message.video:
+                        details['document'].append(downloading_result)
+        print('Message details loaded')
         return details
 
-    def get_media(self, message, media_file_name: str, max_video_size: int):
-        """
-        Загрузка медиа файла из сообщения
-        """
-        # Определяем тип медиа файла
-        file_name_ext = None
-        file_size = 0
-        if message.file:
-            file_name_ext = message.file.ext
-            file_size = message.file.size
-        if not file_name_ext:
-            if message.photo:
-                file_name_ext = '.jpg'
-            if message.video:
-                file_name_ext = '.mp4'
-            if message.audio:
-                file_name_ext = '.mp3'
-        # result = []
-        if file_name_ext:
-            # Загружаем медиа файл
-            file = f'{media_file_name}{file_name_ext}'
-            if (not message.video) or (message.video and file_size < max_video_size):
-                if not os.path.exists(file):
-                    loop.run_until_complete(self.client.download_media(message, file=file))
-                # result.append(file)
-            # Если это видео, пробуем загрузить thumbnail
-            if message.video:
-                if message.video.thumbs:
-                    file_name_ext = '_thumb.jpg'
-                    file = f'{media_file_name}{file_name_ext}'
-                    if not os.path.exists(file):
-                        loop.run_until_complete(self.client.download_media(message, file=file, thumb=-1))
-                    # result.append(file)
-        # return None  # result
+    # @staticmethod
+    # def get_message_file_type(message) -> List[Optional[str]]:
+    #     """
+    #     Определение типа файла сообщения
+    #     """
+    #     mess_file_type = None
+    #     mess_file_ext = None
+    #     if message.file:
+    #         mess_file_type = getattr(message.file, 'mime_type', None)
+    #         mess_file_ext = getattr(message.file, 'ext', None)
+    #     if not mess_file_type:
+    #         mess_file_type = 'image/jpeg' if message.photo else None
+    #         mess_file_type = 'video/mp4' if message.video else None
+    #         mess_file_type = 'audio/mpeg' if message.audio else None
+    #     if not mess_file_ext:
+    #         mess_file_ext = '.jpg' if message.photo else None
+    #         mess_file_ext = '.mp4' if message.video else None
+    #         mess_file_ext = '.mp3' if message.audio else None
+    #     return [mess_file_type, mess_file_ext]
+    #
+    #
+    # def get_message_file(self, message, file_name: str, download_file: bool):
+    #     """
+    #     Загрузка файла из сообщения
+    #     """
+    #     file = os.path.join(CACHE_MEDIA_DIR, file_name)
+    #     if download_file:
+    #         if not os.path.exists(file):
+    #             loop.run_until_complete(self.client.download_media(message, file=file))
+    #
+    #
+    # def get_message_video_thumbnail(self, message, file_name: str):
+    #     """
+    #     Загрузка thumbnail video из сообщения
+    #     """
+    #     file = os.path.join(CACHE_MEDIA_DIR, file_name)
+    #     if message.video:
+    #         if message.video.thumbs:
+    #             if not os.path.exists(file):
+    #                 loop.run_until_complete(self.client.download_media(message, file=file, thumb=-1))
 
 
 def clean_file_name(file_name: str | None) -> str | None:
