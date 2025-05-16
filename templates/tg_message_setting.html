@@ -16,6 +16,7 @@
     <input type="text"
            id="date_from"
            name="date_from"
+           value="01/01/2025"
            placeholder="DD/MM/YYYY"
            pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
            title="Enter date as DD/MM/YYYY">
@@ -60,30 +61,30 @@
 </div>
 
 
-<!-- Filtering by message limit -->
-<br>
-<div hx-ext="class-tools">
-    <label for="limit">Limit of messages</label><br>
-    <input type="number"
-           id="limit"
-           name="limit"
-           placeholder="Enter integer number, default 20"
-           step="1"
-           oninput="this.value = this.value.replace(/[^0-9]/g, '');"
-           pattern="\d*">
-    <button type="button"
-            hx-on:click="document.getElementById('limit').value = ''"
-            class="clear-button">
-        ✖
-    </button>
-</div>
+{#<!-- Filtering by message limit -->#}
+{#<br>#}
+{#<div hx-ext="class-tools">#}
+{#    <label for="limit">Limit of messages</label><br>#}
+{#    <input type="number"#}
+{#           id="limit"#}
+{#           name="limit"#}
+{#           placeholder="Enter integer number, default 20"#}
+{#           step="1"#}
+{#           oninput="this.value = this.value.replace(/[^0-9]/g, '');"#}
+{#           pattern="\d*">#}
+{#    <button type="button"#}
+{#            hx-on:click="document.getElementById('limit').value = ''"#}
+{#            class="clear-button">#}
+{#        ✖#}
+{#    </button>#}
+{#</div>#}
 
 
 <!-- Apply message filters button -->
 <br>
 <button hx-post="/tg_message_apply_filters"
         hx-include="input[name='mess_reverse']:checked, input[name='date_from'], input[name='date_to'],
-                    input[name='search'], input[name='limit']"
+                    input[name='search']"      {#, input[name='limit']#}
         hx-target="#tg_messages">
     Apply message filters
 </button>

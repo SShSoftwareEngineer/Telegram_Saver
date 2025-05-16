@@ -87,12 +87,17 @@
 <div class="tabs">
     <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
     <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
-    <button class="tab-button" onclick="openTab(event, 'tab3')">Sorting, filtering and other settings</button>
+    <button class="tab-button" onclick="openTab(event, 'tab3')">Settings</button>
 </div>
 
 <!-- Содержимое вкладок -->
 <div id="tab1" class="tab-content" style="display: block;">
     <table>
+        <colgroup>
+            <col style="width: 25%;">
+            <col style="width: 35%;">
+            <col style="width: 40%;">
+        </colgroup>
         <thead>
         <tr>
             <th id="chats-header">Chats (<span id="chats-count-display">{{ tg_dialogs|length }}</span>)</th>
@@ -110,8 +115,10 @@
             </td>
             <td>
                 <div class="content" id="tg_messages">
-                    {% set context = tg_messages %}
-                    {% include "tg_messages.html" with context %}
+                    {% if tg_messages %}
+                        {% set context = tg_messages %}
+                        {% include "tg_messages.html" with context %}
+                    {% endif %}
                 </div>
             </td>
             <td>

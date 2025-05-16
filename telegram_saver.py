@@ -1,17 +1,28 @@
-from datetime import datetime
-from flask import Flask, render_template, jsonify, request, send_file, send_from_directory
-import asyncio
+from flask import Flask, render_template, request, send_from_directory
 
-from telegram_handler import TelegramHandler, CHATS_MEDIA
+from telegram_handler import TelegramHandler
+from config.config import FieldNames
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
 
 
-# Регистрация пути для хранения кэшированных изображений
 @tg_saver.route(f'/cache/<path:filename>')
 def cache_media(filename):
+    """
+    Регистрация пути для хранения кэшированных изображений
+    """
     return send_from_directory('chats_media/cache', filename)
+
+
+@tg_saver.context_processor
+def inject_field_names():
+    """
+    Регистрация контекстного процессора с именами полей
+    """
+    return {
+        'dialog_info': FieldNames.DIALOG_INFO,
+    }
 
 
 @tg_saver.route("/")
@@ -19,13 +30,10 @@ def index():
     """
     Главная страница приложения
     """
-    # with tg_saver.test_request_context("/tg_dialogs"):
-    #     result = get_tg_dialogs()
-
     tg_dialogs = tg_handler.get_dialog_list()
     if tg_dialogs:
         # Получаем id первого диалога
-        tg_handler.current_dialog_id = int(tg_dialogs[0].get('id'))
+        tg_handler.current_dialog_id = int(tg_dialogs[0].get(FieldNames.DIALOG_INFO['id']))
     return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
@@ -45,17 +53,16 @@ def get_tg_messages(dialog_id):
     """
     tg_handler.current_dialog_id = int(dialog_id)
     tg_handler.message_sort_filter.set_default_filters()
-
     tg_messages = tg_handler.get_message_list(int(dialog_id))
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
-@tg_saver.route('/tg_details/<string:dialog_id>/<string:message_id>')
-def get_tg_details(dialog_id, message_id):
+@tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
+def get_tg_details(dialog_id, message_group_id):
     """
     Получение детальной информации о сообщении
     """
-    tg_details = tg_handler.get_message_detail(int(dialog_id), int(message_id))
+    tg_details = tg_handler.get_message_detail(int(dialog_id), message_group_id) if message_group_id else None
     return render_template("tg_details.html", tg_details=tg_details)
 
 
@@ -87,7 +94,7 @@ def tg_message_apply_filters():
     mess_filter.date_from(form.get('date_from'))
     mess_filter.date_to(form.get('date_to'))
     mess_filter.search(form.get('search'))
-    mess_filter.limit(form.get('limit'))
+    # mess_filter.limit(form.get('limit'))
     # Получение списка сообщений с применением фильтров
     tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
     return render_template("tg_messages.html", tg_messages=tg_messages)
@@ -106,3 +113,23 @@ if __name__ == '__main__':
     # Установить фильтры: непрочитанные сообщения, диапазон дат, поиск по тегам, поиск по тексту
     # Сделать гиперссылки в сообщениях
 # Добавить инструкцию по получению своих параметров Телеграм
+
+# with tg_saver.test_request_context("/tg_dialogs"):
+#     result = get_tg_dialogs()
+
+# with tg_saver.test_request_context('/set_table_headers'):
+#     # Теперь доступен request как при настоящем запросе
+#     result = set_table_headers()
+#     # return f"Handler1 called Handler2 via HTTP context: {result}"
+
+# @tg_saver.route('/update_headers', methods=['POST'])
+# def set_table_headers():
+#     """
+#     Установка заголовков таблицы
+#     """
+#     response = make_response(render_template('table_headers.html'))
+#
+#     # Указываем, какое событие нужно вызвать
+#     # Это запустит обновление заголовка без необходимости JS
+#     response.headers["HX-Trigger"] = "update-header-now"
+#     return response

@@ -1,8 +1,26 @@
 <span>
-    <div style="text-align: center;">{{ tg_details.date }}</div><br>
-    {{ tg_details.text|replace('\n', '<br>')|safe }}<br>
-    {% if tg_details.media %}
-        <img src="{{ url_for('cache_media', filename=tg_details.media) }}" alt="Photo">
+    <div style="text-align: center;"><b>{{ tg_details['date'].strftime('%d-%m-%Y %H:%M :%S') }}</b></div><br>
+    {{ tg_details['text']|replace('\n', '<br>')|safe }}<br>
+    {% if tg_details['photo'] %}
+        <br>
+        <b>Photo</b>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+            {% for photo in tg_details['photo'] %}
+                <div style="width: 45%; height: 45vh;">
+                    <img src="{{ url_for('cache_media', filename=photo) }}" alt="Photo"
+                         style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+            {% endfor %}
+        </div>
     {% endif %}
-
+    {% if tg_details['video_thumbnail'] %}
+        <br>
+        <b>Video Thumbnail</b>
+        {% for video_thumbnail in tg_details['video_thumbnail'] %}
+            <div style="width: 50%; height: 50vh;">
+                <img src="{{ url_for('cache_media', filename=video_thumbnail) }}" alt="Video Thumbnail"
+                     style="width: 100%; height: 100%; object-fit: contain;">
+            </div>
+        {% endfor %}
+    {% endif %}
 </span>

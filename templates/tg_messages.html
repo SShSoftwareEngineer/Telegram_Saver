@@ -1,21 +1,27 @@
 <span id="messages-count-display" hx-swap-oob="true">{{ tg_messages|length }}</span>
 
 <ul style="list-style-type: none; padding-left: 0;">
-    {% for tg_message in tg_messages %}
+    {% for group, message in tg_messages.items() %}
         <li style="margin-bottom: 9px;">
-            <a href="#" hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.id }}"
-               hx-target="#tg_details">{{ tg_message.date }}</a><br>
-            {{ tg_message.text|truncate(length=150)|replace('\n', '<br>')|safe }}<br>
-            id = {{ tg_message.id }}<br>
-            {% if tg_message.grouped_id %}
-                grouped_id = {{ tg_message.grouped_id }}<br>
+            <a href="#" hx-get="/tg_details/{{ message['dialog_id'] }}/{{ group }}"
+               hx-target="#tg_details">{{ message['date'].strftime('%d-%m-%Y %H:%M :%S') }}</a><br>
+            {{ message['text']|join('<br>')|truncate(length=130)|replace('\n', '<br>')|safe }}<br>
+            {% if message['photo'] %}
+                <b>Photo</b>
             {% endif %}
-            {% if tg_message.photo %}
-                Photo
+            {% if message['video'] %}
+                <b>Video</b>
             {% endif %}
-            {% if tg_message.video %}
-                Video
+            {% if message['document'] %}
+                <b>Document</b>
             {% endif %}
+            <br>
         </li>
     {% endfor %}
+    {#            {% if tg_message.photo %}#}
+    {#                Photo#}
+    {#            {% endif %}#}
+    {#            {% if tg_message.video %}#}
+    {#                Video#}
+    {#            {% endif %}#}
 </ul>

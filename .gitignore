@@ -120,7 +120,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+config/.env
 .venv
 env/
 venv/
@@ -167,14 +167,14 @@ Support Materials/
 
 chats_media/
 
-/notes.txt
+/Notes/notes.txt
 /pyvenv.cfg
 /.Database Scheme.vpp.lck
 /Database Scheme.vpp.*
 /Config Scheme.vpp.*
 /.session
-/infa.docx
+/Notes/infa.docx
 /~$infa.docx
-/Идеи.docx
-/telethon-flask-module.py
+/Notes/Идеи.docx
+/Notes/telethon-flask-module.py
 /.session-journal
