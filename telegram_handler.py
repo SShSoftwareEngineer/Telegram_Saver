@@ -7,8 +7,6 @@ from typing import List, Union, Optional, Dict, Any
 from telethon import TelegramClient
 from config.config import ProjectDirs, Constants, FieldNames
 
-# MESSAGE_LIMIT = 1500
-
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
@@ -17,91 +15,93 @@ asyncio.set_event_loop(loop)
 @dataclass
 class TgDialogSortFilter:
     _sort_field: str = 'title'
-    _reverse: bool = False
-    _type_filter: Optional[str] = None
-    _title_filter: Optional[str] = None
+    _sort_order: bool = False
+    _dialog_type: Optional[str] = None
+    _title_query: Optional[str] = None
 
     def sort_field(self, value: str):
         """
         Устанавливает поле сортировки
         """
-        self._sort_field = 'title' if value == '0' else 'last_message_date'
+        self._sort_field = FieldNames.DIALOG_INFO['title'] if value == '0' else (
+            FieldNames.DIALOG_INFO)['last_message_date']
 
-    def reverse(self, value: str):
+    def sort_order(self, value: str):
         """
         Устанавливает направление сортировки
         """
-        self._reverse = False if value == '0' else True
+        self._sort_order = False if value == '0' else True
 
-    def type_filter(self, value: str):
+    def dialog_type(self, value: str):
         """
         Устанавливает фильтр по типу диалогов
         """
         match value:
             case '0':
-                self._type_filter = None
+                self._dialog_type = None
             case '1':
-                self._type_filter = 'is_channel'
+                self._dialog_type = 'is_channel'
             case '2':
-                self._type_filter = 'is_group'
+                self._dialog_type = 'is_group'
             case '3':
-                self._type_filter = 'is_user'
+                self._dialog_type = 'is_user'
 
-    def title_filter(self, value: str):
+    def title_query(self, value: str):
         """
         Устанавливает фильтр по названию диалогов
         """
-        self._title_filter = value if value else None
+        self._title_query = value if value else None
 
     def get_filters(self) -> Dict[str, Union[str, bool]]:
         """
         Возвращает текущие фильтры
         """
+        field = FieldNames.DIALOG_SETTINGS
         return {
-            'sort_field': self._sort_field,
-            'reverse': self._reverse,
-            'type_filter': self._type_filter,
-            'title_filter': self._title_filter
+            field['sort_field']: self._sort_field,
+            field['sort_order']: self._sort_order,
+            field['dialog_type']: self._dialog_type,
+            field['title_query']: self._title_query
         }
 
     def check_filters(self, dialog_info: dict) -> bool:
         """
         Проверка фильтров по названию и по типу для конкретного диалога
         """
-        title_filter = True
-        if self.get_filters().get('title_filter'):
-            title_filter = self.get_filters().get('title_filter').lower() in str(dialog_info['title']).lower()
-        type_filter = True
-        if self.get_filters().get('type_filter'):
-            type_filter = dialog_info[self.get_filters().get('type_filter')]
-        return all([title_filter, type_filter])
+        field = FieldNames.DIALOG_SETTINGS
+        title_query = True
+        if self.get_filters().get(field['title_query']):
+            title_query = (self.get_filters().get(field['title_query']).lower() in
+                           str(dialog_info[FieldNames.DIALOG_INFO['title']]).lower())
+        dialog_type = True
+        if self.get_filters().get(field['dialog_type']):
+            dialog_type = dialog_info[self.get_filters().get(field['dialog_type'])]
+        return all([title_query, dialog_type])
 
     def sort_dialog_list(self, dialog_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Сортировка списка диалогов по заданному полю в заданном порядке
         """
-        return sorted(dialog_list, key=lambda x: x[self.get_filters().get('sort_field')],
-                      reverse=self.get_filters().get('reverse'))
+        field = FieldNames.DIALOG_SETTINGS
+        return sorted(dialog_list, key=lambda x: x[self.get_filters().get(field['sort_field'])],
+                      reverse=self.get_filters().get(field['sort_order']))
 
 
 @dataclass
 class TgMessageSortFilter:
-    _reverse: bool = False
+    _sort_order: bool = True
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
-    _search: Optional[str] = None
-
-    # _limit: int = MESSAGE_LIMIT
+    _message_query: Optional[str] = None
 
     def set_default_filters(self):
         """
         Устанавливает фильтры по умолчанию
         """
-        self._reverse = False
-        self._date_from = datetime.now() - timedelta(days=30)
+        self._sort_order = True
+        self._date_from = datetime.now() - timedelta(days=Constants.last_days_by_default)
         self._date_to = None
-        self._search = None
-        # self._limit = MESSAGE_LIMIT
+        self._message_query = None
 
     @staticmethod
     def set_date(date_str: str) -> Optional[datetime]:
@@ -118,11 +118,11 @@ class TgMessageSortFilter:
                     return None
         return None
 
-    def reverse(self, value: str):
+    def sort_order(self, value: str):
         """
         Устанавливает порядок сортировки сообщений по дате
         """
-        self._reverse = False if value == '0' else True
+        self._sort_order = False if value == '0' else True
 
     def date_from(self, value: str):
         """
@@ -136,31 +136,22 @@ class TgMessageSortFilter:
         """
         self._date_to = self.set_date(value)
 
-    def search(self, value: str):
+    def message_query(self, value: str):
         """
         Устанавливает фильтр по названию диалогов
         """
-        self._search = value if value else None
-
-    # def limit(self, value: str):
-    #     """
-    #     Устанавливает максимальное количество последних сообщений для фильтрации
-    #     """
-    #     try:
-    #         self._limit = int(value)
-    #     except ValueError:
-    #         self._limit = MESSAGE_LIMIT
+        self._message_query = value if value else None
 
     def get_filters(self) -> Dict[str, Union[str, int]]:
         """
         Возвращает текущие фильтры
         """
+        field = FieldNames.MESSAGE_SETTINGS
         return {
-            'reverse': self._reverse,
-            'date_from': self._date_from,
-            'date_to': self._date_to,
-            'search': self._search,
-            # 'limit': self._limit
+            field['sort_order']: self._sort_order,
+            field['date_from']: self._date_from,
+            field['date_to']: self._date_to,
+            field['message_query']: self._message_query,
         }
 
 
@@ -173,7 +164,7 @@ class TelegramHandler:
     def __init__(self):
         self.dialog_sort_filter = TgDialogSortFilter()
         self.message_sort_filter = TgMessageSortFilter()
-        self._connection_settings = {}
+        self._connection_settings = dict()
         with open(ProjectDirs.telegram_settings_file, 'r', encoding='utf-8') as file_env:
             for line in file_env:
                 if not line.strip().startswith('#') and '=' in line:
@@ -219,94 +210,108 @@ class TelegramHandler:
         """
         Получение списка сообщений из заданного чата с учетом фильтров, сортировки и группировки
         """
+        print(f'Message list for chat id={dialog_id} loading...')
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
         # Получаем текущие данные фильтра сообщений
         message_filters = self.message_sort_filter.get_filters()
         message_filters['entity'] = dialog
         # Устанавливаем параметры фильтрации по дате через id сообщений
-        if message_filters.get('date_from'):
+        field = FieldNames.MESSAGE_SETTINGS
+        if message_filters.get(field['date_from']):
             message_from = loop.run_until_complete(
-                self.client.get_messages(entity=dialog, offset_date=message_filters.get('date_from'), limit=1))
+                self.client.get_messages(entity=dialog, offset_date=message_filters.get(field['date_from']), limit=1))
             if message_from:
                 message_filters['min_id'] = message_from[0].id
-                # message_filters.pop('limit')
-        message_filters.pop('date_from')
-        if message_filters.get('date_to'):
+        message_filters.pop(field['date_from'])
+        if message_filters.get(field['date_to']):
             message_to = loop.run_until_complete(
-                self.client.get_messages(entity=dialog, offset_date=message_filters.get('date_to'), limit=1,
+                self.client.get_messages(entity=dialog, offset_date=message_filters.get(field['date_to']), limit=1,
                                          reverse=True))
             if message_to:
                 message_filters['max_id'] = message_to[0].id
-        message_filters.pop('date_to')
-        # Удаление и восстановление фильтра поиска по тексту сообщения
-        search_filter = message_filters.get('search')
-        message_filters.pop('search')
-        print('Message list loading...')
+        message_filters.pop(field['date_to'])
+        # Установка параметра сортировки по дате
+        message_filters['reverse'] = message_filters.get(field['sort_order'])
+        # Удаление и восстановление фильтра поиска по тексту сообщения и порядка сортировки
+        search_filter = message_filters.get(field['message_query'])
+        message_filters.pop(field['sort_order'])
+        message_filters.pop(field['message_query'])
         # Выборка сообщений по фильтрам
         messages = loop.run_until_complete(self.client.get_messages(**message_filters))
-        message_filters['search'] = search_filter
-        # message_filters['limit'] = MESSAGE_LIMIT
+        # Восстановление удаленных фильтров
+        message_filters[field['message_query']] = search_filter
+        message_filters[field['sort_order']] = message_filters.get('reverse')
         # Создание списка сообщений с учетом группировки и фильтра по тексту
-        message_list = dict()
+        message_group_list = dict()
+        current_message_group = None
+        current_group_id = None
+        field = FieldNames.MESSAGE_GROUP_INFO
         for message in messages:
             # Применение фильтра по тексту сообщения
-            if message_filters.get('search'):
-                if not message_filters.get('search').lower() in message.text.lower():
+            if message_filters.get(FieldNames.MESSAGE_SETTINGS['message_query']):
+                if not message_filters.get(
+                        FieldNames.MESSAGE_SETTINGS['message_query']).lower() in message.text.lower():
                     continue
             # Составление списка сообщений с учетом группировки по message.grouped_id
-            group_id = str(message.grouped_id) if message.grouped_id else f'None_{message.id}'
-            if group_id not in message_list:
-                message_list[group_id] = dict(dialog_id=dialog_id,
-                                              sender_id=message.sender_id,
-                                              date=message.date.astimezone(),
-                                              ids=[message.id],
-                                              text=[message.text] if message.text else [],
-                                              photo=[], video=[], document=[])
+            message_group_id = str(message.grouped_id) if message.grouped_id else f'None_{message.id}'
+            if message_group_id != current_group_id:
+                current_group_id = message_group_id
+                current_message_group = dict()
+            if current_group_id not in message_group_list:
+                current_message_group = {field['dialog_id']: dialog_id,
+                                         field['sender_id']: message.sender_id,
+                                         field['date']: message.date.astimezone(),
+                                         field['ids']: [message.id],
+                                         field['text']: [message.text] if message.text else [],
+                                         field['photo']: False,
+                                         field['video']: False,
+                                         field['document']: False}
             else:
-                message_list[group_id]['date'] = min(
-                    [message_list[group_id]['date'], message.date.astimezone()])
-                message_list[group_id]['ids'].append(message.id)
+                current_date = current_message_group[field['date']]
+                current_message_group[field['date']] = min(current_date, message.date.astimezone())
+                current_message_group[field['ids']].append(message.id)
                 if message.text:
-                    message_list[group_id]['text'].append(message.text)
-            message_list[group_id]['photo'] = [True] if (
-                    message_list[group_id]['photo'] == [True] or message.photo is not None) else []
-            message_list[group_id]['video'] = [True] if (
-                    message_list[group_id]['video'] == [True] or message.video is not None) else []
-            message_list[group_id]['document'] = [True] if (
-                    (message_list[group_id]['document'] == [
-                        True] or message.document is not None) and message.video is None) else []
-        print(f'{len(message_list)} messages loaded')
-        self.message_group_list = message_list
-        return message_list
+                    current_message_group[field['text']].append(message.text)
+            current_message_group[field['photo']] = current_message_group[field['photo']] or message.photo is not None
+            current_message_group[field['video']] = current_message_group[field['video']] or message.video is not None
+            current_message_group[field['document']] = current_message_group[field['document']] or (
+                    message.document is not None and message.video is None)
+            message_group_list[current_group_id] = current_message_group
+        print(f'{len(message_group_list)} messages loaded')
+        self.message_group_list = message_group_list
+        return message_group_list
 
     def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
-        print('Message details loading...')
         # Получаем текущую группу сообщений по id
         current_message_group = self.message_group_list.get(message_group_id)
-        details = dict(dialog_id=current_message_group['dialog_id'],
-                       date=current_message_group['date'],
-                       text='\n\n'.join(current_message_group['text']),
-                       photo=[],
-                       video=[],
-                       video_thumbnail=[],
-                       audio=[],
-                       document=[],
-                       )
+        cmg_field = FieldNames.MESSAGE_GROUP_INFO
+        det_field = FieldNames.DETAILS_INFO
+        message_date = current_message_group[cmg_field['date']].strftime(Constants.datetime_format)
+        print(f'Message {message_date} details loading...')
+        details = {det_field['dialog_id']: current_message_group[cmg_field['dialog_id']],
+                   det_field['date']: current_message_group[cmg_field['date']],
+                   det_field['text']: '\n\n'.join(current_message_group[cmg_field['text']]),
+                   det_field['photo']: [],
+                   det_field['video']: [],
+                   det_field['video_thumbnail']: [],
+                   det_field['audio']: [],
+                   det_field['document']: [], }
         # Преобразование текстовых гиперссылок в активные
-        if details['text']:
-            message_text = details['text']
-            matches = Constants.text_with_url_pattern.findall(details['text'])
+        if details[det_field['text']]:
+            message_text = details[det_field['text']]
+            matches = Constants.text_with_url_pattern.findall(details[det_field['text']])
             if matches:
                 for match in matches:
                     message_text = message_text.replace(f'[{match[0]}]({match[1]})',
                                                         f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
-            details['text'] = message_text
+            details[det_field['text']] = message_text
         # Скачивание медиафайлов
-        messages_by_ids = loop.run_until_complete(self.client.get_messages(dialog_id, ids=current_message_group['ids']))
+        messages_by_ids = loop.run_until_complete(
+            self.client.get_messages(dialog_id, ids=current_message_group[cmg_field['ids']]))
         for message in messages_by_ids:
             if message.file:
                 # Получение информации о размере файла
@@ -341,56 +346,15 @@ class TelegramHandler:
                 if downloading_result:
                     downloading_result = os.path.basename(downloading_result)
                     if message.photo:
-                        details['photo'].append(downloading_result)
+                        details[det_field['photo']].append(downloading_result)
                     if message.video:
-                        details['video_thumbnail'].append(downloading_result)
+                        details[det_field['video_thumbnail']].append(downloading_result)
                     if message.audio:
-                        details['audio'].append(downloading_result)
+                        details[det_field['audio']].append(downloading_result)
                     if message.document and not message.video:
-                        details['document'].append(downloading_result)
+                        details[det_field['document']].append(downloading_result)
         print('Message details loaded')
         return details
-
-    # @staticmethod
-    # def get_message_file_type(message) -> List[Optional[str]]:
-    #     """
-    #     Определение типа файла сообщения
-    #     """
-    #     mess_file_type = None
-    #     mess_file_ext = None
-    #     if message.file:
-    #         mess_file_type = getattr(message.file, 'mime_type', None)
-    #         mess_file_ext = getattr(message.file, 'ext', None)
-    #     if not mess_file_type:
-    #         mess_file_type = 'image/jpeg' if message.photo else None
-    #         mess_file_type = 'video/mp4' if message.video else None
-    #         mess_file_type = 'audio/mpeg' if message.audio else None
-    #     if not mess_file_ext:
-    #         mess_file_ext = '.jpg' if message.photo else None
-    #         mess_file_ext = '.mp4' if message.video else None
-    #         mess_file_ext = '.mp3' if message.audio else None
-    #     return [mess_file_type, mess_file_ext]
-    #
-    #
-    # def get_message_file(self, message, file_name: str, download_file: bool):
-    #     """
-    #     Загрузка файла из сообщения
-    #     """
-    #     file = os.path.join(CACHE_MEDIA_DIR, file_name)
-    #     if download_file:
-    #         if not os.path.exists(file):
-    #             loop.run_until_complete(self.client.download_media(message, file=file))
-    #
-    #
-    # def get_message_video_thumbnail(self, message, file_name: str):
-    #     """
-    #     Загрузка thumbnail video из сообщения
-    #     """
-    #     file = os.path.join(CACHE_MEDIA_DIR, file_name)
-    #     if message.video:
-    #         if message.video.thumbs:
-    #             if not os.path.exists(file):
-    #                 loop.run_until_complete(self.client.download_media(message, file=file, thumb=-1))
 
 
 def clean_file_name(file_name: str | None) -> str | None:
@@ -413,48 +377,3 @@ if __name__ == "__main__":
 
 # def progress_callback(current, total):
 #     print(f'{current / total:.2%}')
-
-
-# async def main():
-#     # Получаем список чатов (диалогов)
-#     dialogs = client.iter_dialogs()
-#     async for dialog in dialogs:
-#         print(dialog.title, '   ', dialog.id)
-#         # Получаем название директории для файлов данного диалога
-#         dialog_dir = clean_file_name(f'{dialog.title}_{dialog.id}')
-#         dialog_path = os.path.join(DIALOG_MEDIA_DIR, dialog_dir)
-#         os.makedirs(dialog_path, exist_ok=True)
-#         # Получаем список сообщений в каждом диалоге по пользовательскому фильтру
-#         messages = client.iter_messages(dialog, limit=3)
-#         async for message in messages:
-#             print(message.id)
-#             # Сохранение медиафайлов
-#             if message.media:
-#                 file_size = 0
-#                 if message.file:
-#                     if message.file.size:
-#                         file_size = message.file.size
-#                 if file_size < MAX_FILE_SIZE:
-#                     local_message_date = message.date.astimezone()
-#                     file_name_base = f'{local_message_date.strftime("%Y.%m.%d_%H-%M-%S")}_{message.grouped_id}_{message.id}'
-#                     file_name_ext = None
-#                     if message.file:
-#                         if message.file.name:
-#                             file_name_ext = str(message.file.name).lower().split('.')[1]
-#                     if not file_name_ext:
-#                         if message.video:
-#                             file_name_ext = 'mp4'
-#                         else:
-#                             if message.photo:
-#                                 file_name_ext = 'jpg'
-#                             else:
-#                                 if message.audio:
-#                                     file_name_ext = 'mp3'
-#                     file_name = os.path.join(dialog_path, f'{file_name_base}.{file_name_ext}')
-#                     if not os.path.exists(file_name):
-#                         await client.download_media(message, file=file_name, progress_callback=progress_callback)
-#                     if message.video:
-#                         if message.video.thumbs:
-#                             file_name = os.path.join(dialog_path, f'{file_name_base}_thumb.jpg')
-#                             if not os.path.exists(file_name):
-#                                 await client.download_media(message, file=file_name, thumb=-1)

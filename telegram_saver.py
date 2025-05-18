@@ -22,6 +22,10 @@ def inject_field_names():
     """
     return {
         'dialog_info': FieldNames.DIALOG_INFO,
+        'dialog_settings': FieldNames.DIALOG_SETTINGS,
+        'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
+        'message_settings': FieldNames.MESSAGE_SETTINGS,
+        'details_info': FieldNames.DETAILS_INFO,
     }
 
 
@@ -74,10 +78,11 @@ def tg_dialog_apply_filters():
     # Установка фильтров диалогов по значениям из формы
     dial_filter = tg_handler.dialog_sort_filter
     form = request.form
-    dial_filter.sort_field(form.get('sort_field'))
-    dial_filter.reverse(form.get('reverse'))
-    dial_filter.type_filter(form.get('type_filter'))
-    dial_filter.title_filter(form.get('title_filter'))
+    field = FieldNames.DIALOG_SETTINGS
+    dial_filter.sort_field(form.get(field['sort_field']))
+    dial_filter.sort_order(form.get(field['sort_order']))
+    dial_filter.dialog_type(form.get(field['dialog_type']))
+    dial_filter.title_query(form.get(field['title_query']))
     # Получение списка диалогов с применением фильтров
     tg_dialogs = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
@@ -90,11 +95,11 @@ def tg_message_apply_filters():
     """
     mess_filter = tg_handler.message_sort_filter
     form = request.form
-    mess_filter.reverse(form.get('mess_reverse'))
-    mess_filter.date_from(form.get('date_from'))
-    mess_filter.date_to(form.get('date_to'))
-    mess_filter.search(form.get('search'))
-    # mess_filter.limit(form.get('limit'))
+    field = FieldNames.MESSAGE_SETTINGS
+    mess_filter.sort_order(form.get(field['sort_order']))
+    mess_filter.date_from(form.get(field['date_from']))
+    mess_filter.date_to(form.get(field['date_to']))
+    mess_filter.message_query(form.get(field['message_query']))
     # Получение списка сообщений с применением фильтров
     tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
     return render_template("tg_messages.html", tg_messages=tg_messages)

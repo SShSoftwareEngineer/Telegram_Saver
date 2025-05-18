@@ -79,6 +79,8 @@
             padding: 10px;
             box-sizing: border-box;
         }
+
+
     </style>
 </head>
 
@@ -132,16 +134,84 @@
 </div>
 
 <div id="tab2" class="tab-content">
-    <h2>Содержимое второй вкладки</h2>
-    <p>Здесь может быть любой другой контент.</p>
+
+    <style>
+        /* Стили для контейнера и зон */
+        .container {
+            display: grid;
+            grid-template-areas:
+            "header header"
+            "sidebar main"
+            "footer footer";
+            grid-template-columns: 200px 1fr;
+            gap: 10px;
+        }
+
+        .zone-header {
+            grid-area: header;
+        }
+
+        .zone-sidebar {
+            grid-area: sidebar;
+        }
+
+        .zone-main {
+            grid-area: main;
+        }
+
+        .zone-footer {
+            grid-area: footer;
+        }
+
+        .zone {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+    </style>
+
+    <div class="container">
+        <div class="zone zone-header">Заголовок</div>
+        <div class="zone zone-sidebar">Боковая панель</div>
+        <div class="zone zone-main">
+            <!-- Основное содержимое с элементами управления -->
+            <div class="control-group">
+                <h3>Группа 1</h3>
+                <input type="text">
+                <button>Отправить</button>
+            </div>
+            <div class="control-group">
+                <h3>Группа 2</h3>
+                <!-- Другие элементы управления -->
+            </div>
+        </div>
+        <div class="zone zone-footer">Футер</div>
+    </div>
 </div>
 
 <div id="tab3" class="tab-content">
     <table>
+        <colgroup>
+            <col style="width: 20%;">
+            <col style="width: 20%;">
+            <col style="width: 20%;">
+            <col style="width: 20%;">
+            <col style="width: 20%;">
+        </colgroup>
         <thead>
         <tr>
             <th>Telegram settings</th>
             <th>Database settings</th>
+            <th>Other settings</th>
+            <th>Other settings</th>
             <th>Other settings</th>
         </tr>
         </thead>
@@ -149,18 +219,22 @@
         <tr>
             <td>
                 {% include "tg_dialog_setting.html" %}
-                {% include "tg_message_setting.html" %}
             </td>
             <td>
-                Колонка 2
+                {% include "tg_message_setting.html" %}
             </td>
             <td>
                 Колонка 3
             </td>
+            <td>
+                Колонка 4
+            </td>
+            <td>
+                Колонка 5
+            </td>
         </tr>
         </tbody>
     </table>
-
 </div>
 
 <script>
