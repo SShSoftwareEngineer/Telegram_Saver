@@ -1,4 +1,5 @@
 import re
+from datetime import datetime, timedelta
 
 
 class ProjectDirs:
@@ -17,6 +18,8 @@ class Constants:
     """
     max_download_file_size = 10 * 2 ** 10 * 2 ** 10  # 10 MB
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
+    last_days_by_default = 30  # Default number of last days for messages filter
+    datetime_format = '%d-%m-%Y %H:%M :%S'
 
 
 class FieldNames:
@@ -31,6 +34,41 @@ class FieldNames:
         'is_user': 'is_user',
         'is_group': 'is_group',
         'is_channel': 'is_channel',
+    }
+    DIALOG_SETTINGS = {
+        'sort_field': 'sorting_field',
+        'sort_order': 'sorting_order',
+        'dialog_type': 'dialog_type',
+        'title_query': 'title_query',
+    }
+    MESSAGE_GROUP_INFO = {
+        'dialog_id': 'dialog_id',
+        'sender_id': 'sender_id',
+        'date': 'date',
+        'ids': 'ids',
+        'text': 'text',
+        'photo': 'photo',
+        'video': 'video',
+        'document': 'document',
+        'datetime_format': Constants.datetime_format,
+    }
+    MESSAGE_SETTINGS = {
+        'sort_order': 'sorting_order',
+        'date_from': 'date_from',
+        'date_to': 'date_to',
+        'message_query': 'message_query',
+        'date_from_default': (datetime.now() - timedelta(days=Constants.last_days_by_default)).strftime('%d/%m/%Y'),
+    }
+    DETAILS_INFO = {
+        'dialog_id': 'dialog_id',
+        'date': 'date',
+        'text': 'text',
+        'photo': 'photo',
+        'video': 'video',
+        'video_thumbnail': 'video_thumbnail',
+        'audio': 'audio',
+        'document': 'document',
+        'datetime_format': Constants.datetime_format,
     }
 
 

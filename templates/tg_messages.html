@@ -3,25 +3,20 @@
 <ul style="list-style-type: none; padding-left: 0;">
     {% for group, message in tg_messages.items() %}
         <li style="margin-bottom: 9px;">
-            <a href="#" hx-get="/tg_details/{{ message['dialog_id'] }}/{{ group }}"
-               hx-target="#tg_details">{{ message['date'].strftime('%d-%m-%Y %H:%M :%S') }}</a><br>
-            {{ message['text']|join('<br>')|truncate(length=130)|replace('\n', '<br>')|safe }}<br>
-            {% if message['photo'] %}
+            {% set message_date = message[message_group_info['date']].strftime(message_group_info['datetime_format']) %}
+            <a href="#" hx-get="/tg_details/{{ message[message_group_info['dialog_id']] }}/{{ group }}"
+               hx-target="#tg_details">{{ message_date }}</a><br>
+            {{ message[message_group_info['text']]|join('<br>')|truncate(length=130)|replace('\n', '<br>')|safe }}<br>
+            {% if message[message_group_info['photo']] %}
                 <b>Photo</b>
             {% endif %}
-            {% if message['video'] %}
+            {% if message[message_group_info['video']] %}
                 <b>Video</b>
             {% endif %}
-            {% if message['document'] %}
+            {% if message[message_group_info['document']] %}
                 <b>Document</b>
             {% endif %}
             <br>
         </li>
     {% endfor %}
-    {#            {% if tg_message.photo %}#}
-    {#                Photo#}
-    {#            {% endif %}#}
-    {#            {% if tg_message.video %}#}
-    {#                Video#}
-    {#            {% endif %}#}
 </ul>
