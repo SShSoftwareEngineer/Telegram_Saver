@@ -137,50 +137,72 @@
 
     <style>
         /* Стили для контейнера и зон */
-        .container {
+        .container_tab_2 {
             display: grid;
             grid-template-areas:
-            "header header"
-            "sidebar main"
-            "footer footer";
-            grid-template-columns: 200px 1fr;
+                "chats messages header"
+                "chat_list message_list sidebar"
+                "footer1 footer2 footer3";
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
         }
 
-        .zone-header {
-            grid-area: header;
+        .tab_2-chats {
+            grid-area: chats;
         }
 
-        .zone-sidebar {
+        .tab_2-messages {
+            grid-area: messages;
+        }
+
+        .tab_2-header {
+            grid-area: messages;
+        }
+
+        .tab_2-chat_list {
+            grid-area: chat_list;
+        }
+
+        .tab_2-message_list {
+            grid-area: message_list;
+        }
+
+        .tab_2-sidebar {
             grid-area: sidebar;
         }
 
-        .zone-main {
-            grid-area: main;
+        .tab_2-footer1 {
+            grid-area: footer1;
         }
 
-        .zone-footer {
-            grid-area: footer;
+        .tab_2-footer2 {
+            grid-area: footer2;
         }
 
-        .zone {
+        .tab_2-footer3 {
+            grid-area: footer3;
+        }
+
+        .tab2_header {
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .tab_2_grid {
             padding: 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
         }
 
-        .control-group {
-            margin-bottom: 20px;
-            padding: 15px;
-            background: #f8f8f8;
-            border-radius: 4px;
-        }
 
     </style>
 
-    <div class="container">
+    <div class="container_tab_2">
         <div class="zone zone-header">Заголовок</div>
+        <div class="zone zone-header2">Заголовок 2</div>
         <div class="zone zone-sidebar">Боковая панель</div>
+        <div class="zone zone-sidebar2">Боковая панель 2</div>
         <div class="zone zone-main">
             <!-- Основное содержимое с элементами управления -->
             <div class="control-group">
@@ -194,47 +216,89 @@
             </div>
         </div>
         <div class="zone zone-footer">Футер</div>
+        <div class="zone zone-footer2">Футер 2</div>
     </div>
 </div>
 
 <div id="tab3" class="tab-content">
-    <table>
-        <colgroup>
-            <col style="width: 20%;">
-            <col style="width: 20%;">
-            <col style="width: 20%;">
-            <col style="width: 20%;">
-            <col style="width: 20%;">
-        </colgroup>
-        <thead>
-        <tr>
-            <th>Telegram settings</th>
-            <th>Database settings</th>
-            <th>Other settings</th>
-            <th>Other settings</th>
-            <th>Other settings</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr>
-            <td>
-                {% include "tg_dialog_setting.html" %}
-            </td>
-            <td>
-                {% include "tg_message_setting.html" %}
-            </td>
-            <td>
-                Колонка 3
-            </td>
-            <td>
-                Колонка 4
-            </td>
-            <td>
-                Колонка 5
-            </td>
-        </tr>
-        </tbody>
-    </table>
+    <style>
+
+        .container_tab_3 {
+            display: grid;
+            grid-template-areas:
+            "cell_11 cell_12 cell_13"
+            "cell_21 cell_22 cell_23"
+            "cell_31 cell_32 cell_33";
+            grid-template-columns: 300px 1fr 200px;
+            gap: 4px;
+        }
+
+        .zone-cell_11 {
+            grid-area: cell_11;
+        }
+
+        .zone-cell_12 {
+            grid-area: cell_12;
+        }
+
+        .zone-cell_13 {
+            grid-area: cell_13;
+        }
+
+        .zone-cell_21 {
+            grid-area: cell_21;
+        }
+
+        .zone-cell_22 {
+            grid-area: cell_22;
+        }
+
+        .zone-cell_23 {
+            grid-area: cell_23;
+        }
+
+        .zone-cell_31 {
+            grid-area: cell_31;
+        }
+
+        .zone-cell_32 {
+            grid-area: cell_32;
+        }
+
+        .zone-cell_33 {
+            grid-area: cell_33;
+        }
+
+
+        .zone {
+        {#padding: 10px;#} border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .control-group {
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 4px;
+        }
+
+    </style>
+
+    <div class="container_tab_3">
+        <div class="zone zone-cell_11">
+            {% include "tg_dialog_setting.html" %}
+        </div>
+        <div class="zone zone-cell_12">cell_12</div>
+        <div class="zone zone-cell_13">cell_13</div>
+        <div class="zone zone-cell_21">
+            {% include "tg_message_setting.html" %}
+        </div>
+        <div class="zone zone-cell_22">cell_22</div>
+        <div class="zone zone-cell_23">cell_23</div>
+        <div class="zone zone-cell_31">cell_31</div>
+        <div class="zone zone-cell_32">cell_32</div>
+        <div class="zone zone-cell_33">cell_33</div>
+    </div>
+
 </div>
 
 <script>
@@ -258,3 +322,44 @@
 </script>
 </body>
 </html>
+
+
+{#<div id="tab3" class="tab-content">#}
+{#    <table>#}
+{#        <colgroup>#}
+{#            <col style="width: 20%;">#}
+{#            <col style="width: 20%;">#}
+{#            <col style="width: 20%;">#}
+{#            <col style="width: 20%;">#}
+{#            <col style="width: 20%;">#}
+{#        </colgroup>#}
+{#        <thead>#}
+{#        <tr>#}
+{#            <th>Telegram settings</th>#}
+{#            <th>Database settings</th>#}
+{#            <th>Other settings</th>#}
+{#            <th>Other settings</th>#}
+{#            <th>Other settings</th>#}
+{#        </tr>#}
+{#        </thead>#}
+{#        <tbody>#}
+{#        <tr>#}
+{#            <td>#}
+{#                {% include "tg_dialog_setting.html" %}#}
+{#            </td>#}
+{#            <td>#}
+{#                {% include "tg_message_setting.html" %}#}
+{#            </td>#}
+{#            <td>#}
+{#                Колонка 3#}
+{#            </td>#}
+{#            <td>#}
+{#                Колонка 4#}
+{#            </td>#}
+{#            <td>#}
+{#                Колонка 5#}
+{#            </td>#}
+{#        </tr>#}
+{#        </tbody>#}
+{#    </table>#}
+{#</div>#}

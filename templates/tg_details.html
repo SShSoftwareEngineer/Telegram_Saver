@@ -1,6 +1,19 @@
 <span>
-    {% set message_date = tg_details[details_info['date']].strftime(details_info['datetime_format']) %}
-    <div style="text-align: center;"><b>{{ message_date }}</b></div><br>
+    {% set message_date = tg_details[details_info['date']].strftime(constants['datetime_format']) %}
+
+{#доделать передачу идентификатора группового сообщения через скрытое поле#}
+    <input type="hidden" name="message_date" value="{{ message_date }}" id="msg-date">
+
+    <div style="text-align: center;"><b>{{ message_date }}</b>
+        <span style="margin-left: 30px;">{{ constants['saved_to_db_label'] }}</span>
+        <span style="margin-left: 30px;">
+            <input type="checkbox" id="save_to_db" name="save_to_db"
+                   hx-post="/check_box_test"
+                   hx-trigger="change"
+                   hx-include="#save_to_db, #message_date">
+            <label for="subscribe">{{ constants['save_to_db_label'] }}</label>
+        </span>
+    </div><br>
     {{ tg_details[details_info['text']]|replace('\n', '<br>')|safe }}<br>
     {% if tg_details[details_info['photo']] %}
         <br>
