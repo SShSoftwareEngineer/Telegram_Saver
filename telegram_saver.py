@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_from_directory
 
 from telegram_handler import TelegramHandler
-from config.config import FieldNames
+from config.config import FieldNames, Constants
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
@@ -26,6 +26,7 @@ def inject_field_names():
         'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
         'message_settings': FieldNames.MESSAGE_SETTINGS,
         'details_info': FieldNames.DETAILS_INFO,
+        'constants': Constants
     }
 
 
@@ -103,6 +104,15 @@ def tg_message_apply_filters():
     # Получение списка сообщений с применением фильтров
     tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
     return render_template("tg_messages.html", tg_messages=tg_messages)
+
+
+@tg_saver.route('/check_box_test', methods=["POST"])
+def check_box_test():
+    """
+    Тестовая страница для проверки работы чекбоксов
+    """
+    print(request.form.get('save_to_db'))
+    return None
 
 
 if __name__ == '__main__':

@@ -20,6 +20,8 @@ class Constants:
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     last_days_by_default = 30  # Default number of last days for messages filter
     datetime_format = '%d-%m-%Y %H:%M :%S'
+    saved_to_db_label="Saved to the DB"
+    save_to_db_label = "Save to the DB"
 
 
 class FieldNames:
@@ -50,7 +52,6 @@ class FieldNames:
         'photo': 'photo',
         'video': 'video',
         'document': 'document',
-        'datetime_format': Constants.datetime_format,
     }
     MESSAGE_SETTINGS = {
         'sort_order': 'sorting_order',
@@ -68,7 +69,6 @@ class FieldNames:
         'video_thumbnail': 'video_thumbnail',
         'audio': 'audio',
         'document': 'document',
-        'datetime_format': Constants.datetime_format,
     }
 
 

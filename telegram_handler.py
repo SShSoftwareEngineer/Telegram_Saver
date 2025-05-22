@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Union, Optional, Dict, Any
 from telethon import TelegramClient
+
 from config.config import ProjectDirs, Constants, FieldNames
 
 # Создаем и сохраняем цикл событий
@@ -326,7 +327,7 @@ class TelegramHandler:
                 downloading_result = None
                 if not message.video:
                     # Получение файла, если это не видео
-                    file_name = clean_file_name(f'{dialog_id}_{message.id}{file_ext}')
+                    file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}{file_ext}')
                     file = os.path.join(ProjectDirs.cache_media_dir, file_name)
                     if os.path.exists(file):
                         downloading_result = file
@@ -335,7 +336,7 @@ class TelegramHandler:
                             downloading_result = loop.run_until_complete(self.client.download_media(message, file=file))
                 else:
                     # Получение thumbnail видео
-                    file_name = clean_file_name(f'{dialog_id}_{message.id}_thumb.jpg')
+                    file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}_thumb.jpg')
                     file = os.path.join(ProjectDirs.cache_media_dir, file_name)
                     if os.path.exists(file):
                         downloading_result = file
