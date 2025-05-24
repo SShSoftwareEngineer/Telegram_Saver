@@ -91,7 +91,7 @@ class TgDialogSortFilter:
 @dataclass
 class TgMessageSortFilter:
     _sort_order: bool = True
-    _date_from: Optional[datetime] = None
+    _date_from: Optional[datetime] = datetime.now() - timedelta(days=Constants.last_days_by_default)
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
 
@@ -156,15 +156,21 @@ class TgMessageSortFilter:
         }
 
 
+@dataclass
+class TgCurrentState:
+    dialog_list: List[Dict[str, Any]] = None
+    selected_dialog_id: int = None
+    message_group_list: Dict[str, Dict[str, Any]] = None
+    selected_message_group_id: str = None
+    message_details: Dict[str, Any] = None
+
+
 class TelegramHandler:
-    dialog_sort_filter: TgDialogSortFilter
-    message_sort_filter: TgMessageSortFilter
-    current_dialog_id: int
-    message_group_list: Dict[str, Dict[str, Any]]
+    dialog_sort_filter: TgDialogSortFilter = TgDialogSortFilter()
+    message_sort_filter: TgMessageSortFilter = TgMessageSortFilter()
+    current_state: TgCurrentState = TgCurrentState()
 
     def __init__(self):
-        self.dialog_sort_filter = TgDialogSortFilter()
-        self.message_sort_filter = TgMessageSortFilter()
         self._connection_settings = dict()
         with open(ProjectDirs.telegram_settings_file, 'r', encoding='utf-8') as file_env:
             for line in file_env:
@@ -280,20 +286,21 @@ class TelegramHandler:
                     message.document is not None and message.video is None)
             message_group_list[current_group_id] = current_message_group
         print(f'{len(message_group_list)} messages loaded')
-        self.message_group_list = message_group_list
+        self.current_state.message_group_list = message_group_list
         return message_group_list
 
-    def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
+    def get_message_detail(self, dialog_id: int, message_group_id: str) -> Dict[str, Any]:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
         # Получаем текущую группу сообщений по id
-        current_message_group = self.message_group_list.get(message_group_id)
+        current_message_group = self.current_state.message_group_list.get(message_group_id)
         cmg_field = FieldNames.MESSAGE_GROUP_INFO
         det_field = FieldNames.DETAILS_INFO
         message_date = current_message_group[cmg_field['date']].strftime(Constants.datetime_format)
         print(f'Message {message_date} details loading...')
         details = {det_field['dialog_id']: current_message_group[cmg_field['dialog_id']],
+                   det_field['mess_group_id']: message_group_id,
                    det_field['date']: current_message_group[cmg_field['date']],
                    det_field['text']: '\n\n'.join(current_message_group[cmg_field['text']]),
                    det_field['photo']: [],

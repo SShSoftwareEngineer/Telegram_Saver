@@ -36,9 +36,10 @@ def index():
     Главная страница приложения
     """
     tg_dialogs = tg_handler.get_dialog_list()
+    tg_handler.current_state.dialog_list = tg_dialogs
     if tg_dialogs:
         # Получаем id первого диалога
-        tg_handler.current_dialog_id = int(tg_dialogs[0].get(FieldNames.DIALOG_INFO['id']))
+        tg_handler.current_state.selected_dialog_id = int(tg_dialogs[0].get(FieldNames.DIALOG_INFO['id']))
     return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
@@ -48,6 +49,7 @@ def get_tg_dialogs():
     Получение списка диалогов Telegram
     """
     tg_dialogs = tg_handler.get_dialog_list()
+    tg_handler.current_state.dialog_list = tg_dialogs
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
@@ -56,9 +58,10 @@ def get_tg_messages(dialog_id):
     """
     Получение списка сообщений при обновлении текущего диалога, применяется фильтр по умолчанию
     """
-    tg_handler.current_dialog_id = int(dialog_id)
     tg_handler.message_sort_filter.set_default_filters()
     tg_messages = tg_handler.get_message_list(int(dialog_id))
+    tg_handler.current_state.selected_dialog_id = int(dialog_id)
+    tg_handler.current_state.message_group_list = tg_messages
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
@@ -68,6 +71,7 @@ def get_tg_details(dialog_id, message_group_id):
     Получение детальной информации о сообщении
     """
     tg_details = tg_handler.get_message_detail(int(dialog_id), message_group_id) if message_group_id else None
+    tg_handler.current_state.message_details = tg_details
     return render_template("tg_details.html", tg_details=tg_details)
 
 
@@ -86,6 +90,7 @@ def tg_dialog_apply_filters():
     dial_filter.title_query(form.get(field['title_query']))
     # Получение списка диалогов с применением фильтров
     tg_dialogs = tg_handler.get_dialog_list()
+    tg_handler.current_state.dialog_list = tg_dialogs
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
 
@@ -102,7 +107,8 @@ def tg_message_apply_filters():
     mess_filter.date_to(form.get(field['date_to']))
     mess_filter.message_query(form.get(field['message_query']))
     # Получение списка сообщений с применением фильтров
-    tg_messages = tg_handler.get_message_list(tg_handler.current_dialog_id)
+    tg_messages = tg_handler.get_message_list(tg_handler.current_state.selected_dialog_id)
+    tg_handler.current_state.message_group_list = tg_messages
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
@@ -112,21 +118,21 @@ def check_box_test():
     Тестовая страница для проверки работы чекбоксов
     """
     print(request.form.get('save_to_db'))
-    return None
+    print(request.form.get('message_group_id'))
+    return 'None'
 
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-    # Оставлять архивные подписки в базе
-    # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
-    # Режимы: просмотр базы с возможностью удаления
-    # Режимы: синхронизация чата и базы с условиями (продумать условия)
-    # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
-    # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
-    # Установить отдельно предельные размеры для файлов и медиа разных типов
-    # Установить фильтры: непрочитанные сообщения, диапазон дат, поиск по тегам, поиск по тексту
-    # Сделать гиперссылки в сообщениях
+# Оставлять архивные подписки в базе
+# Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
+# Режимы: просмотр базы с возможностью удаления
+# Режимы: синхронизация чата и базы с условиями (продумать условия)
+# Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
+# Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
+# Установить отдельно предельные размеры для файлов и медиа разных типов
+# Установить фильтры: непрочитанные сообщения, поиск по тегам.
 # Добавить инструкцию по получению своих параметров Телеграм
 
 # with tg_saver.test_request_context("/tg_dialogs"):
