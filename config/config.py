@@ -20,7 +20,7 @@ class Constants:
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     last_days_by_default = 30  # Default number of last days for messages filter
     datetime_format = '%d-%m-%Y %H:%M :%S'
-    saved_to_db_label="Saved to the DB"
+    saved_to_db_label="✔ Saved to the DB"
     save_to_db_label = "Save to the DB"
 
 
@@ -62,6 +62,7 @@ class FieldNames:
     }
     DETAILS_INFO = {
         'dialog_id': 'dialog_id',
+        'mess_group_id': 'message_group_id',
         'date': 'date',
         'text': 'text',
         'photo': 'photo',

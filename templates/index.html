@@ -125,7 +125,8 @@
             </td>
             <td>
                 <div class="content" id="tg_details">
-
+                    {% set context = tg_details %}
+                    {% include "tg_details.html" with context %}
                 </div>
             </td>
         </tr>
@@ -137,59 +138,62 @@
 
     <style>
         /* Стили для контейнера и зон */
-        .container_tab_2 {
+        .container_db {
             display: grid;
             grid-template-areas:
-                "chats messages header"
+                "filters messages header"
                 "chat_list message_list sidebar"
                 "footer1 footer2 footer3";
             grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
         }
 
-        .tab_2-chats {
-            grid-area: chats;
+        .db-filters {
+            grid-area: filters;
         }
 
-        .tab_2-messages {
+        .db-messages {
             grid-area: messages;
         }
 
-        .tab_2-header {
-            grid-area: messages;
+        .db-header {
+            grid-area: header;
         }
 
-        .tab_2-chat_list {
+        .db-chat_list {
             grid-area: chat_list;
         }
 
-        .tab_2-message_list {
+        .db-message_list {
             grid-area: message_list;
         }
 
-        .tab_2-sidebar {
+        .db-sidebar {
             grid-area: sidebar;
         }
 
-        .tab_2-footer1 {
+        .db-footer1 {
             grid-area: footer1;
         }
 
-        .tab_2-footer2 {
+        .db-footer2 {
             grid-area: footer2;
         }
 
-        .tab_2-footer3 {
+        .db-footer3 {
             grid-area: footer3;
         }
 
-        .tab2_header {
+        .db_header {
             padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            text-align: center;
+            font-size: larger;
+            font-weight: bold;
+            {#border: 1px solid #ddd;#}
+            {#border-radius: 4px;#}
         }
 
-        .tab_2_grid {
+        .db_grid {
             padding: 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
@@ -198,25 +202,16 @@
 
     </style>
 
-    <div class="container_tab_2">
-        <div class="zone zone-header">Заголовок</div>
-        <div class="zone zone-header2">Заголовок 2</div>
-        <div class="zone zone-sidebar">Боковая панель</div>
-        <div class="zone zone-sidebar2">Боковая панель 2</div>
-        <div class="zone zone-main">
-            <!-- Основное содержимое с элементами управления -->
-            <div class="control-group">
-                <h3>Группа 1</h3>
-                <input type="text">
-                <button>Отправить</button>
-            </div>
-            <div class="control-group">
-                <h3>Группа 2</h3>
-                <!-- Другие элементы управления -->
-            </div>
-        </div>
-        <div class="zone zone-footer">Футер</div>
-        <div class="zone zone-footer2">Футер 2</div>
+    <div class="container_db">
+        <div class="db_header db-filters">Filters</div>
+        <div class="db_header db-messages">Messages</div>
+        <div class="db_header db-header">header</div>
+        <div class="db_grid db-chat_list">Chat list</div>
+        <div class="db_grid db-message_list">Message list</div>
+        <div class="db_grid db-sidebar">UFO</div>
+        <div class="db_grid db-footer1">Footer 1</div>
+        <div class="db_grid db-footer2">Footer 2</div>
+        <div class="db_grid db-footer3">Footer 3</div>
     </div>
 </div>
 
