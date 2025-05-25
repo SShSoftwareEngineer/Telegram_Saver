@@ -90,7 +90,7 @@ class TgDialogSortFilter:
 
 @dataclass
 class TgMessageSortFilter:
-    _sort_order: bool = True
+    _sort_order: bool = False
     _date_from: Optional[datetime] = datetime.now() - timedelta(days=Constants.last_days_by_default)
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
@@ -99,7 +99,7 @@ class TgMessageSortFilter:
         """
         Устанавливает фильтры по умолчанию
         """
-        self._sort_order = True
+        self._sort_order = False
         self._date_from = datetime.now() - timedelta(days=Constants.last_days_by_default)
         self._date_to = None
         self._message_query = None
@@ -123,7 +123,7 @@ class TgMessageSortFilter:
         """
         Устанавливает порядок сортировки сообщений по дате
         """
-        self._sort_order = False if value == '0' else True
+        self._sort_order = True if value == '0' else False
 
     def date_from(self, value: str):
         """
@@ -270,16 +270,17 @@ class TelegramHandler:
                                          field['sender_id']: message.sender_id,
                                          field['date']: message.date.astimezone(),
                                          field['ids']: [message.id],
-                                         field['text']: [message.text] if message.text else [],
+                                         field['text']: [convert_text_hyperlinks(message.text)] if message.text else [],
                                          field['photo']: False,
                                          field['video']: False,
-                                         field['document']: False}
+                                         field['document']: False,
+                                         field['selected']: False,}
             else:
                 current_date = current_message_group[field['date']]
                 current_message_group[field['date']] = min(current_date, message.date.astimezone())
                 current_message_group[field['ids']].append(message.id)
                 if message.text:
-                    current_message_group[field['text']].append(message.text)
+                    current_message_group[field['text']].append(convert_text_hyperlinks(message.text))
             current_message_group[field['photo']] = current_message_group[field['photo']] or message.photo is not None
             current_message_group[field['video']] = current_message_group[field['video']] or message.video is not None
             current_message_group[field['document']] = current_message_group[field['document']] or (
@@ -308,15 +309,8 @@ class TelegramHandler:
                    det_field['video_thumbnail']: [],
                    det_field['audio']: [],
                    det_field['document']: [], }
-        # Преобразование текстовых гиперссылок в активные
-        if details[det_field['text']]:
-            message_text = details[det_field['text']]
-            matches = Constants.text_with_url_pattern.findall(details[det_field['text']])
-            if matches:
-                for match in matches:
-                    message_text = message_text.replace(f'[{match[0]}]({match[1]})',
-                                                        f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
-            details[det_field['text']] = message_text
+        # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+        details[det_field['text']] = convert_text_hyperlinks(details[det_field['text']])
         # Скачивание медиафайлов
         messages_by_ids = loop.run_until_complete(
             self.client.get_messages(dialog_id, ids=current_message_group[cmg_field['ids']]))
@@ -363,6 +357,17 @@ class TelegramHandler:
                         details[det_field['document']].append(downloading_result)
         print('Message details loaded')
         return details
+
+
+def convert_text_hyperlinks(message_text: str) -> Optional[str]:
+    # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+    if message_text:
+        matches = Constants.text_with_url_pattern.findall(message_text)
+        if matches:
+            for match in matches:
+                message_text = message_text.replace(f'[{match[0]}]({match[1]})',
+                                                    f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
+    return message_text
 
 
 def clean_file_name(file_name: str | None) -> str | None:

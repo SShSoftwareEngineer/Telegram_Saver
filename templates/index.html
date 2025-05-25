@@ -266,7 +266,8 @@
 
 
         .zone {
-        {#padding: 10px;#} border: 1px solid #ddd;
+        {#padding: 10px;#}
+            border: 1px solid #ddd;
             border-radius: 4px;
         }
 
@@ -289,7 +290,12 @@
         </div>
         <div class="zone zone-cell_22">cell_22</div>
         <div class="zone zone-cell_23">cell_23</div>
-        <div class="zone zone-cell_31">cell_31</div>
+        <div class="zone zone-cell_31">
+            <button style="width: 70%; height: 100%;"
+                    hx-post="/save_selected_message_to_db">
+                Save selected to the database
+            </button>
+        </div>
         <div class="zone zone-cell_32">cell_32</div>
         <div class="zone zone-cell_33">cell_33</div>
     </div>
