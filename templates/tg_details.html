@@ -1,16 +1,16 @@
 <span>
     {% if tg_details %}
         {% set message_date = tg_details[details_info['date']].strftime(constants['datetime_format']) %}
-        <input type="hidden" name="{{ details_info['mess_group_id'] }}"
-               value="{{ tg_details[details_info['mess_group_id']] }}">
+        <input type="hidden" name="{{ constants['mess_group_id'] }}"
+               value="{{ tg_details[constants['mess_group_id']] }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
         <span style="margin-left: 30px; color: green;">{{ constants['saved_to_db_label'] }}</span>
         <span style="margin-left: 30px;">
-            <input type="checkbox" id="save_to_db" name="save_to_db"
-                   hx-post="/check_box_test"
+            <input type="checkbox" id="details_save_to_db" name="{{ constants['select_to_save'] }}"
+                   hx-post="/select_details_to_save"
                    hx-trigger="change"
-                   hx-include="input[name='{{ details_info['mess_group_id'] }}'],
-                               input[name='{{ constants['saved_to_db_label'] }}'],">
+                   hx-include="input[name='{{ constants['mess_group_id'] }}'],
+                               input[name='{{ constants['select_to_save'] }}'],">
             <label for="subscribe">{{ constants['save_to_db_label'] }}</label>
         </span>
     </div><br>
@@ -19,25 +19,27 @@
             <br>
             <div style="text-align: center;"><b>Image(s)</b></div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            {% for photo in tg_details[details_info['photo']] %}
-                <div style="width: 45%; height: 45vh;">
-                    <img src="{{ url_for('cache_media', filename=photo) }}" alt="Image(s)"
-                         style="width: 100%; height: 100%; object-fit: contain;">
-                </div>
-            {% endfor %}
-        </div>
+                {% for photo in tg_details[details_info['photo']] %}
+                    <div style="width: 45%; height: 45vh;">
+                        <img src="{{ url_for('cache_media', filename=photo) }}" alt="Image(s)"
+                             style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                {% endfor %}
+            </div>
         {% endif %}
         {% if tg_details[details_info['video_thumbnail']] %}
             <br>
             <div style="text-align: center;"><b>Video Thumbnail</b></div>
-            {% for video_thumbnail in tg_details[details_info['video_thumbnail']] %}
-                <div style="width: 50%; height: 50vh;">
-                <img src="{{ url_for('cache_media', filename=video_thumbnail) }}" alt="Video Thumbnail"
-                     style="width: 100%; height: 100%; object-fit: contain;">
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                {% for video_thumbnail in tg_details[details_info['video_thumbnail']] %}
+                    <div style="width: 50%; height: 50vh;">
+                    <img src="{{ url_for('cache_media', filename=video_thumbnail) }}" alt="Video Thumbnail"
+                         style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         {% endif %}
     {% else %}
-        ""
+
     {% endif %}
 </span>

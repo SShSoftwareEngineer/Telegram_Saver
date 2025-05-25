@@ -58,7 +58,7 @@ def get_tg_messages(dialog_id):
     """
     Получение списка сообщений при обновлении текущего диалога, применяется фильтр по умолчанию
     """
-    tg_handler.message_sort_filter.set_default_filters()
+    # tg_handler.message_sort_filter.set_default_filters()
     tg_messages = tg_handler.get_message_list(int(dialog_id))
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_messages
@@ -112,14 +112,36 @@ def tg_message_apply_filters():
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
 
-@tg_saver.route('/check_box_test', methods=["POST"])
-def check_box_test():
+@tg_saver.route('/select_messages_to_save', methods=["POST"])
+def select_messages_to_save():
     """
-    Тестовая страница для проверки работы чекбоксов
+    Обработчик для сохранения выбранных сообщений в базе данных
     """
-    print(request.form.get('save_to_db'))
-    print(request.form.get('message_group_id'))
-    return 'None'
+    selected_message_group_id = request.form.get(Constants.mess_group_id)
+    tg_handler.current_state.message_group_list[selected_message_group_id] \
+        [FieldNames.MESSAGE_GROUP_INFO['selected']] = request.form.get(Constants.select_to_save) is not None
+    return ''
+
+
+@tg_saver.route('/select_details_to_save', methods=["POST"])
+def select_details_to_save():
+    """
+    Обработчик для сохранения выбранных сообщений в базе данных
+    """
+    selected_message_group_id = request.form.get(Constants.mess_group_id)
+    tg_handler.current_state.message_group_list[selected_message_group_id] \
+        [FieldNames.MESSAGE_GROUP_INFO['selected']] = request.form.get(Constants.select_to_save) is not None
+    return ''
+
+
+@tg_saver.route('/save_selected_message_to_db', methods=["POST"])
+def save_selected_message_to_db():
+    """
+    Сохранение выбранных сообщений в базе данных
+    """
+    print(request.form.get(Constants.select_to_save))
+    print(request.form.get(Constants.mess_group_id))
+    return ''
 
 
 if __name__ == '__main__':
