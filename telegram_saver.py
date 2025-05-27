@@ -115,22 +115,42 @@ def tg_message_apply_filters():
 @tg_saver.route('/select_messages_to_save', methods=["POST"])
 def select_messages_to_save():
     """
-    Обработчик для сохранения выбранных сообщений в базе данных
+    Обработка отметки для сохранения сообщений в базе данных в колонке сообщений
     """
-    selected_message_group_id = request.form.get(Constants.mess_group_id)
-    tg_handler.current_state.message_group_list[selected_message_group_id] \
-        [FieldNames.MESSAGE_GROUP_INFO['selected']] = request.form.get(Constants.select_to_save) is not None
+    selected_message_group_id = None
+    is_selected = False
+    for key, value in request.form.items():
+        # Получаем id группы сообщений
+        if key.find(Constants.mess_group_id)!=-1:
+            selected_message_group_id = value
+        # Получаем флаг сохранения для группы сообщений
+        if key.find(Constants.select_to_save)!=-1:
+            is_selected = value is not None
+    # Устанавливаем флаг сохранения для выбранной группы сообщений
+    if selected_message_group_id:
+        tg_handler.current_state.message_group_list[selected_message_group_id] \
+            [FieldNames.MESSAGE_GROUP_INFO['selected']] = is_selected
     return ''
 
 
 @tg_saver.route('/select_details_to_save', methods=["POST"])
 def select_details_to_save():
     """
-    Обработчик для сохранения выбранных сообщений в базе данных
+    Обработка отметки для сохранения сообщений в базе данных в колонке деталей
     """
-    selected_message_group_id = request.form.get(Constants.mess_group_id)
-    tg_handler.current_state.message_group_list[selected_message_group_id] \
-        [FieldNames.MESSAGE_GROUP_INFO['selected']] = request.form.get(Constants.select_to_save) is not None
+    selected_message_group_id = None
+    is_selected = False
+    for key, value in request.form.items():
+        # Получаем id группы сообщений
+        if key.find(Constants.mess_group_id)!=-1:
+            selected_message_group_id = value
+        # Получаем флаг сохранения для группы сообщений
+        if key.find(Constants.select_to_save)!=-1:
+            is_selected = value is not None
+    # Устанавливаем флаг сохранения для выбранной группы сообщений
+    if selected_message_group_id:
+        tg_handler.current_state.message_group_list[selected_message_group_id] \
+            [FieldNames.MESSAGE_GROUP_INFO['selected']] = is_selected
     return ''
 
 
