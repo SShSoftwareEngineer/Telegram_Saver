@@ -2,22 +2,22 @@
 
 <ul style="list-style-type: none; padding-left: 0;">
     {% for group, message in tg_messages.items() %}
-        <input type="hidden" name="{{ constants['mess_group_id'] }}" value="{{ group }}">
+        <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+group }}" value="{{ group }}">
         <li style="margin-bottom: 9px;">
-            {% set message_date = message[message_group_info['date']].strftime(constants['datetime_format']) %}
+            {% set message_date = message[message_group_info['date']].strftime(constants.datetime_format) %}
             <a href="#" hx-get="/tg_details/{{ message[message_group_info['dialog_id']] }}/{{ group }}"
                hx-target="#tg_details">{{ message_date }}</a>
-            <span style="margin-left: 30px; color: green;">{{ constants['saved_to_db_label'] }}</span>
+            <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
             <span style="margin-left: 30px;">
-                <input type="checkbox" id="mess_save_to_db" name="{{ constants['select_to_save'] }}"
+                <input type="checkbox" name="{{ constants.select_to_save+'_mess = '+group }}"
                        hx-post="/select_messages_to_save"
                        hx-trigger="change"
-                       hx-include="input[name='{{ constants['mess_group_id'] }}'],
-                                   input[name='{{ constants['select_to_save'] }}'],">
-                <label for="subscribe">{{ constants['save_to_db_label'] }}</label>
+                       hx-include="input[name='{{ constants.mess_group_id+'_mess = '+group }}'],
+                                   input[name='{{ constants.select_to_save+'_mess = '+group }}'],">
+                <label for="subscribe">{{ constants.save_to_db_label }}</label>
             </span>
             <br>
-            {{ message[message_group_info['text']]|join('<br>')|truncate(length=130)|replace('\n', '<br>')|safe }}<br>
+            {{ message[message_group_info['text']]|join('<br>')|truncate(length=140)|replace('\n', '<br>')|safe }}<br>
             {% if message[message_group_info['photo']] %}
                 <b>Photo</b>
             {% endif %}
