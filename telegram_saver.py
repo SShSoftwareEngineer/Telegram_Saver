@@ -115,7 +115,7 @@ def tg_message_apply_filters():
 @tg_saver.route('/select_messages_to_save', methods=["POST"])
 def select_messages_to_save():
     """
-    Обработка отметки для сохранения сообщений в базе данных в колонке сообщений
+    Обработка отметки сохранения сообщений в базе данных в списке сообщений
     """
     selected_message_group_id = None
     is_selected = False
@@ -136,7 +136,7 @@ def select_messages_to_save():
 @tg_saver.route('/select_details_to_save', methods=["POST"])
 def select_details_to_save():
     """
-    Обработка отметки для сохранения сообщений в базе данных в колонке деталей
+    Обработка отметки сохранения сообщений в базе данных в деталях сообщения
     """
     selected_message_group_id = None
     is_selected = False
@@ -157,8 +157,9 @@ def select_details_to_save():
 @tg_saver.route('/save_selected_message_to_db', methods=["POST"])
 def save_selected_message_to_db():
     """
-    Сохранение выбранных сообщений в базе данных
+    Сохранение отмеченных сообщений в базе данных
     """
+
     print(request.form.get(Constants.select_to_save))
     print(request.form.get(Constants.mess_group_id))
     return ''

@@ -16,7 +16,6 @@
             --tab-height: 55px; /* Высота панели вкладок */
         }
 
-
         /* Стили для вкладок */
         .tabs {
             overflow: hidden;
@@ -50,12 +49,44 @@
             height: calc(100% - var(--tab-height)); /* Вычитаем высоту панели вкладок */
         }
 
-    </style>
+        /* Общие стили для CSS Grid всех вкладок */
 
+        .header {
+            padding: 5px;
+            text-align: center;
+            font-size: larger;
+            font-weight: bold;
+        {#border: 1px solid #ddd;#}{#border-radius: 4px;#}
+        }
+
+        .grid {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .scroll {
+            padding: 0;
+            overflow: auto;
+        }
+
+        .settings-sub-header {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+
+        .X-button {
+            font-size: 0.75rem;
+        }
+
+    </style>
 
 </head>
 
 <body>
+
 <!-- Кнопки вкладок -->
 <div class="tabs">
     <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
@@ -64,12 +95,11 @@
 </div>
 
 <!-- Содержимое вкладок -->
+
 <div id="tab1" class="tab-content" style="display: block;">
     {# Страница сообщений Телеграм #}
-
     <style>
         /* Стили для CSS Grid контейнера и зон */
-
         .tg-container {
             display: grid;
             grid-template-areas:
@@ -83,7 +113,6 @@
             height: 100%;
             gap: 5px;
         }
-
 
         .tg-filter_h {
             grid-area: filter_h;
@@ -129,86 +158,40 @@
             grid-area: footer;
         }
 
-        .tg-header {
-            padding: 5px;
-            text-align: center;
-            font-size: larger;
-            font-weight: bold;
-        {#border: 1px solid #ddd;#}{#border-radius: 4px;#}
-        }
-
-        .tg-grid {
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .tg-scroll {
-            padding: 0;
-            overflow: auto;
-        }
-
-
-        {#/* Стили для таблицы */#}
-        {#table {#}
-        {#    width: 100%;#}
-        {#    height: 100%;#}
-        {#    border: 1px solid black;#}
-        {#    border-collapse: collapse;#}
-        {#    table-layout: fixed;#}
-        {
-        #}#}
-        {##}
-        {#/* Стили строк */#}
-        {#th {#}
-        {#    background-color: #f2f2f2;#}
-        {#    padding: 10px;#}
-        {#    border: 1px solid #ddd;#}
-        {#    text-align: center;#}
-        {#    font-size: 120%;#}
-        {
-        #}#}
-        {##}
-        {#/* Стили колонок */#}
-        {#td {#}
-        {#    border: 1px solid #ddd;#}
-        {#    padding: 0;#}
-        {#    vertical-align: top;#}
-        {#    height: 100%;#}
-        {
-        #}#}
-        {##}
-        {#.content {#}
-        {#    overflow-y: auto;#}
-        {#    height: 100%;#}
-        {#    padding: 10px;#}
-        {#    box-sizing: border-box;#}
-        {
-        #}#}
-
     </style>
 
     <div class="tg-container">
-        <div class="tg-header tg-filter_h">Filters</div>
-        <div class="tg-header tg-chat_h">
+        <div class="header tg-filter_h">Filters</div>
+        <div class="header tg-chat_h">
             Chats (<span id="chats-count-display">{{ tg_dialogs|length }}</span>)
         </div>
-        <div class="tg-header tg-message_h">
+        <div class="header tg-message_h">
             Messages (<span id="messages-count-display">{{ tg_messages|length }}</span>)
         </div>
-        <div class="tg-header tg-detail_h">
+        <div class="header tg-detail_h">
             Message Details
         </div>
-        <div class="tg-grid tg-dialog_filters">dialog_filters</div>
-        <div class="tg-grid tg-message_filters">message_filters</div>
-        <div class="tg-grid tg-filters_1">filters_1</div>
-        <div class="tg-grid tg-scroll tg-chats">
+        <div class="grid tg-dialog_filters">
+            {% include "tg_dialog_setting.html" %}
+        </div>
+        <div class="grid tg-message_filters">
+            {% include "tg_message_setting.html" %}
+        </div>
+        <div class="grid tg-filters_1">
+            <button style="width: 100%; height: 100%;"
+                    hx-post="/save_selected_message_to_db"
+                    hx-target="#button_target">
+                Save selected to the DB
+            </button>
+            <div id="button_target"></div>
+        </div>
+        <div class="grid scroll tg-chats">
             <div class="content" id="tg_dialogs">
                 {% set context = tg_dialogs %}
                 {% include "tg_dialogs.html" with context %}
             </div>
         </div>
-        <div class="tg-grid tg-scroll tg-messages">
+        <div class="grid scroll tg-messages">
             <div class="content" id="tg_messages">
                 {% if tg_messages %}
                     {% set context = tg_messages %}
@@ -216,54 +199,14 @@
                 {% endif %}
             </div>
         </div>
-        <div class="tg-grid tg-scroll tg-details">
+        <div class="grid scroll tg-details">
             <div class="content" id="tg_details">
                 {% set context = tg_details %}
                 {% include "tg_details.html" with context %}
             </div>
         </div>
-        <div class="tg-grid tg-footer">footer</div>
+        <div class="grid tg-footer">footer</div>
     </div>
-
-    {##}
-    {#    <table>#}
-    {#        <colgroup>#}
-    {#            <col style="width: 25%;">#}
-    {#            <col style="width: 35%;">#}
-    {#            <col style="width: 40%;">#}
-    {#        </colgroup>#}
-    {#        <thead>#}
-    {#        <tr>#}
-    {#            <th id="chats-header">Chats (<span id="chats-count-display">{{ tg_dialogs|length }}</span>)</th>#}
-    {#            <th id="messages-header">Messages (<span id="messages-count-display">{{ tg_messages|length }}</span>)</th>#}
-    {#            <th>Message Details</th>#}
-    {#        </tr>#}
-    {#        </thead>#}
-    {#        <tbody>#}
-    {#        <tr>#}
-    {#            <td>#}
-    {#                <div class="content" id="tg_dialogs">#}
-    {#                    {% set context = tg_dialogs %}#}
-    {#                    {% include "tg_dialogs.html" with context %}#}
-    {#                </div>#}
-    {#            </td>#}
-    {#            <td>#}
-    {#                <div class="content" id="tg_messages">#}
-    {#                    {% if tg_messages %}#}
-    {#                        {% set context = tg_messages %}#}
-    {#                        {% include "tg_messages.html" with context %}#}
-    {#                    {% endif %}#}
-    {#                </div>#}
-    {#            </td>#}
-    {#            <td>#}
-    {#                <div class="content" id="tg_details">#}
-    {#                    {% set context = tg_details %}#}
-    {#                    {% include "tg_details.html" with context %}#}
-    {#                </div>#}
-    {#            </td>#}
-    {#        </tr>#}
-    {#        </tbody>#}
-    {#    </table>#}
 </div>
 
 <div id="tab2" class="tab-content">
@@ -319,41 +262,23 @@
             grid-area: footer3;
         }
 
-        .db_header {
-            padding: 5px;
-            text-align: center;
-            font-size: larger;
-            font-weight: bold;
-        {#border: 1px solid #ddd;#}{#border-radius: 4px;#}
-        }
-
-        .db_grid {
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .db-scrolling {
-            padding: 0;
-            overflow-y: auto;
-        }
-
     </style>
 
     <div class="container_db">
-        <div class="db_header db-filters">Filters</div>
-        <div class="db_header db-messages">Messages</div>
-        <div class="db_header db-header">header</div>
-        <div class="db_grid db-scrolling db-chat_list">Chat list</div>
-        <div class="db_grid db-scrolling db-message_list">Message list</div>
-        <div class="db_grid db-scrolling db-sidebar">UFO</div>
-        <div class="db_grid db-footer1">Footer 1</div>
-        <div class="db_grid db-footer2">Footer 2</div>
-        <div class="db_grid db-footer3">Footer 3</div>
+        <div class="header db-filters">Filters</div>
+        <div class="header db-messages">Messages</div>
+        <div class="header db-header">header</div>
+        <div class="grid scroll db-chat_list">Chat list</div>
+        <div class="grid scroll db-message_list">Message list</div>
+        <div class="grid scroll db-sidebar">UFO</div>
+        <div class="grid db-footer1">Footer 1</div>
+        <div class="grid db-footer2">Footer 2</div>
+        <div class="grid db-footer3">Footer 3</div>
     </div>
 </div>
 
 <div id="tab3" class="tab-content">
+
     <style>
 
         .container_tab_3 {
@@ -402,7 +327,6 @@
             grid-area: cell_33;
         }
 
-
         .zone {
         {#padding: 10px;#} border: 1px solid #ddd;
             border-radius: 4px;
@@ -413,28 +337,16 @@
             background: #f8f8f8;
             border-radius: 4px;
         }
-
     </style>
 
     <div class="container_tab_3">
-        <div class="zone zone-cell_11">
-            {% include "tg_dialog_setting.html" %}
-        </div>
+        <div class="zone zone-cell_11">cell_11</div>
         <div class="zone zone-cell_12">cell_12</div>
         <div class="zone zone-cell_13">cell_13</div>
-        <div class="zone zone-cell_21">
-            {% include "tg_message_setting.html" %}
-        </div>
+        <div class="zone zone-cell_21">cell_21</div>
         <div class="zone zone-cell_22">cell_22</div>
         <div class="zone zone-cell_23">cell_23</div>
-        <div class="zone zone-cell_31">
-            <button style="width: 70%; height: 100%;"
-                    hx-post="/save_selected_message_to_db"
-                    hx-target="#button_target">
-                Save selected to the database
-            </button>
-            <div id="button_target"></div>
-        </div>
+        <div class="zone zone-cell_31">cell_31</div>
         <div class="zone zone-cell_32">cell_32</div>
         <div class="zone zone-cell_33">cell_33</div>
     </div>

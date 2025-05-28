@@ -1,5 +1,5 @@
 <!-- Dialog messages sort order radiobuttons -->
-<h3 style="margin-top: 0; margin-bottom: 5px">Telegram messages sort order</h3>
+<p class="settings-sub-header">Messages sort order</p>
 <div>
     <input type="radio" id="mess_reverse_0" name="{{ message_settings['sort_order'] }}" value="0">
     <label for="mess_reverse_0">Sort by date in ascending</label>
@@ -9,13 +9,13 @@
     <label for="mess_reverse_1">Sort by date in descending</label>
 </div>
 
-<h3 style="margin-top: 5px; margin-bottom: 5px">Telegram messages filters</h3>
+<p class="settings-sub-header">Filter by message date</p>
 <!-- Filtering by date -->
 <div style="display: flex; gap: 5px;">
     <!-- Filtering by date from -->
     <div>
         <label for="{{ message_settings['date_from'] }}">Date from</label><br>
-        <input type="text" style="width: 80px;"
+        <input type="text" style="width: 70px;"
                id="{{ message_settings['date_from'] }}"
                name="{{ message_settings['date_from'] }}"
                value="{{ message_settings['date_from_default'] }}"
@@ -24,14 +24,14 @@
                title="Enter date as DD/MM/YYYY">
         <button type="button"
                 onclick="document.getElementById('{{ message_settings['date_from'] }}').value = ''"
-                class="clear-button">
+                class="clear-button X-button">
             ✖
         </button>
     </div>
     <!-- Filtering by date to -->
     <div>
         <label for="{{ message_settings['date_to'] }}">Date to</label><br>
-        <input type="text" style="width: 80px;"
+        <input type="text" style="width: 70px; margin-left: 5px;"
                id="{{ message_settings['date_to'] }}"
                name="{{ message_settings['date_to'] }}"
                placeholder="DD/MM/YYYY"
@@ -39,31 +39,33 @@
                title="Enter date as DD/MM/YYYY">
         <button type="button"
                 onclick="document.getElementById('{{ message_settings['date_to'] }}').value = ''"
-                class="clear-button">
+                class="clear-button X-button">
             ✖
         </button>
     </div>
 </div>
 
 <!-- Filtering by message text -->
-<br>
 <div hx-ext="class-tools">
-    <label for="{{ message_settings['message_query'] }}">Filter by message text</label><br>
+    <label class="settings-sub-header" for="{{ message_settings['message_query'] }}">
+        <p class="settings-sub-header">Filter by message text</p>
+    </label>
     <input type="text"
            id="{{ message_settings['message_query'] }}"
            name="{{ message_settings['message_query'] }}"
-           placeholder="Filter by message text...">
+           placeholder="Filter by message text..."
+           style="width: 80%;">
     <button type="button"
             hx-on:click="document.getElementById('{{ message_settings['message_query'] }}').value = ''"
-            class="clear-button">
+            class="clear-button X-button">
         ✖
     </button>
 </div>
 
 
 <!-- Apply message filters button -->
-<br>
-<button hx-post="/tg_message_apply_filters"
+<button style="width: 100%; margin-top: 10px;"
+        hx-post="/tg_message_apply_filters"
         hx-include="input[name='{{ message_settings['sort_order'] }}']:checked,
                     input[name='{{ message_settings['date_from'] }}'],
                     input[name='{{ message_settings['date_to'] }}'],
