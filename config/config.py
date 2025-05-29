@@ -23,11 +23,13 @@ class Constants:
     saved_to_db_label = '✔ Saved to the DB'
     save_to_db_label = 'Save to the DB'
     mess_group_id = 'message_group_id'
-    select_to_save='select_to_save_to_db'
+    select_to_save = 'select_to_save_to_db'
+    data_base_name = 'telegram_archive'
 
 
 class FieldNames:
     """
+    Структуры для имен полей, используемых в шаблонах и запросах.
     """
     DIALOG_INFO = {
         'id': 'dialog_id',
@@ -61,7 +63,7 @@ class FieldNames:
         'date_from': 'date_from',
         'date_to': 'date_to',
         'message_query': 'message_query',
-        'date_from_default': (datetime.now() - timedelta(days=Constants.last_days_by_default)).strftime('%d/%m/%Y'),
+        'date_from_default': (datetime.now() - timedelta(days=Constants.last_days_by_default)).strftime('%d-%m-%Y'),
     }
     DETAILS_INFO = {
         'dialog_id': 'dialog_id',
@@ -76,5 +78,14 @@ class FieldNames:
     }
 
 
-if __name__ == '__main__':
-    pass
+class TableNames:
+    messages = 'messages'
+    dialogs = 'dialogs'
+    groups = 'groups'
+    files = 'files'
+    file_types = 'file_types'
+    tags = 'tags'
+    tags_messages = 'tags_messages'
+
+    if __name__ == '__main__':
+        pass
