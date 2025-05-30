@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+from utils import clean_file_name
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import List, Union, Optional, Dict, Any
@@ -274,7 +275,7 @@ class TelegramHandler:
                                          field['photo']: False,
                                          field['video']: False,
                                          field['document']: False,
-                                         field['selected']: False,}
+                                         field['selected']: False, }
             else:
                 current_date = current_message_group[field['date']]
                 current_message_group[field['date']] = min(current_date, message.date.astimezone())
@@ -368,21 +369,6 @@ def convert_text_hyperlinks(message_text: str) -> Optional[str]:
                 message_text = message_text.replace(f'[{match[0]}]({match[1]})',
                                                     f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
     return message_text
-
-
-def clean_file_name(file_name: str | None) -> str | None:
-    """
-    Очищает имя файла/директории от недопустимых символов
-    """
-    clean_filename = None
-    if file_name:
-        # Удаляем или заменяем недопустимые символы
-        clean_filename = re.sub(r'[<>:"/\\|?*]', '_', file_name)
-        # Заменяем множественные пробелы
-        clean_filename = re.sub(r'\s+', '_', clean_filename)
-        # Убираем лишние точки и пробелы в начале и конце
-        clean_filename = clean_filename.strip('. ')
-    return clean_filename
 
 
 if __name__ == "__main__":

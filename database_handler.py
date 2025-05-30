@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import List
-
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from config.config import ProjectDirs, Constants, TableNames
-
+import utils
 
 class Base(DeclarativeBase):
     """ A declarative class for creating tables in the database """
@@ -37,7 +36,7 @@ class Dialog(Base):
 class Group(Base):
     __tablename__ = TableNames.groups
     id: Mapped[int] = mapped_column(primary_key=True)
-    grouped_id: Mapped[int] = mapped_column(Integer, index=True)
+    grouped_id: Mapped[str] = mapped_column(Text, index=True)
     date_time: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
     message_id: Mapped['Message'] = relationship(back_populates='grouped_id')
@@ -82,7 +81,7 @@ class TagMessage(Base):
 
 # Connecting to the database. Creating a database connection and session
 # Подключение к базе данных. Создаем соединение с базой данных и сессию
-engine = create_engine(f'sqlite:///{Constants.data_base_name}.db')
+engine = create_engine(f'sqlite:///{ProjectDirs.data_base_name}.db')
 session = Session(engine)
 # Creating tables in the database if they do not exist
 # Создаем таблицы в базе данных, если они отсутствуют
