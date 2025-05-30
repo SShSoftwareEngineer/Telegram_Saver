@@ -6,17 +6,18 @@ class ProjectDirs:
     """
     A class to hold the directory paths for a project.
     """
-    chats_media = r'chats_media'
-    db_media_dir = fr'{chats_media}\database'
-    cache_media_dir = fr'{chats_media}\cache'
+    media_dir = r'media_storage'
+    db_media_dir = fr'{media_dir}\database'
+    cache_media_dir = fr'{media_dir}\cache'
     telegram_settings_file = r'config\.env'
+    data_base_name = 'telegram_archive'
 
 
 class Constants:
     """
     A class to hold constant values for the project.
     """
-    max_download_file_size = 10 * 2 ** 10 * 2 ** 10  # 10 MB
+    max_download_file_size = 50 * 2 ** 10 * 2 ** 10  # 10 MB
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     last_days_by_default = 30  # Default number of last days for messages filter
     datetime_format = '%d-%m-%Y %H:%M :%S'
@@ -24,7 +25,6 @@ class Constants:
     save_to_db_label = 'Save to the DB'
     mess_group_id = 'message_group_id'
     select_to_save = 'select_to_save_to_db'
-    data_base_name = 'telegram_archive'
 
 
 class FieldNames:
@@ -50,7 +50,7 @@ class FieldNames:
     MESSAGE_GROUP_INFO = {
         'dialog_id': 'dialog_id',
         'sender_id': 'sender_id',
-        'date': 'date',
+        'date': 'date_time',
         'ids': 'ids',
         'text': 'text',
         'photo': 'photo',
