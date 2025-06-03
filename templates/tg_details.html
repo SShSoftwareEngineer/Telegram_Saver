@@ -1,6 +1,6 @@
 <span>
     {% if tg_details %}
-        {% set message_date = tg_details[details_info['date']].strftime(constants.datetime_format) %}
+        {% set message_date = tg_details[details_info['date']].strftime(constants.message_datetime_format) %}
         {% set group = tg_details[constants.mess_group_id] %}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
                value="{{ tg_details[constants.mess_group_id] }}">
@@ -16,13 +16,13 @@
         </span>
     </div><br>
         {{ tg_details[details_info['text']]|replace('\n', '<br>')|safe }}<br>
-        {% if tg_details[details_info['photo']] %}
+        {% if tg_details[details_info['image']] %}
             <br>
             <div style="text-align: center;"><b>Image(s)</b></div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                {% for photo in tg_details[details_info['photo']] %}
+                {% for image in tg_details[details_info['image']] %}
                     <div style="width: 45%; height: 45vh;">
-                        <img src="{{ url_for('cache_media', filename=photo) }}" alt="Image(s)"
+                        <img src="{{ url_for('media_cache', filename=image) }}" alt="Image(s)"
                              style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
                 {% endfor %}
@@ -34,7 +34,7 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
                 {% for video_thumbnail in tg_details[details_info['video_thumbnail']] %}
                     <div style="width: 50%; height: 50vh;">
-                    <img src="{{ url_for('cache_media', filename=video_thumbnail) }}" alt="Video Thumbnail"
+                    <img src="{{ url_for('media_cache', filename=video_thumbnail) }}" alt="Video Thumbnail"
                          style="width: 100%; height: 100%; object-fit: contain;">
                     </div>
                 {% endfor %}
