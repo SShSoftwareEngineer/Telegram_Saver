@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_from_directory
 
-from config.config import FieldNames, Constants
+from config.config import FieldNames, ProjectConst, ProjectDirs
 from telegram_handler import TelegramHandler
 from database_handler import Message, Dialog, Group, session
 
@@ -9,11 +9,11 @@ tg_handler = TelegramHandler()
 
 
 @tg_saver.route(f'/cache/<path:filename>')
-def cache_media(filename):
+def media_cache(filename):
     """
     Регистрация пути для хранения кэшированных изображений
     """
-    return send_from_directory('chats_media/cache', filename)
+    return send_from_directory(ProjectDirs.media_cache_dir, filename)
 
 
 @tg_saver.context_processor
@@ -27,7 +27,8 @@ def inject_field_names():
         'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
         'message_settings': FieldNames.MESSAGE_SETTINGS,
         'details_info': FieldNames.DETAILS_INFO,
-        'constants': Constants
+        'file_info': FieldNames.MESSAGE_FILE_INFO,
+        'constants': ProjectConst
     }
 
 
@@ -40,7 +41,7 @@ def index():
     tg_handler.current_state.dialog_list = tg_dialogs
     if tg_dialogs:
         # Получаем id первого диалога
-        tg_handler.current_state.selected_dialog_id = int(tg_dialogs[0].get(FieldNames.DIALOG_INFO['id']))
+        tg_handler.current_state.selected_dialog_id = list(tg_dialogs.keys())[0]
     return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
@@ -57,9 +58,8 @@ def get_tg_dialogs():
 @tg_saver.route("/tg_messages/<string:dialog_id>")
 def get_tg_messages(dialog_id):
     """
-    Получение списка сообщений при обновлении текущего диалога, применяется фильтр по умолчанию
+    Получение списка сообщений при обновлении текущего диалога
     """
-    # tg_handler.message_sort_filter.set_default_filters()
     tg_messages = tg_handler.get_message_list(int(dialog_id))
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_messages
@@ -122,10 +122,10 @@ def select_messages_to_save():
     is_selected = False
     for key, value in request.form.items():
         # Получаем id группы сообщений
-        if key.find(Constants.mess_group_id) != -1:
+        if key.find(ProjectConst.mess_group_id) != -1:
             selected_message_group_id = value
         # Получаем флаг сохранения для группы сообщений
-        if key.find(Constants.select_to_save) != -1:
+        if key.find(ProjectConst.select_to_save) != -1:
             is_selected = value is not None
     # Устанавливаем флаг сохранения для выбранной группы сообщений
     if selected_message_group_id:
@@ -143,10 +143,10 @@ def select_details_to_save():
     is_selected = False
     for key, value in request.form.items():
         # Получаем id группы сообщений
-        if key.find(Constants.mess_group_id) != -1:
+        if key.find(ProjectConst.mess_group_id) != -1:
             selected_message_group_id = value
         # Получаем флаг сохранения для группы сообщений
-        if key.find(Constants.select_to_save) != -1:
+        if key.find(ProjectConst.select_to_save) != -1:
             is_selected = value is not None
     # Устанавливаем флаг сохранения для выбранной группы сообщений
     if selected_message_group_id:
@@ -165,17 +165,17 @@ def save_selected_message_to_db():
             # Сохраняем группу сообщений в базе данных
             dialog = Dialog(
                 dialog_id=tg_handler.current_state.selected_dialog_id,
-                dialog_title=tg_handler.current_state.dialog_list[tg_handler.current_state.selected_dialog_id][
-                    FieldNames.DIALOG_INFO['title']]
+                dialog_title=tg_handler.current_state.dialog_list[str(tg_handler.current_state.selected_dialog_id)]
+                [FieldNames.DIALOG_INFO['title']]
             )
             group = Group(
                 grouped_id=message_group_id,
                 date_time=message_group[FieldNames.MESSAGE_GROUP_INFO['date']],
                 text=message_group[FieldNames.MESSAGE_GROUP_INFO['text']]
             )
-            tg_handler.save_message_group_to_db(message_group)
-    print(request.form.get(Constants.select_to_save))
-    print(request.form.get(Constants.mess_group_id))
+            # tg_handler.save_message_group_to_db(message_group)
+    print(request.form.get(ProjectConst.select_to_save))
+    print(request.form.get(ProjectConst.mess_group_id))
     return ''
 
 

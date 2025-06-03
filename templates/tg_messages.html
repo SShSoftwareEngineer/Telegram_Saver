@@ -4,7 +4,7 @@
     {% for group, message in tg_messages.items() %}
         <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+group }}" value="{{ group }}">
         <li style="padding-top: 9px; background-color: {{ loop.cycle('#ffffff', '#f5f5f5') }};">
-            {% set message_date = message[message_group_info['date']].strftime(constants.datetime_format) %}
+            {% set message_date = message[message_group_info['date']].strftime(constants.message_datetime_format) %}
             <a href="#" hx-get="/tg_details/{{ message[message_group_info['dialog_id']] }}/{{ group }}"
                hx-target="#tg_details">{{ message_date }}</a>
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
@@ -18,7 +18,7 @@
             </span>
             <br>
             {{ message[message_group_info['text']]|join('<br>')|truncate(length=140)|replace('\n', '<br>')|safe }}<br>
-            {% if message[message_group_info['photo']] %}
+            {% if message[message_group_info['image']] %}
                 <b>Image</b>
             {% endif %}
             {% if message[message_group_info['video']] %}
