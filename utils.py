@@ -7,8 +7,6 @@ from typing import Optional
 from config.config import ProjectDirs, ProjectConst, FieldNames
 
 
-
-
 def media_file_name(dialog_id: int, message_id: int, message_date: datetime, file_type: Optional[str],
                     file_ext: Optional[str]) -> str:
     """

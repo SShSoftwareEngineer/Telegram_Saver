@@ -1,9 +1,10 @@
 import asyncio
-import mimetypes
 import os
 import re
+import mimetypes
 
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument
+from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
+    PhotoSizeProgressive
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -15,8 +16,6 @@ from config.config import ProjectDirs, ProjectConst, FieldNames, MessageFileType
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
-
-
 
 
 @dataclass
@@ -85,7 +84,7 @@ class TgDialogSortFilter:
             dialog_type = dialog_info[self.get_filters().get(field['dialog_type'])]
         return all([title_query, dialog_type])
 
-    def sort_dialog_list(self, dialog_list: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def sort_dialog_list(self, dialog_list: Dict[int | str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """
         Сортировка списка диалогов по заданному полю в заданном порядке
         """
@@ -164,7 +163,7 @@ class TgMessageSortFilter:
 
 @dataclass
 class TgCurrentState:
-    dialog_list: Dict[str, Dict[str, Any]] = None
+    dialog_list: Dict[int | str, Dict[str, Any]] = None
     selected_dialog_id: int = None
     message_group_list: Dict[str, Dict[str, Any]] = None
     selected_message_group_id: str = None
@@ -173,7 +172,7 @@ class TgCurrentState:
 
 
 class TelegramHandler:
-    all_dialogues_list: Dict[str, Dict[str, Any]] = None
+    all_dialogues_list: Dict[int | str, Dict[str, Any]] = None
     dialog_sort_filter: TgDialogSortFilter = TgDialogSortFilter()
     message_sort_filter: TgMessageSortFilter = TgMessageSortFilter()
     current_state: TgCurrentState = TgCurrentState()
@@ -193,6 +192,7 @@ class TelegramHandler:
         self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
         # Получаем список всех диалогов аккаунта Telegram
         self.all_dialogues_list = self.get_dialog_list()
+        self.current_state.dialog_list = self.all_dialogues_list
 
     def get_entity(self, entity_id: int) -> Any:
         """
@@ -201,7 +201,7 @@ class TelegramHandler:
         entity = loop.run_until_complete(self.client.get_entity(entity_id))
         return entity
 
-    def get_dialog_list(self) -> Dict[str, Dict[str, Any]]:
+    def get_dialog_list(self) -> Dict[int | str, Dict[str, Any]]:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
@@ -231,7 +231,8 @@ class TelegramHandler:
         """
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
-        print(f'Message list for "{dialog.title}" loading...')
+        print(f'Message list for '
+              f'"{self.current_state.dialog_list[dialog_id].get(FieldNames.DIALOG_INFO['title'])}" loading...')
         # Получаем текущие данные фильтра сообщений
         message_filters = self.message_sort_filter.get_filters()
         message_filters['entity'] = dialog
@@ -273,33 +274,39 @@ class TelegramHandler:
                         FieldNames.MESSAGE_SETTINGS['message_query']).lower() in message.text.lower():
                     continue
             # Составление списка сообщений с учетом группировки по message.grouped_id
+            # Если grouped_id нет, то используем "None_" id сообщения
             message_group_id = str(message.grouped_id) if message.grouped_id else f'None_{message.id}'
             if message_group_id != current_group_id:
                 current_group_id = message_group_id
                 current_message_group = dict()
             if current_group_id not in message_group_list:
+                # Создание новой группы сообщений с уникальным grouped_id
                 current_message_group = {field['dialog_id']: dialog_id,
                                          field['sender_id']: message.sender_id,
                                          field['date']: message.date.astimezone(),
                                          field['ids']: [message.id],
                                          field['text']: [convert_text_hyperlinks(message.text)] if message.text else [],
-                                         field['files']: [self.get_message_file_info(message)] if message.file else [],
-                                         field['image']: False,
-                                         field['video']: False,
-                                         field['document']: False,
+                                         field['files']: [
+                                             self.get_message_file_info(dialog_id, message)] if message.file else [],
+                                         field['files_report']: None,
                                          field['selected']: False, }
             else:
+                # Добавление в существующую grouped_id группу сообщений нового сообщения
                 current_date = current_message_group[field['date']]
                 current_message_group[field['date']] = min(current_date, message.date.astimezone())
                 current_message_group[field['ids']].append(message.id)
                 if message.file:
-                    current_message_group[field['files']].append(self.get_message_file_info(message))
+                    current_message_group[field['files']].append(self.get_message_file_info(dialog_id, message))
                 if message.text:
                     current_message_group[field['text']].append(convert_text_hyperlinks(message.text))
-            current_message_group[field['image']] = current_message_group[field['image']] or message.photo is not None
-            current_message_group[field['video']] = current_message_group[field['video']] or message.video is not None
-            current_message_group[field['document']] = current_message_group[field['document']] or (
-                    message.document is not None and message.video is None)
+            # Формирование строки отчета по имеющимся файлам и их типам в группе сообщений
+            files_report = set(
+                [file.get(FieldNames.MESSAGE_FILE_INFO['type']) for file in current_message_group[field['files']]])
+            current_message_group[field['files_report']] = ' '.join(sorted(files_report))
+            # Если есть видео, то заменяем в отчете тип файла thumbnail на video
+            current_message_group[field['files_report']].replace(MessageFileTypes.THUMBNAIL.type,
+                                                                 MessageFileTypes.VIDEO.type)
+            # Добавление/обновление текущей группы сообщений со своим ID в общий список
             message_group_list[current_group_id] = current_message_group
         print(f'{len(message_group_list)} messages loaded')
         self.current_state.message_group_list = message_group_list
@@ -314,209 +321,114 @@ class TelegramHandler:
         cmg_field = FieldNames.MESSAGE_GROUP_INFO
         det_field = FieldNames.DETAILS_INFO
         fil_field = FieldNames.MESSAGE_FILE_INFO
-        message_date = current_message_group[cmg_field['date']].strftime(ProjectConst.message_datetime_format)
-        print(f'Message {message_date} details loading...')
+        message_date_str = current_message_group[cmg_field['date']].strftime(ProjectConst.message_datetime_format)
+        print(f'Message {message_date_str} details loading...')
         details = {det_field['dialog_id']: current_message_group[cmg_field['dialog_id']],
                    det_field['mess_group_id']: message_group_id,
-                   det_field['date']: current_message_group[cmg_field['date']],
+                   det_field['date']: message_date_str,
                    det_field['text']: '\n\n'.join(current_message_group[cmg_field['text']]),
-                   det_field['image']: [],
-                   det_field['video']: [],
-                   det_field['video_thumbnail']: [],
-                   det_field['audio']: [],
-                   det_field['document']: [], }
+                   det_field['files']: current_message_group[cmg_field['files']],
+                   det_field['files_report']: current_message_group[cmg_field['files_report']],
+                   }
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         details[det_field['text']] = convert_text_hyperlinks(details[det_field['text']])
-
-        # # Скачивание медиафайлов
-        # messages_by_ids = loop.run_until_complete(
-        #     self.client.get_messages(dialog_id, ids=current_message_group[cmg_field['ids']]))
-        # for message in messages_by_ids:
-        #     if message.media:
-        #         # Определение типа файла, его расширения и размера
-        #         message_file = {
-        #             fil_field['dialog_id']: dialog_id,
-        #             fil_field['message_id']: message.id,
-        #             fil_field['path']: ProjectDirs.media_cache_dir,
-        #             fil_field['name']: None,
-        #             fil_field['ext']: None,
-        #             fil_field['size']: None,
-        #             fil_field['type']: None,
-        #         }
-        #         # file_size = float('inf')
-        #         # file_type = det_field['document']
-        #         # file_ext = ''
-        #         if isinstance(message.media, MessageMediaPhoto):
-        #             message_file[fil_field['type']] = det_field['image']
-        #             message_file[fil_field['size']] = message.media.photo.sizes[
-        #                 -1].size if message.media.photo.sizes else 0
-        #             message_file[fil_field['ext']] = '.jpg'
-        #             # file_type = det_field['image']
-        #             # file_size = message.media.photo.sizes[-1].size if message.media.photo.sizes else 0
-        #             # file_ext = '.jpg'
-        #         elif isinstance(message.media, MessageMediaDocument):
-        #             doc = message.media.document
-        #             message_file[fil_field['size']] = doc.size
-        #             file_ext = mimetypes.guess_extension(doc.mime_type)
-        #             message_file[fil_field['ext']] = file_ext if file_ext else ''
-        #             if doc.mime_type.startswith('image/'):
-        #                 message_file[fil_field['type']] = det_field['image']
-        #             elif doc.mime_type.startswith('video/'):
-        #                 message_file[fil_field['type']] = det_field['video']
-        #             elif doc.mime_type.startswith('audio/'):
-        #                 message_file[fil_field['type']] = det_field['audio']
-        #             else:
-        #                 message_file[fil_field['type']] = det_field['document']
-        #         # Загрузка файла в кэш, если его там нет
-        #         downloading_result = None
-        #         if message_file[fil_field['type']] != det_field['video']:
-        #             # Получение файла, если это не видео
-        #             file_name = cache_file_name(message.date, dialog_id, message_group_id, file_type, file_ext)
-        #             if os.path.exists(file_name):
-        #                 downloading_result = file_name
-        #             else:
-        #                 if file_size <= Constants.max_download_file_size:
-        #                     downloading_result = loop.run_until_complete(
-        #                         self.client.download_media(message, file=file_name))
-        #         else:
-        #             # Получение thumbnail видео
-        #             file_name = cache_file_name(message.date, dialog_id, message_group_id, file_type, file_ext)
-        #             if os.path.exists(file_name):
-        #                 downloading_result = file_name
-        #             else:
-        #                 if message.video.thumbs:
-        #                     downloading_result = loop.run_until_complete(
-        #                         self.client.download_media(message, file=file_name, thumb=-1))
-
-        # if message.file.size:
-        #     file_size = message.file.size
-        # # Получение расширения и имени файла
-        # if message.photo or message.video:
-        #     file_ext = '.jpg'
-        # else:
-        #     file_ext = getattr(message.file, 'ext', None)
-        # downloading_result = None
-        # if not message.video:
-        #     # Получение файла, если это не видео
-        #     file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}{file_ext}')
-        #     file = os.path.join(ProjectDirs.media_cache_dir, file_name)
-        #     if os.path.exists(file):
-        #         downloading_result = file
-        #     else:
-        #         if file_size <= Constants.max_download_file_size:
-        #             downloading_result = loop.run_until_complete(self.client.download_media(message, file=file))
-        # else:
-        #     # Получение thumbnail видео
-        #     file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}_thumb.jpg')
-        #     file = os.path.join(ProjectDirs.media_cache_dir, file_name)
-        #     if os.path.exists(file):
-        #         downloading_result = file
-        #     else:
-        #         if message.video.thumbs:
-        #             downloading_result = loop.run_until_complete(
-        #                 self.client.download_media(message, file=file, thumb=-1))
-
-        # if downloading_result:
-        #     downloading_result = os.path.basename(downloading_result)
-        #     if message.photo:
-        #         details[det_field['image']].append(downloading_result)
-        #     if message.video:
-        #         details[det_field['video_thumbnail']].append(downloading_result)
-        #     if message.audio:
-        #         details[det_field['audio']].append(downloading_result)
-        #     if message.document and not message.video:
-        #         details[det_field['document']].append(downloading_result)
 
         print('Message details loaded')
         return details
 
-    def get_message_file_info(self, message, thumbnail: bool = True) -> Optional[Dict]:
+    def get_message_file_info(self, dialog_id: int, message, thumbnail: bool = True) -> Optional[Dict]:
         """
         Получение информации о файле сообщения
+        Определение типа файла, его расширения и размера, формирование пути к файлу
         """
+
+        def get_image_size(images: list) -> int:
+            """
+            Определяет максимальный из возможных размер изображения в сообщении
+            """
+            max_image_size = 0
+            for image in images:
+                if isinstance(image, PhotoSize):
+                    max_image_size = max(image.size, max_image_size)
+                elif isinstance(image, PhotoCachedSize) or isinstance(image, PhotoStrippedSize):
+                    max_image_size = max(len(image.bytes), max_image_size)
+                elif isinstance(image, PhotoSizeProgressive):
+                    max_image_size = max(max(image.sizes), max_image_size)
+            return max_image_size
+
+        if not message.file:
+            return None
         field = FieldNames.MESSAGE_FILE_INFO
+        message_file_info = {
+            field['dialog_id']: dialog_id,
+            field['message']: message,
+            field['full_path']: None,
+            field['size']: None,
+            field['type']: None,
+        }
+        mess_doc = None
+        # Определение типа файла
         file_type = MessageFileTypes.UNKNOWN
-        file_ext = None
-        result=None
-        if message.file:
-            # Определение типа файла, его расширения и размера
-            message_file_info = {
-                field['dialog_id']: message.dialog.id,
-                field['message_id']: message.id,
-                field['full_path']: None,
-                field['size']: None,
-                field['type']: None,
-            }
-            if isinstance(message.media, MessageMediaPhoto):
-                file_type = MessageFileTypes.PHOTO
-                message_file_info[field['size']] = message.media.photo.sizes[
-                    -1].size if message.media.photo.sizes else 0
-            elif isinstance(message.media, MessageMediaDocument):
-                mess_doc = message.media.document
+        if isinstance(message.media, MessageMediaPhoto):
+            file_type = MessageFileTypes.PHOTO
+        elif isinstance(message.media, MessageMediaDocument):
+            mess_doc = message.media.document
+            if mess_doc.mime_type.startswith('image/'):
+                file_type = MessageFileTypes.IMAGE
+            elif mess_doc.mime_type.startswith('audio/'):
+                file_type = MessageFileTypes.AUDIO
+            elif not thumbnail and mess_doc.mime_type.startswith('video/'):
+                file_type = MessageFileTypes.VIDEO
+            elif all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
+                file_type = MessageFileTypes.THUMBNAIL
+        message_file_info[field['type']] = file_type.type
+        # Определение размера файла
+        if isinstance(message.media, MessageMediaPhoto):
+            message_file_info[field['size']] = get_image_size(message.media.photo.sizes)
+        elif isinstance(message.media, MessageMediaDocument):
+            mess_doc = message.media.document
+            if all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
+                message_file_info[field['size']] = get_image_size(mess_doc.thumbs)
+            else:
                 message_file_info[field['size']] = mess_doc.size
-                file_ext = getattr(message.file, 'ext', None)
-                file_ext = mimetypes.guess_extension(mess_doc.mime_type) if file_ext is None else None
-                if mess_doc.mime_type.startswith('image/'):
-                    file_type = MessageFileTypes.IMAGE
-                elif mess_doc.mime_type.startswith('video/'):
-                    if thumbnail:
-                        file_type = MessageFileTypes.VIDEO_THUMBNAIL
-                    else:
-                        file_type = MessageFileTypes.VIDEO
-                elif mess_doc.mime_type.startswith('audio/'):
-                    file_type = MessageFileTypes.AUDIO
-                else:
-                    file_type = MessageFileTypes.DOCUMENT
-            message_file_info[field['type']] = file_type.type
+        # Определение расширения файла
+        if file_type == MessageFileTypes.UNKNOWN:
+            file_ext = getattr(message.file, 'ext', None)
             if file_ext is None:
-                message_file_info[field['ext']] = file_type.ext
-            message_file_info[field['full_path']] = clean_file_path(
-                str(os.path.join(ProjectDirs.media_dir,
-                             f'{self.all_dialogues_list[message.dialog.id][FieldNames.DIALOG_INFO['title']]}_{message.dialog.id}',
-                             message.date.strftime('%Y-%m-%d'),
-                             message.date.strftime('%H_%M_%S'),
-                             f'{message.id}_{file_type.sign}{file_ext}')))
-            result= message_file_info
+                file_ext = mimetypes.guess_extension(mess_doc.mime_type)
+            if file_ext is None:
+                file_ext = ''
+        else:
+            file_ext = file_type.default_ext
+        # Формирование пути к файлу
+        dialog_dir = f'{self.all_dialogues_list.get(dialog_id)[FieldNames.DIALOG_INFO["title"]]}_{dialog_id}'
+        file_name = f'{message.date.astimezone().strftime('%H-%M-%S')}_{message.id}_{file_type.sign}{file_ext}'
+        message_file_info[field['full_path']] = os.path.join(ProjectDirs.media_dir,
+                                                             clean_file_path(dialog_dir),
+                                                             message.date.astimezone().strftime('%Y-%m-%d'),
+                                                             file_name)
+        return message_file_info
+
+    def download_message_file(self, message_file_info: dict) -> Optional[str]:
+        """
+        Загрузка файла сообщения
+        """
+        downloading_param = dict()
+        field = FieldNames.MESSAGE_FILE_INFO
+        # Проверка существования файла и его размера
+        if all([not os.path.exists(message_file_info[field['full_path']]),
+                0 < message_file_info[field['size']] <= ProjectConst.max_download_file_size]):
+            # Если файл не существует, то создаем соответствующие директории и загружаем файл
+            os.makedirs(os.path.dirname(message_file_info[field['full_path']]), exist_ok=True)
+            downloading_param['message'] = message_file_info[field['message']]
+            downloading_param['file'] = message_file_info[field['full_path']]
+            if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.type:
+                downloading_param['thumb'] = -1
+            result = loop.run_until_complete(self.client.download_media(**downloading_param))
+        else:
+            # Если файл уже существует, то возвращаем его имя
+            result = message_file_info[field['full_path']]
         return result
-
-
-            # # Загрузка файла в базу данных или кэш, если его там нет
-            # downloading_result = None
-            # if save_to_database:
-            #     file_name = ''
-            # else:
-            #     file_name = os.path.join(ProjectDirs.media_cache_dir,
-            #                              cache_file_name(message.date, dialog_id, message.id,
-            #                                              message_file[fil_field['type']],
-            #                                              message_file[fil_field['ext']]))
-            # if message_file[fil_field['type']] != det_field['video']:
-            #     # Получение файла, если это не видео
-            #     if os.path.exists(file_name):
-            #         downloading_result = file_name
-            #     else:
-            #         if message_file[fil_field['size']] <= ProjectConst.max_download_file_size:
-            #             downloading_result = loop.run_until_complete(
-            #                 self.client.download_media(message, file=file_name))
-            # else:
-            #     # Получение thumbnail видео
-            #     file_name = cache_file_name(message.date, dialog_id, message_group_id, file_type, file_ext)
-            #     if os.path.exists(file_name):
-            #         downloading_result = file_name
-            #     else:
-            #         if message.video.thumbs:
-            #             downloading_result = loop.run_until_complete(
-            #                 self.client.download_media(message, file=file_name, thumb=-1))
-            #
-            # if downloading_result:
-            #     downloading_result = os.path.basename(downloading_result)
-            #     if message.photo:
-            #         details[det_field['image']].append(downloading_result)
-            #     if message.video:
-            #         details[det_field['video_thumbnail']].append(downloading_result)
-            #     if message.audio:
-            #         details[det_field['audio']].append(downloading_result)
-            #     if message.document and not message.video:
-            #         details[det_field['document']].append(downloading_result)
 
 
 def clean_file_path(file_path: str | None) -> str | None:
@@ -550,3 +462,104 @@ if __name__ == "__main__":
 
 # def progress_callback(current, total):
 #     print(f'{current / total:.2%}')
+
+
+
+# # Скачивание медиафайлов
+# messages_by_ids = loop.run_until_complete(
+#     self.client.get_messages(dialog_id, ids=current_message_group[cmg_field['ids']]))
+# for message in messages_by_ids:
+#     if message.media:
+#         # Определение типа файла, его расширения и размера
+#         message_file = {
+#             fil_field['dialog_id']: dialog_id,
+#             fil_field['message_id']: message.id,
+#             fil_field['path']: ProjectDirs.media_cache_dir,
+#             fil_field['name']: None,
+#             fil_field['ext']: None,
+#             fil_field['size']: None,
+#             fil_field['type']: None,
+#         }
+#         # file_size = float('inf')
+#         # file_type = det_field['document']
+#         # file_ext = ''
+#         if isinstance(message.media, MessageMediaPhoto):
+#             message_file[fil_field['type']] = det_field['image']
+#             message_file[fil_field['size']] = message.media.photo.sizes[
+#                 -1].size if message.media.photo.sizes else 0
+#             message_file[fil_field['ext']] = '.jpg'
+#             # file_type = det_field['image']
+#             # file_size = message.media.photo.sizes[-1].size if message.media.photo.sizes else 0
+#             # file_ext = '.jpg'
+#         elif isinstance(message.media, MessageMediaDocument):
+#             doc = message.media.document
+#             message_file[fil_field['size']] = doc.size
+#             file_ext = mimetypes.guess_extension(doc.mime_type)
+#             message_file[fil_field['ext']] = file_ext if file_ext else ''
+#             if doc.mime_type.startswith('image/'):
+#                 message_file[fil_field['type']] = det_field['image']
+#             elif doc.mime_type.startswith('video/'):
+#                 message_file[fil_field['type']] = det_field['video']
+#             elif doc.mime_type.startswith('audio/'):
+#                 message_file[fil_field['type']] = det_field['audio']
+#             else:
+#                 message_file[fil_field['type']] = det_field['document']
+#         # Загрузка файла в кэш, если его там нет
+#         downloading_result = None
+#         if message_file[fil_field['type']] != det_field['video']:
+#             # Получение файла, если это не видео
+#             file_name = cache_file_name(message.date, dialog_id, message_group_id, file_type, file_ext)
+#             if os.path.exists(file_name):
+#                 downloading_result = file_name
+#             else:
+#                 if file_size <= Constants.max_download_file_size:
+#                     downloading_result = loop.run_until_complete(
+#                         self.client.download_media(message, file=file_name))
+#         else:
+#             # Получение thumbnail видео
+#             file_name = cache_file_name(message.date, dialog_id, message_group_id, file_type, file_ext)
+#             if os.path.exists(file_name):
+#                 downloading_result = file_name
+#             else:
+#                 if message.video.thumbs:
+#                     downloading_result = loop.run_until_complete(
+#                         self.client.download_media(message, file=file_name, thumb=-1))
+
+# if message.file.size:
+#     file_size = message.file.size
+# # Получение расширения и имени файла
+# if message.photo or message.video:
+#     file_ext = '.jpg'
+# else:
+#     file_ext = getattr(message.file, 'ext', None)
+# downloading_result = None
+# if not message.video:
+#     # Получение файла, если это не видео
+#     file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}{file_ext}')
+#     file = os.path.join(ProjectDirs.media_cache_dir, file_name)
+#     if os.path.exists(file):
+#         downloading_result = file
+#     else:
+#         if file_size <= Constants.max_download_file_size:
+#             downloading_result = loop.run_until_complete(self.client.download_media(message, file=file))
+# else:
+#     # Получение thumbnail видео
+#     file_name = clean_file_name(f'{message_date}_{dialog_id}_{message.id}_thumb.jpg')
+#     file = os.path.join(ProjectDirs.media_cache_dir, file_name)
+#     if os.path.exists(file):
+#         downloading_result = file
+#     else:
+#         if message.video.thumbs:
+#             downloading_result = loop.run_until_complete(
+#                 self.client.download_media(message, file=file, thumb=-1))
+
+# if downloading_result:
+#     downloading_result = os.path.basename(downloading_result)
+#     if message.photo:
+#         details[det_field['image']].append(downloading_result)
+#     if message.video:
+#         details[det_field['video_thumbnail']].append(downloading_result)
+#     if message.audio:
+#         details[det_field['audio']].append(downloading_result)
+#     if message.document and not message.video:
+#         details[det_field['document']].append(downloading_result)
