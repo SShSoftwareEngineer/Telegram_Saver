@@ -211,3 +211,4 @@ if __name__ == '__main__':
 #     # Это запустит обновление заголовка без необходимости JS
 #     response.headers["HX-Trigger"] = "update-header-now"
 #     return response
+

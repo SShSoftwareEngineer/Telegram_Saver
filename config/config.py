@@ -16,7 +16,7 @@ class ProjectConst:
     """
     A class to hold constant values for the project.
     """
-    max_download_file_size = 50 * 2 ** 10 * 2 ** 10  # 10 MB
+    max_download_file_size = 50 * 2 ** 10 * 2 ** 10  # 50 MB
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     last_days_by_default = 30  # Default number of last days for messages filter
     message_datetime_format = '%d-%m-%Y %H:%M :%S'
@@ -27,20 +27,19 @@ class ProjectConst:
     select_to_save = 'select_to_save_to_db'
 
 
-FileTypeProperties = namedtuple('FileTypeProperties', ['type', 'extension', 'sign'])
+FileTypeProperties = namedtuple('FileTypeProperties', ['type', 'default_ext', 'sign'])
 
 
 class MessageFileTypes:
     """
     Constants for different types of message files.
     """
-    PHOTO = FileTypeProperties('image', '.jpg', 'img')
-    IMAGE = FileTypeProperties('image', '.jpg', 'img')
-    VIDEO = FileTypeProperties('video', '.mp4', 'vid')
-    VIDEO_THUMBNAIL = FileTypeProperties('thumb', '.jpg', 'vth')
-    AUDIO = FileTypeProperties('audio', '.mp4', 'aud')
-    DOCUMENT = FileTypeProperties('document', '', 'doc')
-    UNKNOWN = FileTypeProperties('unknown', '', 'unk')
+    PHOTO = FileTypeProperties('Image', '.jpg', 'img')
+    IMAGE = FileTypeProperties('Image', '.jpg', 'img')
+    VIDEO = FileTypeProperties('Video', '.mp4', 'vid')
+    THUMBNAIL = FileTypeProperties('Image', '.jpg', 'vth')
+    AUDIO = FileTypeProperties('Audio', '.mp4', 'aud')
+    UNKNOWN = FileTypeProperties('Unknown', 'unk', '')
 
 
 class FieldNames:
@@ -70,9 +69,7 @@ class FieldNames:
         'ids': 'ids',
         'text': 'text',
         'files': 'files',
-        'image': 'image',
-        'video': 'video',
-        'document': 'document',
+        'files_report': 'files_report',
         'selected': 'selected',
     }
     MESSAGE_SETTINGS = {
@@ -87,15 +84,12 @@ class FieldNames:
         'mess_group_id': 'message_group_id',
         'date': 'date',
         'text': 'text',
-        'image': 'image',
-        'video': 'video',
-        'video_thumbnail': 'video_thumbnail',
-        'audio': 'audio',
-        'document': 'document',
+        'files': 'files',
+        'files_report': 'files_report',
     }
     MESSAGE_FILE_INFO = {
         'dialog_id': 'dialog_id',
-        'message_id': 'message_id',
+        'message': 'message',
         'full_path': 'full_path',
         'size': 'file_size',
         'type': 'file_type',

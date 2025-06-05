@@ -1,31 +1,34 @@
+{# Вывод в заголовке формы количества загруженных групп сообщений #}
 <span id="messages-count-display" hx-swap-oob="true">{{ tg_messages|length }}</span>
 
 <ul style="list-style-type: none; padding-left: 5px;">
     {% for group, message in tg_messages.items() %}
+        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+group }}" value="{{ group }}">
+        {# Стиль чередования фонов групп сообщений  #}
         <li style="padding-top: 9px; background-color: {{ loop.cycle('#ffffff', '#f5f5f5') }};">
+            {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = message[message_group_info['date']].strftime(constants.message_datetime_format) %}
             <a href="#" hx-get="/tg_details/{{ message[message_group_info['dialog_id']] }}/{{ group }}"
                hx-target="#tg_details">{{ message_date }}</a>
+            {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
             <span style="margin-left: 30px;">
-                <input type="checkbox" name="{{ constants.select_to_save+'_mess = '+group }}"
+                {#  #}
+                {% set checkbox_name = constants.select_to_save+'_mess = '+group %}
+                {#  #}
+                <input type="checkbox" name="{{ checkbox_name }}"
                        hx-post="/select_messages_to_save"
                        hx-trigger="change"
                        hx-include="input[name='{{ constants.mess_group_id+'_mess = '+group }}'],
-                                   input[name='{{ constants.select_to_save+'_mess = '+group }}'],">
-                <label for="subscribe">{{ constants.save_to_db_label }}</label>
+                                   input[name='{{ checkbox_name }}'],">
+                <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
             </span>
             <br>
-            {{ message[message_group_info['text']]|join('<br>')|truncate(length=140)|replace('\n', '<br>')|safe }}<br>
-            {% if message[message_group_info['image']] %}
-                <b>Image</b>
-            {% endif %}
-            {% if message[message_group_info['video']] %}
-                <b>Video</b>
-            {% endif %}
-            {% if message[message_group_info['document']] %}
-                <b>Document</b>
+            {# Вывод обрезанного текста и строки информации о файлах в группе сообщений #}
+            {{ message[message_group_info['text']]|join('<br>')|truncate(length=150)|replace('\n', '<br>')|safe }}<br>
+            {% if message[message_group_info['files_report']] %}
+                <b> {{ message[message_group_info['files_report']] }}</b>
             {% endif %}
             <br>
         </li>

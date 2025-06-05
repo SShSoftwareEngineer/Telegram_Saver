@@ -1,21 +1,44 @@
 <span>
     {% if tg_details %}
-        {% set message_date = tg_details[details_info['date']].strftime(constants.message_datetime_format) %}
+        {% set message_date = tg_details[details_info['date']] %}
         {% set group = tg_details[constants.mess_group_id] %}
+        {#  #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
                value="{{ tg_details[constants.mess_group_id] }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
-        <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
-        <span style="margin-left: 30px;">
-            <input type="checkbox" name="{{ constants.select_to_save+'_det = '+group }}"
-                   hx-post="/select_details_to_save"
-                   hx-trigger="change"
-                   hx-include="input[name='{{ constants.mess_group_id+'_det = '+group }}'],
-                               input[name='{{ constants.select_to_save+'_det = '+group }}'],">
-            <label for="subscribe">{{ constants.save_to_db_label }}</label>
-        </span>
-    </div><br>
+            {#  #}
+            <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
+            <span style="margin-left: 30px;">
+                {#  #}
+                {% set checkbox_name = constants.select_to_save+'_det = '+group %}
+                {#  #}
+                <input type="checkbox" name="{{ checkbox_name }}"
+                       hx-post="/select_details_to_save"
+                       hx-trigger="change"
+                       hx-include="input[name='{{ constants.mess_group_id+'_det = '+group }}'],
+                                   input[name='{{ checkbox_name }}'],">
+                <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
+            </span>
+        </div><br>
+        {#  #}
         {{ tg_details[details_info['text']]|replace('\n', '<br>')|safe }}<br>
+        {#  #}
+
+
+        <br>
+        {% for file in tg_details[details_info['files']] %}
+            <div style="text-align: center;"><b>{{ file[file_info['type']] }}</b></div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                {% for image in tg_details[details_info['image']] %}
+                    <div style="width: 45%; height: 45vh;">
+                        <img src="{{ url_for('media_cache', filename=image) }}" alt="Image(s)"
+                             style="width: 100%; height: 100%; object-fit: contain;">
+                    </div>
+                {% endfor %}
+            </div>
+
+        {% endfor %}
+
         {% if tg_details[details_info['image']] %}
             <br>
             <div style="text-align: center;"><b>Image(s)</b></div>
