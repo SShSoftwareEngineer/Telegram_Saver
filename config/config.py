@@ -91,6 +91,7 @@ class FieldNames:
         'dialog_id': 'dialog_id',
         'message': 'message',
         'full_path': 'full_path',
+        'web_path': 'web_path',
         'size': 'file_size',
         'type': 'file_type',
     }

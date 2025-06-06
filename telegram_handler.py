@@ -327,12 +327,15 @@ class TelegramHandler:
                    det_field['mess_group_id']: message_group_id,
                    det_field['date']: message_date_str,
                    det_field['text']: '\n\n'.join(current_message_group[cmg_field['text']]),
-                   det_field['files']: current_message_group[cmg_field['files']],
+                   det_field['files']: sorted(current_message_group[cmg_field['files']],
+                                              key=lambda x: x[fil_field['type']]),
                    det_field['files_report']: current_message_group[cmg_field['files_report']],
                    }
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         details[det_field['text']] = convert_text_hyperlinks(details[det_field['text']])
-
+        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет
+        for message_file_info in details[det_field['files']]:
+            self.download_message_file(message_file_info)
         print('Message details loaded')
         return details
 
@@ -407,6 +410,7 @@ class TelegramHandler:
                                                              clean_file_path(dialog_dir),
                                                              message.date.astimezone().strftime('%Y-%m-%d'),
                                                              file_name)
+        message_file_info[field['web_path']]=message_file_info[field['full_path']].replace('\\','/')
         return message_file_info
 
     def download_message_file(self, message_file_info: dict) -> Optional[str]:
@@ -419,7 +423,8 @@ class TelegramHandler:
         if all([not os.path.exists(message_file_info[field['full_path']]),
                 0 < message_file_info[field['size']] <= ProjectConst.max_download_file_size]):
             # Если файл не существует, то создаем соответствующие директории и загружаем файл
-            os.makedirs(os.path.dirname(message_file_info[field['full_path']]), exist_ok=True)
+            os.makedirs(os.path.dirname(message_file_info[field['full_path']]),
+                        exist_ok=True)
             downloading_param['message'] = message_file_info[field['message']]
             downloading_param['file'] = message_file_info[field['full_path']]
             if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.type:
@@ -462,7 +467,6 @@ if __name__ == "__main__":
 
 # def progress_callback(current, total):
 #     print(f'{current / total:.2%}')
-
 
 
 # # Скачивание медиафайлов

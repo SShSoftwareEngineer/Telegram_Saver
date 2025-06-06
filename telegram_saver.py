@@ -8,12 +8,13 @@ tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
 
 
-@tg_saver.route(f'/cache/<path:filename>')
-def media_cache(filename):
+@tg_saver.route(f'/media_dir/<path:filename>')
+def media_dir(filename):
     """
-    Регистрация пути для хранения кэшированных изображений
+    Регистрация пути для хранения кэшированных изображений.
+    Принимает полный путь включая ProjectDirs.media_dir
     """
-    return send_from_directory(ProjectDirs.media_cache_dir, filename)
+    return send_from_directory('.', filename)
 
 
 @tg_saver.context_processor
