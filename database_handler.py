@@ -4,7 +4,6 @@ from sqlalchemy import create_engine, Integer, ForeignKey, Text, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from config.config import ProjectDirs, ProjectConst, TableNames
-import utils
 
 class Base(DeclarativeBase):
     """ A declarative class for creating tables in the database """

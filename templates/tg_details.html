@@ -2,16 +2,15 @@
     {% if tg_details %}
         {% set message_date = tg_details[details_info['date']] %}
         {% set group = tg_details[constants.mess_group_id] %}
-        {#  #}
+        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
                value="{{ tg_details[constants.mess_group_id] }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
-            {#  #}
+            {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
             <span style="margin-left: 30px;">
-                {#  #}
+                {# Создание чекбокса для отметки на сохранение в БД #}
                 {% set checkbox_name = constants.select_to_save+'_det = '+group %}
-                {#  #}
                 <input type="checkbox" name="{{ checkbox_name }}"
                        hx-post="/select_details_to_save"
                        hx-trigger="change"
@@ -20,49 +19,20 @@
                 <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
             </span>
         </div><br>
-        {#  #}
+        {# Вывод текста сообщения #}
         {{ tg_details[details_info['text']]|replace('\n', '<br>')|safe }}<br>
-        {#  #}
-
-
+        {# Вывод графических, видео и других файлов #}
         <br>
-        {% for file in tg_details[details_info['files']] %}
-            <div style="text-align: center;"><b>{{ file[file_info['type']] }}</b></div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                {% for image in tg_details[details_info['image']] %}
-                    <div style="width: 45%; height: 45vh;">
-                        <img src="{{ url_for('media_cache', filename=image) }}" alt="Image(s)"
-                             style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                {% endfor %}
-            </div>
-
-        {% endfor %}
-
-        {% if tg_details[details_info['image']] %}
-            <br>
-            <div style="text-align: center;"><b>Image(s)</b></div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                {% for image in tg_details[details_info['image']] %}
-                    <div style="width: 45%; height: 45vh;">
-                        <img src="{{ url_for('media_cache', filename=image) }}" alt="Image(s)"
-                             style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-        {% if tg_details[details_info['video_thumbnail']] %}
-            <br>
-            <div style="text-align: center;"><b>Video Thumbnail</b></div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                {% for video_thumbnail in tg_details[details_info['video_thumbnail']] %}
-                    <div style="width: 50%; height: 50vh;">
-                    <img src="{{ url_for('media_cache', filename=video_thumbnail) }}" alt="Video Thumbnail"
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+            {% for file1 in tg_details[details_info['files']] %}
+                <div style="width: 45%; height: 45vh;">
+                    <img src="{{ url_for('media_dir', filename=file1[file_info['web_path']]) }}"
+                         alt="{{ file1[file_info['type']] }}"
                          style="width: 100%; height: 100%; object-fit: contain;">
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
     {% else %}
 
     {% endif %}

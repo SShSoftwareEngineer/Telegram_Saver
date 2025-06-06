@@ -14,9 +14,8 @@
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
             <span style="margin-left: 30px;">
-                {#  #}
+                {# Создание чекбокса для отметки на сохранение в БД #}
                 {% set checkbox_name = constants.select_to_save+'_mess = '+group %}
-                {#  #}
                 <input type="checkbox" name="{{ checkbox_name }}"
                        hx-post="/select_messages_to_save"
                        hx-trigger="change"
