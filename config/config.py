@@ -1,3 +1,4 @@
+from enum import Enum
 import re
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -27,14 +28,24 @@ class ProjectConst:
     select_to_save = 'select_to_save_to_db'
 
 
+class DialogTypes(Enum):
+    """
+    Enum for different dialog types.
+    """
+    Channel = 1
+    Group = 2
+    User = 3
+    Unknown = 4
+
+
 FileTypeProperties = namedtuple('FileTypeProperties', ['type', 'default_ext', 'sign'])
 
 
-class MessageFileTypes:
+class MessageFileTypes(Enum):
     """
     Constants for different types of message files.
     """
-    PHOTO = FileTypeProperties('Image', '.jpg', 'img')
+    PHOTO = FileTypeProperties('Image', '.jpg', 'pho')
     IMAGE = FileTypeProperties('Image', '.jpg', 'img')
     VIDEO = FileTypeProperties('Video', '.mp4', 'vid')
     THUMBNAIL = FileTypeProperties('Image', '.jpg', 'vth')
@@ -66,8 +77,8 @@ class FieldNames:
         'dialog_id': 'dialog_id',
         'sender_id': 'sender_id',
         'date': 'date_time',
-        'ids': 'ids',
         'text': 'text',
+        'ids': 'ids',
         'files': 'files',
         'files_report': 'files_report',
         'selected': 'selected',
@@ -100,6 +111,7 @@ class FieldNames:
 class TableNames:
     messages = 'messages'
     dialogs = 'dialogs'
+    dialog_types = 'dialog_types'
     groups = 'groups'
     files = 'files'
     file_types = 'file_types'
