@@ -162,15 +162,24 @@ def save_selected_message_to_db():
     Сохранение отмеченных сообщений в базе данных
     """
     for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
+        # Сохраняем группу сообщений в базе данных
         if message_group[FieldNames.MESSAGE_GROUP_INFO['selected']]:
-            # Сохраняем группу сообщений в базе данных
+            # Сохраняем или обновляем диалог
+            fields = FieldNames.DIALOG_INFO
+            cur_stat = tg_handler.current_state
             dialog = Dialog(
-                dialog_id=tg_handler.current_state.selected_dialog_id,
-                dialog_title=tg_handler.current_state.dialog_list[str(tg_handler.current_state.selected_dialog_id)]
-                [FieldNames.DIALOG_INFO['title']]
+                dialog_id=cur_stat.selected_dialog_id,
+                dialog_title=cur_stat.dialog_list[str(cur_stat.selected_dialog_id)][fields['title']],
             )
             group = Group(
                 grouped_id=message_group_id,
+                date_time=message_group[FieldNames.MESSAGE_GROUP_INFO['date']],
+                text=message_group[FieldNames.MESSAGE_GROUP_INFO['text']]
+            )
+            message = Message(
+                dialog_id=tg_handler.current_state.selected_dialog_id,
+                grouped_id=message_group_id,
+                sender_id=message_group[FieldNames.MESSAGE_GROUP_INFO['sender_id']],
                 date_time=message_group[FieldNames.MESSAGE_GROUP_INFO['date']],
                 text=message_group[FieldNames.MESSAGE_GROUP_INFO['text']]
             )
@@ -182,6 +191,8 @@ def save_selected_message_to_db():
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
+
+# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 
 # Оставлять архивные подписки в базе
 # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
@@ -212,4 +223,3 @@ if __name__ == '__main__':
 #     # Это запустит обновление заголовка без необходимости JS
 #     response.headers["HX-Trigger"] = "update-header-now"
 #     return response
-
