@@ -304,15 +304,15 @@ class TelegramHandler:
                 [file.get(FieldNames.MESSAGE_FILE_INFO['type']) for file in current_message_group[field['files']]])
             current_message_group[field['files_report']] = ' '.join(sorted(files_report))
             # Если есть видео, то заменяем в отчете тип файла thumbnail на video
-            current_message_group[field['files_report']].replace(MessageFileTypes.THUMBNAIL.type,
-                                                                 MessageFileTypes.VIDEO.type)
+            current_message_group[field['files_report']].replace(MessageFileTypes.THUMBNAIL.web_name,
+                                                                 MessageFileTypes.VIDEO.web_name)
             # Добавление/обновление текущей группы сообщений со своим ID в общий список
             message_group_list[current_group_id] = current_message_group
         print(f'{len(message_group_list)} messages loaded')
         self.current_state.message_group_list = message_group_list
         return message_group_list
 
-    def get_message_detail(self, dialog_id: int, message_group_id: str) -> Dict[str, Any]:
+    def get_message_detail(self, message_group_id: str) -> Dict[str, Any]:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
@@ -384,7 +384,7 @@ class TelegramHandler:
                 file_type = MessageFileTypes.VIDEO
             elif all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
                 file_type = MessageFileTypes.THUMBNAIL
-        message_file_info[field['type']] = file_type.type
+        message_file_info[field['type']] = file_type.web_name
         # Определение размера файла
         if isinstance(message.media, MessageMediaPhoto):
             message_file_info[field['size']] = get_image_size(message.media.photo.sizes)
@@ -410,7 +410,7 @@ class TelegramHandler:
                                                              clean_file_path(dialog_dir),
                                                              message.date.astimezone().strftime('%Y-%m-%d'),
                                                              file_name)
-        message_file_info[field['web_path']]=message_file_info[field['full_path']].replace('\\','/')
+        message_file_info[field['web_path']] = message_file_info[field['full_path']].replace('\\', '/')
         return message_file_info
 
     def download_message_file(self, message_file_info: dict) -> Optional[str]:
@@ -427,7 +427,7 @@ class TelegramHandler:
                         exist_ok=True)
             downloading_param['message'] = message_file_info[field['message']]
             downloading_param['file'] = message_file_info[field['full_path']]
-            if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.type:
+            if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.web_name:
                 downloading_param['thumb'] = -1
             result = loop.run_until_complete(self.client.download_media(**downloading_param))
         else:

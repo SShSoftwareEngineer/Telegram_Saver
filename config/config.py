@@ -1,6 +1,5 @@
 from enum import Enum
 import re
-from collections import namedtuple
 from datetime import datetime, timedelta
 
 
@@ -38,19 +37,22 @@ class DialogTypes(Enum):
     Unknown = 4
 
 
-FileTypeProperties = namedtuple('FileTypeProperties', ['type', 'default_ext', 'sign'])
-
-
 class MessageFileTypes(Enum):
     """
     Constants for different types of message files.
     """
-    PHOTO = FileTypeProperties('Image', '.jpg', 'pho')
-    IMAGE = FileTypeProperties('Image', '.jpg', 'img')
-    VIDEO = FileTypeProperties('Video', '.mp4', 'vid')
-    THUMBNAIL = FileTypeProperties('Image', '.jpg', 'vth')
-    AUDIO = FileTypeProperties('Audio', '.mp4', 'aud')
-    UNKNOWN = FileTypeProperties('Unknown', 'unk', '')
+    PHOTO = (1, 'Image', '.jpg', 'pho')
+    IMAGE = (2, 'Image', '.jpg', 'img')
+    VIDEO = (3, 'Video', '.mp4', 'vid')
+    THUMBNAIL = (4, 'Image', '.jpg', 'vth')
+    AUDIO = (5, 'Audio', '.mp4', 'aud')
+    UNKNOWN = (6, 'Unknown', '.unk', 'unk')
+
+    def __init__(self, type_id: int, web_name: str, default_ext: str, sign: str):
+        self.type_id = type_id
+        self.web_name = web_name
+        self.default_ext = default_ext
+        self.sign = sign
 
 
 class FieldNames:
@@ -104,7 +106,7 @@ class FieldNames:
         'full_path': 'full_path',
         'web_path': 'web_path',
         'size': 'file_size',
-        'type': 'file_type',
+        'web_name': 'web_name',
     }
 
 
@@ -116,7 +118,7 @@ class TableNames:
     files = 'files'
     file_types = 'file_types'
     tags = 'tags'
-    tags_messages = 'tags_messages'
+    group_tag_links = 'group_tag_links'
 
     if __name__ == '__main__':
         pass
