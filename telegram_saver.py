@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, send_from_directory
 
-from config.config import FieldNames, ProjectConst, ProjectDirs
+from config.config import FieldNames, ProjectConst
 from telegram_handler import TelegramHandler
-from database_handler import Message, Dialog, Group, session
+from database_handler import Message, Dialog, Group
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
@@ -68,11 +68,11 @@ def get_tg_messages(dialog_id):
 
 
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
-def get_tg_details(dialog_id, message_group_id):
+def get_tg_details(message_group_id):
     """
     Получение детальной информации о сообщении
     """
-    tg_details = tg_handler.get_message_detail(int(dialog_id), message_group_id) if message_group_id else None
+    tg_details = tg_handler.get_message_detail(message_group_id) if message_group_id else None
     tg_handler.current_state.message_details = tg_details
     return render_template("tg_details.html", tg_details=tg_details)
 
