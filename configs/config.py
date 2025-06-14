@@ -1,6 +1,14 @@
 from enum import Enum
 import re
 from datetime import datetime, timedelta
+from pathlib import Path
+
+# Set the profile for the project
+PROFILE = 'dev_1'
+
+
+# PROFILE = 'dev_2'
+# PROFILE = 'prod'
 
 
 class ProjectDirs:
@@ -8,8 +16,8 @@ class ProjectDirs:
     A class to hold the directory paths for a project.
     """
     media_dir = r'media_storage'
-    telegram_settings_file = r'config\.env'
-    data_base_name = 'telegram_archive'
+    telegram_settings_file = Path('configs') / f'.env_{PROFILE}'
+    data_base_file = Path('database') / f'telegram_archive_{PROFILE}.db'
 
 
 class ProjectConst:
@@ -120,5 +128,6 @@ class TableNames:
     tags = 'tags'
     group_tag_links = 'group_tag_links'
 
-    if __name__ == '__main__':
-        pass
+
+if __name__ == '__main__':
+    pass
