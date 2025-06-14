@@ -1,17 +1,18 @@
 import asyncio
-import os
+# import os
 import re
 import mimetypes
 
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive
 
+from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Union, Optional, Dict, Any
 from telethon import TelegramClient
 
-from config.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes
+from configs.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes
 
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
@@ -406,10 +407,12 @@ class TelegramHandler:
         # Формирование пути к файлу
         dialog_dir = f'{self.all_dialogues_list.get(dialog_id)[FieldNames.DIALOG_INFO["title"]]}_{dialog_id}'
         file_name = f'{message.date.astimezone().strftime('%H-%M-%S')}_{message.id}_{file_type.sign}{file_ext}'
-        message_file_info[field['full_path']] = os.path.join(ProjectDirs.media_dir,
-                                                             clean_file_path(dialog_dir),
-                                                             message.date.astimezone().strftime('%Y-%m-%d'),
-                                                             file_name)
+        message_file_info[field['full_path']] = Path(ProjectDirs.media_dir) / clean_file_path(
+            dialog_dir) / message.date.astimezone().strftime('%Y-%m-%d') / file_name
+        # message_file_info[field['full_path']] = os.path.join(ProjectDirs.media_dir,
+        #                                                      clean_file_path(dialog_dir),
+        #                                                      message.date.astimezone().strftime('%Y-%m-%d'),
+        #                                                      file_name)
         message_file_info[field['web_path']] = message_file_info[field['full_path']].replace('\\', '/')
         return message_file_info
 
@@ -420,11 +423,13 @@ class TelegramHandler:
         downloading_param = dict()
         field = FieldNames.MESSAGE_FILE_INFO
         # Проверка существования файла и его размера
-        if all([not os.path.exists(message_file_info[field['full_path']]),
+        if all([not Path(message_file_info[field['full_path']]).exists,
+                # if all([not os.path.exists(message_file_info[field['full_path']]),
                 0 < message_file_info[field['size']] <= ProjectConst.max_download_file_size]):
             # Если файл не существует, то создаем соответствующие директории и загружаем файл
-            os.makedirs(os.path.dirname(message_file_info[field['full_path']]),
-                        exist_ok=True)
+            Path(message_file_info[field['full_path']]).parent.mkdir(parents=True, exist_ok=True)
+            # os.makedirs(os.path.dirname(message_file_info[field['full_path']]),
+            #             exist_ok=True)
             downloading_param['message'] = message_file_info[field['message']]
             downloading_param['file'] = message_file_info[field['full_path']]
             if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.web_name:

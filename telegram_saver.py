@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_from_directory
 
-from config.config import FieldNames, ProjectConst
+from configs.config import FieldNames, ProjectConst
 from telegram_handler import TelegramHandler
 from database_handler import Message, Dialog, Group
 
@@ -163,6 +163,9 @@ def save_selected_message_to_db():
     """
     for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
         # Сохраняем группу сообщений в базе данных
+
+        # Сохранять в отдельной функции в DatabaseHandler
+
         if message_group[FieldNames.MESSAGE_GROUP_INFO['selected']]:
             # Сохраняем или обновляем диалог
             fields = FieldNames.DIALOG_INFO

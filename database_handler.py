@@ -4,7 +4,7 @@ from typing import List
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from config.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes
 
 
 class Base(DeclarativeBase):
@@ -130,7 +130,7 @@ def init_database():
     session.commit()
 
 
-engine = create_engine(f'sqlite:///{ProjectDirs.data_base_name}.db')
+engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}')
 session = Session(engine)
 
 init_database()

@@ -179,3 +179,7 @@ media_storage/
 /Notes/telethon-flask-module.py
 /.session-journal
 /Notes/tg_table.txt
+/configs/.env_dev_1
+/configs/.env_dev_2
+/database/telegram_archive_dev_1.db
+/database/telegram_archive_dev_2.db
