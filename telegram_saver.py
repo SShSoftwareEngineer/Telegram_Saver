@@ -2,10 +2,11 @@ from flask import Flask, render_template, request, send_from_directory
 
 from configs.config import FieldNames, ProjectConst
 from telegram_handler import TelegramHandler
-from database_handler import Message, Dialog, Group
+from database_handler import DatabaseHandler, Message, Dialog, Group, File, DialogType, FileType
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
+db_handler = DatabaseHandler()
 
 
 @tg_saver.route(f'/media_dir/<path:filename>')
@@ -88,7 +89,7 @@ def tg_dialog_apply_filters():
     field = FieldNames.DIALOG_SETTINGS
     dial_filter.sort_field(form.get(field['sort_field']))
     dial_filter.sort_order(form.get(field['sort_order']))
-    dial_filter.dialog_type(form.get(field['dialog_type']))
+    dial_filter.type_name(form.get(field['type_name']))
     dial_filter.title_query(form.get(field['title_query']))
     # Получение списка диалогов с применением фильтров
     tg_dialogs = tg_handler.get_dialog_list()
@@ -161,34 +162,46 @@ def save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
+    cur_stat = tg_handler.current_state
+    cmg_field = FieldNames.MESSAGE_GROUP_INFO
+    dia_field = FieldNames.DIALOG_INFO
+    fil_field = FieldNames.MESSAGE_FILE_INFO
     for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
         # Сохраняем группу сообщений в базе данных
 
-        # Сохранять в отдельной функции в DatabaseHandler
+# Сохранять в отдельной функции в DatabaseHandler
 
-        if message_group[FieldNames.MESSAGE_GROUP_INFO['selected']]:
+        # Если сообщение отмечено для сохранения
+        if message_group[cmg_field['selected']]:
+
             # Сохраняем или обновляем диалог
-            fields = FieldNames.DIALOG_INFO
-            cur_stat = tg_handler.current_state
+            cur_dialog = cur_stat.dialog_list[message_group[cmg_field['dialog_id']]]
             dialog = Dialog(
-                dialog_id=cur_stat.selected_dialog_id,
-                dialog_title=cur_stat.dialog_list[str(cur_stat.selected_dialog_id)][fields['title']],
+                dialog_id=message_group[cmg_field['dialog_id']],
+                dialog_title=cur_dialog[dia_field['title']],
+                dialog_type=db_handler.session.get(DialogType, cur_dialog[dia_field['type_name']]),
             )
+            # Сохраняем или обновляем группу сообщений
             group = Group(
                 grouped_id=message_group_id,
-                date_time=message_group[FieldNames.MESSAGE_GROUP_INFO['date']],
-                text=message_group[FieldNames.MESSAGE_GROUP_INFO['text']]
+                date_time=message_group[cmg_field['date']],
+                text=message_group[cmg_field['text']],
+                dialog=dialog,
             )
-            message = Message(
-                dialog_id=tg_handler.current_state.selected_dialog_id,
-                grouped_id=message_group_id,
-                sender_id=message_group[FieldNames.MESSAGE_GROUP_INFO['sender_id']],
-                date_time=message_group[FieldNames.MESSAGE_GROUP_INFO['date']],
-                text=message_group[FieldNames.MESSAGE_GROUP_INFO['text']]
-            )
-            # tg_handler.save_message_group_to_db(message_group)
-    print(request.form.get(ProjectConst.select_to_save))
-    print(request.form.get(ProjectConst.mess_group_id))
+            # Сохраняем или обновляем ID сообщений, входящих в группу
+            for message_id in message_group[cmg_field['ids']]:
+                message = Message(
+                    message_id=message_id,
+                    group=group,
+                )
+            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+            for file in message_group[cmg_field['files']]:
+                file = File(
+                    file_path=fil_field[fil_field['file_path']],
+                    size= file[fil_field['size']],
+                    group=group,
+                    file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
+                )
     return ''
 
 

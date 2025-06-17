@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 from typing import Union, Optional, Dict, Any
 from telethon import TelegramClient
 
-from configs.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes
+from configs.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes, DialogTypes
 
 # Создаем и сохраняем цикл событий
 loop = asyncio.new_event_loop()
@@ -23,7 +23,7 @@ asyncio.set_event_loop(loop)
 class TgDialogSortFilter:
     _sort_field: str = 'title'
     _sort_order: bool = False
-    _dialog_type: Optional[str] = None
+    _type_name: Optional[str] = None
     _title_query: Optional[str] = None
 
     def sort_field(self, value: str):
@@ -39,19 +39,21 @@ class TgDialogSortFilter:
         """
         self._sort_order = False if value == '0' else True
 
-    def dialog_type(self, value: str):
+    def type_name(self, value: str):
         """
         Устанавливает фильтр по типу диалогов
         """
         match value:
             case '0':
-                self._dialog_type = None
+                self._type_name = DialogTypes.AnyType.name
             case '1':
-                self._dialog_type = 'is_channel'
+                self._type_name = DialogTypes.Channel.name
             case '2':
-                self._dialog_type = 'is_group'
+                self._type_name = DialogTypes.Group.name
             case '3':
-                self._dialog_type = 'is_user'
+                self._type_name = DialogTypes.User.name
+            case _:
+                self._type_name = DialogTypes.Unknown.name
 
     def title_query(self, value: str):
         """
@@ -67,7 +69,7 @@ class TgDialogSortFilter:
         return {
             field['sort_field']: self._sort_field,
             field['sort_order']: self._sort_order,
-            field['dialog_type']: self._dialog_type,
+            field['type_name']: self._type_name,
             field['title_query']: self._title_query
         }
 
@@ -81,8 +83,8 @@ class TgDialogSortFilter:
             title_query = (self.get_filters().get(field['title_query']).lower() in
                            str(dialog_info[FieldNames.DIALOG_INFO['title']]).lower())
         dialog_type = True
-        if self.get_filters().get(field['dialog_type']):
-            dialog_type = dialog_info[self.get_filters().get(field['dialog_type'])]
+        if self.get_filters().get(field['type_name']) != DialogTypes.AnyType.name:
+            dialog_type = dialog_info[self.get_filters().get(field['type_name'])]
         return all([title_query, dialog_type])
 
     def sort_dialog_list(self, dialog_list: Dict[int | str, Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
@@ -217,9 +219,7 @@ class TelegramHandler:
                 field['user']: dialog.entity.username if dialog.entity.username else None,
                 field['unread_count']: dialog.unread_count,
                 field['last_message_date']: dialog.date.isoformat(' ', 'seconds') if dialog.date else None,
-                field['is_user']: dialog.is_user,
-                field['is_group']: dialog.is_group,
-                field['is_channel']: dialog.is_channel,
+                field['type_name']: DialogTypes.get_type_name(dialog.is_channel, dialog.is_group, dialog.is_user)
             }
             if self.dialog_sort_filter.check_filters(dialog_info):
                 dialog_list[current_dialog_id] = dialog_info

@@ -3,6 +3,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
+
 # Set the profile for the project
 PROFILE = 'dev_1'
 
@@ -39,10 +40,26 @@ class DialogTypes(Enum):
     """
     Enum for different dialog types.
     """
+    AnyType = 0
     Channel = 1
     Group = 2
     User = 3
     Unknown = 4
+
+    @staticmethod
+    def get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
+        """
+        Returns the type name for a given dialog type.
+        """
+        if is_channel:
+            return DialogTypes.Channel.name
+        elif is_group:
+            return DialogTypes.Group.name
+        elif is_user:
+            return DialogTypes.User.name
+        else:
+            return DialogTypes.Unknown.name
+
 
 
 class MessageFileTypes(Enum):
@@ -62,6 +79,15 @@ class MessageFileTypes(Enum):
         self.default_ext = default_ext
         self.sign = sign
 
+    @staticmethod
+    def get_file_type(self, file_type) -> int:
+        """
+        Returns the type ID for a given file type.
+        """
+        for member in self.__class__:
+            if member.name == file_type:
+                return member.type_id
+
 
 class FieldNames:
     """
@@ -73,14 +99,12 @@ class FieldNames:
         'user': 'username',
         'unread_count': 'unread_count',
         'last_message_date': 'last_message_date',
-        'is_user': 'is_user',
-        'is_group': 'is_group',
-        'is_channel': 'is_channel',
+        'type_name': 'dialog_type_name',
     }
     DIALOG_SETTINGS = {
         'sort_field': 'sorting_field',
         'sort_order': 'sorting_order',
-        'dialog_type': 'dialog_type',
+        'type_name': 'dialog_type_name',
         'title_query': 'title_query',
     }
     MESSAGE_GROUP_INFO = {

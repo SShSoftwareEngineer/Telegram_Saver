@@ -23,19 +23,19 @@
 <!-- Dialog types selection radiobuttons -->
 <p class="settings-sub-header">Chat types filter</p>
 <div>
-    <input type="radio" id="type_filter_0" name="{{ dialog_settings['dialog_type'] }}" value="0" checked>
+    <input type="radio" id="type_filter_0" name="{{ dialog_settings['type_name'] }}" value="0" checked>
     <label for="type_filter_0">All chats</label>
 </div>
 <div>
-    <input type="radio" id="type_filter_1" name="{{ dialog_settings['dialog_type'] }}" value="1">
+    <input type="radio" id="type_filter_1" name="{{ dialog_settings['type_name'] }}" value="1">
     <label for="type_filter_1">Channels</label>
 </div>
 <div>
-    <input type="radio" id="type_filter_2" name="{{ dialog_settings['dialog_type'] }}" value="2">
+    <input type="radio" id="type_filter_2" name="{{ dialog_settings['type_name'] }}" value="2">
     <label for="type_filter_2">Groups</label>
 </div>
 <div>
-    <input type="radio" id="type_filter_3" name="{{ dialog_settings['dialog_type'] }}" value="3">
+    <input type="radio" id="type_filter_3" name="{{ dialog_settings['type_name'] }}" value="3">
     <label for="type_filter_3">Users</label>
 </div>
 
@@ -61,7 +61,7 @@
         hx-post="/tg_dialog_apply_filters"
         hx-include="input[name='{{ dialog_settings['sort_field'] }}']:checked,
                     input[name='{{ dialog_settings['sort_order'] }}']:checked,
-                    input[name='{{ dialog_settings['dialog_type'] }}']:checked,
+                    input[name='{{ dialog_settings['type_name'] }}']:checked,
                     input[name='{{ dialog_settings['title_query'] }}']"
         hx-target="#tg_dialogs">
     Apply chat filters
