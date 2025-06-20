@@ -24,8 +24,6 @@ def inject_field_names():
     Регистрация контекстного процессора с именами полей
     """
     return {
-        'dialog_info': FieldNames.DIALOG_INFO,
-        'dialog_settings': FieldNames.DIALOG_SETTINGS,
         'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
         'message_settings': FieldNames.MESSAGE_SETTINGS,
         'details_info': FieldNames.DETAILS_INFO,
@@ -43,7 +41,7 @@ def index():
     tg_handler.current_state.dialog_list = tg_dialogs
     if tg_dialogs:
         # Получаем id первого диалога
-        tg_handler.current_state.selected_dialog_id = list(tg_dialogs.keys())[0]
+        tg_handler.current_state.selected_dialog_id = tg_dialogs[0].dialog_id
     return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
@@ -62,7 +60,7 @@ def get_tg_messages(dialog_id):
     """
     Получение списка сообщений при обновлении текущего диалога
     """
-    tg_messages = tg_handler.get_message_list(int(dialog_id))
+    tg_messages = tg_handler.get_message_group_list(int(dialog_id))
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_messages
     return render_template("tg_messages.html", tg_messages=tg_messages)
@@ -86,11 +84,10 @@ def tg_dialog_apply_filters():
     # Установка фильтров диалогов по значениям из формы
     dial_filter = tg_handler.dialog_sort_filter
     form = request.form
-    field = FieldNames.DIALOG_SETTINGS
-    dial_filter.sort_field(form.get(field['sort_field']))
-    dial_filter.sort_order(form.get(field['sort_order']))
-    dial_filter.type_name(form.get(field['type_name']))
-    dial_filter.title_query(form.get(field['title_query']))
+    dial_filter.sort_field(form.get('sorting_field'))
+    dial_filter.sort_order(form.get('sort_order'))
+    dial_filter.dialog_type(form.get('dialog_type'))
+    dial_filter.title_query(form.get('title_query'))
     # Получение списка диалогов с применением фильтров
     tg_dialogs = tg_handler.get_dialog_list()
     tg_handler.current_state.dialog_list = tg_dialogs
@@ -110,7 +107,7 @@ def tg_message_apply_filters():
     mess_filter.date_to(form.get(field['date_to']))
     mess_filter.message_query(form.get(field['message_query']))
     # Получение списка сообщений с применением фильтров
-    tg_messages = tg_handler.get_message_list(tg_handler.current_state.selected_dialog_id)
+    tg_messages = tg_handler.get_message_group_list(tg_handler.current_state.selected_dialog_id)
     tg_handler.current_state.message_group_list = tg_messages
     return render_template("tg_messages.html", tg_messages=tg_messages)
 
@@ -164,7 +161,7 @@ def save_selected_message_to_db():
     """
     cur_stat = tg_handler.current_state
     cmg_field = FieldNames.MESSAGE_GROUP_INFO
-    dia_field = FieldNames.DIALOG_INFO
+    # dia_field = FieldNames.DIALOG_INFO
     fil_field = FieldNames.MESSAGE_FILE_INFO
     for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
         # Сохраняем группу сообщений в базе данных
@@ -178,8 +175,8 @@ def save_selected_message_to_db():
             cur_dialog = cur_stat.dialog_list[message_group[cmg_field['dialog_id']]]
             dialog = Dialog(
                 dialog_id=message_group[cmg_field['dialog_id']],
-                dialog_title=cur_dialog[dia_field['title']],
-                dialog_type=db_handler.session.get(DialogType, cur_dialog[dia_field['type_name']]),
+                dialog_title=cur_dialog.title,
+                # dialog_type=db_handler.session.get(DialogType, cur_dialog.dialog_type),
             )
             # Сохраняем или обновляем группу сообщений
             group = Group(
