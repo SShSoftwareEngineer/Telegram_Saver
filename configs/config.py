@@ -3,7 +3,6 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-
 # Set the profile for the project
 PROFILE = 'dev_1'
 
@@ -40,7 +39,6 @@ class DialogTypes(Enum):
     """
     Enum for different dialog types.
     """
-    AnyType = 0
     Channel = 1
     Group = 2
     User = 3
@@ -59,7 +57,6 @@ class DialogTypes(Enum):
             return DialogTypes.User.name
         else:
             return DialogTypes.Unknown.name
-
 
 
 class MessageFileTypes(Enum):
@@ -93,20 +90,20 @@ class FieldNames:
     """
     Структуры для имен полей, используемых в шаблонах и запросах.
     """
-    DIALOG_INFO = {
-        'id': 'dialog_id',
-        'title': 'title',
-        'user': 'username',
-        'unread_count': 'unread_count',
-        'last_message_date': 'last_message_date',
-        'type_name': 'dialog_type_name',
-    }
-    DIALOG_SETTINGS = {
-        'sort_field': 'sorting_field',
-        'sort_order': 'sorting_order',
-        'type_name': 'dialog_type_name',
-        'title_query': 'title_query',
-    }
+    # DIALOG_INFO = {
+    #     'id': 'dialog_id',
+    #     'title': 'title',
+    #     'user': 'username',
+    #     'unread_count': 'unread_count',
+    #     'last_message_date': 'last_message_date',
+    #     'type_name': 'dialog_type_name',
+    # }
+    # DIALOG_SETTINGS = {
+    #     'sort_field': 'sorting_field',
+    #     'sort_order': 'sorting_order',
+    #     'type_name': 'type_name',
+    #     'title_query': 'title_query',
+    # }
     MESSAGE_GROUP_INFO = {
         'dialog_id': 'dialog_id',
         'sender_id': 'sender_id',
@@ -139,6 +136,7 @@ class FieldNames:
         'web_path': 'web_path',
         'size': 'file_size',
         'web_name': 'web_name',
+        'type': 'file_type',
     }
 
 
