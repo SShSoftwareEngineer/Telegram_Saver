@@ -114,13 +114,13 @@ class FieldNames:
         'files_report': 'files_report',
         'selected': 'selected',
     }
-    MESSAGE_SETTINGS = {
-        'sort_order': 'sorting_order',
-        'date_from': 'date_from',
-        'date_to': 'date_to',
-        'message_query': 'message_query',
-        'date_from_default': (datetime.now() - timedelta(days=ProjectConst.last_days_by_default)).strftime('%d-%m-%Y'),
-    }
+    # MESSAGE_SETTINGS = {
+    #     'sort_order': 'sorting_order',
+    #     'date_from': 'date_from',
+    #     'date_to': 'date_to',
+    #     'message_query': 'message_query',
+    #     'date_from_default': (datetime.now() - timedelta(days=ProjectConst.last_days_by_default)).strftime('%d-%m-%Y'),
+    # }
     DETAILS_INFO = {
         'dialog_id': 'dialog_id',
         'mess_group_id': 'message_group_id',

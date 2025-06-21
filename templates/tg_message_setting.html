@@ -1,44 +1,44 @@
 <!-- Dialog messages sort order radiobuttons -->
 <p class="settings-sub-header">Messages sort order</p>
 <div>
-    <input type="radio" id="mess_reverse_0" name="{{ message_settings['sort_order'] }}" value="0">
+    <input type="radio" id="mess_reverse_0" name="sort_order" value="0">
     <label for="mess_reverse_0">Sort by date in ascending</label>
 </div>
 <div>
-    <input type="radio" id="mess_reverse_1" name="{{ message_settings['sort_order'] }}" value="1" checked>
+    <input type="radio" id="mess_reverse_1" name="sort_order" value="1" checked>
     <label for="mess_reverse_1">Sort by date in descending</label>
 </div>
 
-<p class="settings-sub-header">Filter by message date</p>
 <!-- Filtering by date -->
+<p class="settings-sub-header">Filter by message date</p>
 <div style="display: flex; gap: 5px;">
     <!-- Filtering by date from -->
     <div>
-        <label for="{{ message_settings['date_from'] }}">Date from</label><br>
+        <label for="date_from">Date from</label><br>
         <input type="text" style="width: 70px;"
-               id="{{ message_settings['date_from'] }}"
-               name="{{ message_settings['date_from'] }}"
-               value="{{ message_settings['date_from_default'] }}"
+               id="date_from"
+               name="date_from"
+               value="{{ date_from_default }}"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('{{ message_settings['date_from'] }}').value = ''"
+                onclick="document.getElementById('date_from').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
     </div>
     <!-- Filtering by date to -->
     <div>
-        <label for="{{ message_settings['date_to'] }}">Date to</label><br>
+        <label for="date_to">Date to</label><br>
         <input type="text" style="width: 70px; margin-left: 5px;"
-               id="{{ message_settings['date_to'] }}"
-               name="{{ message_settings['date_to'] }}"
+               id="date_to"
+               name="date_to"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('{{ message_settings['date_to'] }}').value = ''"
+                onclick="document.getElementById('date_to').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
@@ -47,29 +47,28 @@
 
 <!-- Filtering by message text -->
 <div hx-ext="class-tools">
-    <label class="settings-sub-header" for="{{ message_settings['message_query'] }}">
+    <label class="settings-sub-header" for="message_query">
         <p class="settings-sub-header">Filter by message text</p>
     </label>
     <input type="text"
-           id="{{ message_settings['message_query'] }}"
-           name="{{ message_settings['message_query'] }}"
+           id="message_query"
+           name="message_query"
            placeholder="Filter by message text..."
            style="width: 80%;">
     <button type="button"
-            hx-on:click="document.getElementById('{{ message_settings['message_query'] }}').value = ''"
+            hx-on:click="document.getElementById('message_query').value = ''"
             class="clear-button X-button">
         ✖
     </button>
 </div>
 
-
 <!-- Apply message filters button -->
 <button style="width: 100%; margin-top: 10px;"
         hx-post="/tg_message_apply_filters"
-        hx-include="input[name='{{ message_settings['sort_order'] }}']:checked,
-                    input[name='{{ message_settings['date_from'] }}'],
-                    input[name='{{ message_settings['date_to'] }}'],
-                    input[name='{{ message_settings['message_query'] }}']"
+        hx-include="input[name='sort_order']:checked,
+                    input[name='date_from'],
+                    input[name='date_to'],
+                    input[name='message_query']"
         hx-target="#tg_messages">
     Apply message filters
 </button>
