@@ -1,10 +1,10 @@
 <span>
     {% if tg_details %}
-        {% set message_date = tg_details[details_info['date']] %}
-        {% set group = tg_details[constants.mess_group_id] %}
+        {% set message_date = tg_details.date %}
+        {% set group = tg_details.message_group_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
-               value="{{ tg_details[constants.mess_group_id] }}">
+               value="{{ tg_details.message_group_id }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
@@ -18,13 +18,15 @@
                                    input[name='{{ checkbox_name }}'],">
                 <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
             </span>
-        </div><br>
+        </div>
+        <br>
         {# Вывод текста сообщения #}
-        {{ tg_details[details_info['text']]|replace('\n', '<br>')|safe }}<br>
+        {{ tg_details.text|replace('\n', '<br>')|safe }}
+        <br>
         {# Вывод графических, видео и других файлов #}
         <br>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            {% for mess_file in tg_details[details_info['files']] %}
+            {% for mess_file in tg_details.files %}
                 <div style="width: 45%; height: 45vh;">
                     <img src="{{ url_for('media_dir', filename=mess_file[file_info['web_path']]) }}"
                          alt="{{ mess_file[file_info['type']] }}"

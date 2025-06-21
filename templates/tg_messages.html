@@ -10,7 +10,8 @@
         <li style="padding-top: 9px; background-color: {{ loop.cycle('#ffffff', '#f5f5f5') }};">
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
-            <a href="#" hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
+            {# Ссылка на детали сообщения с использованием htmx для загрузки #}
+            <a href="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}" hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
                hx-target="#tg_details">{{ message_date }}</a>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
@@ -24,7 +25,6 @@
                                    input[name='{{ checkbox_name }}'],">
                 <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
             </span>
-            <br>
             {# Вывод обрезанного текста и строки информации о файлах в группе сообщений #}
             {{ tg_message.text|truncate(length=150)|replace('\n', '<br>')|safe }}<br>
             {% if tg_message.files_report %}

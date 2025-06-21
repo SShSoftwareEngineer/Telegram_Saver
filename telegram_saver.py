@@ -24,8 +24,8 @@ def inject_field_names():
     Регистрация контекстного процессора с именами полей
     """
     return {
+        'date_from_default': tg_handler.message_sort_filter.date_from_default,
         'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
-        'message_settings': FieldNames.MESSAGE_SETTINGS,
         'details_info': FieldNames.DETAILS_INFO,
         'file_info': FieldNames.MESSAGE_FILE_INFO,
         'constants': ProjectConst
@@ -67,7 +67,7 @@ def get_tg_messages(dialog_id):
 
 
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
-def get_tg_details(message_group_id):
+def get_tg_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
@@ -101,11 +101,10 @@ def tg_message_apply_filters():
     """
     mess_filter = tg_handler.message_sort_filter
     form = request.form
-    field = FieldNames.MESSAGE_SETTINGS
-    mess_filter.sort_order(form.get(field['sort_order']))
-    mess_filter.date_from(form.get(field['date_from']))
-    mess_filter.date_to(form.get(field['date_to']))
-    mess_filter.message_query(form.get(field['message_query']))
+    mess_filter.sort_order = form.get('sort_order')
+    mess_filter.date_from = form.get('date_from')
+    mess_filter.date_to = form.get('date_to')
+    mess_filter.message_query = form.get('message_query')
     # Получение списка сообщений с применением фильтров
     tg_messages = tg_handler.get_message_group_list(tg_handler.current_state.selected_dialog_id)
     tg_handler.current_state.message_group_list = tg_messages
@@ -128,8 +127,8 @@ def select_messages_to_save():
             is_selected = value is not None
     # Устанавливаем флаг сохранения для выбранной группы сообщений
     if selected_message_group_id:
-        tg_handler.current_state.message_group_list[selected_message_group_id] \
-            [FieldNames.MESSAGE_GROUP_INFO['selected']] = is_selected
+        tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
+                                           selected_message_group_id).selected = is_selected
     return ''
 
 
@@ -149,8 +148,8 @@ def select_details_to_save():
             is_selected = value is not None
     # Устанавливаем флаг сохранения для выбранной группы сообщений
     if selected_message_group_id:
-        tg_handler.current_state.message_group_list[selected_message_group_id] \
-            [FieldNames.MESSAGE_GROUP_INFO['selected']] = is_selected
+        tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
+                                           selected_message_group_id).selected = is_selected
     return ''
 
 
@@ -166,7 +165,7 @@ def save_selected_message_to_db():
     for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
         # Сохраняем группу сообщений в базе данных
 
-# Сохранять в отдельной функции в DatabaseHandler
+        # Сохранять в отдельной функции в DatabaseHandler
 
         # Если сообщение отмечено для сохранения
         if message_group[cmg_field['selected']]:
@@ -195,7 +194,7 @@ def save_selected_message_to_db():
             for file in message_group[cmg_field['files']]:
                 file = File(
                     file_path=fil_field[fil_field['file_path']],
-                    size= file[fil_field['size']],
+                    size=file[fil_field['size']],
                     group=group,
                     file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
                 )

@@ -10,7 +10,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Union, Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
 
 from configs.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes, DialogTypes
@@ -135,7 +135,8 @@ class TgDialogSortFilter:
         """
         if self._sorting_field is None:
             self._sorting_field = self._sort_by_title
-        return sorted(dialog_list, key=self._sorting_field, reverse=self._sort_order)
+        result = sorted(dialog_list, key=self._sorting_field, reverse=self._sort_order)
+        return result
 
 
 @dataclass
@@ -149,7 +150,7 @@ class TgMessageGroup:
     date: datetime = None
     from_id: Optional[int] = None
     reply_to: Optional[int] = None
-    text: Optional[str] = None
+    text: Optional[str] = ''
     files: Optional[Dict[str, Any]] = None
     files_report: Optional[str] = None
     selected: bool = False
@@ -191,19 +192,22 @@ class TgMessageGroup:
 
 @dataclass
 class TgMessageSortFilter:
-    _sort_order: bool = False
+    _sort_order: bool = True
     _date_from: Optional[datetime] = datetime.now() - timedelta(days=ProjectConst.last_days_by_default)
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
+    date_from_default: Optional[str] = (datetime.now() - timedelta(
+        days=ProjectConst.last_days_by_default)).strftime('%d/%m/%Y')
 
     def set_default_filters(self):
         """
         Устанавливает фильтры по умолчанию
         """
-        self._sort_order = False
+        self._sort_order = True
         self._date_from = datetime.now() - timedelta(days=ProjectConst.last_days_by_default)
         self._date_to = None
         self._message_query = None
+        self.date_from_default = self.date_from.strftime('%d/%m/%Y')
 
     @staticmethod
     def set_date(date_str: str) -> Optional[datetime]:
@@ -220,54 +224,119 @@ class TgMessageSortFilter:
                     return None
         return None
 
+    @property
+    def sort_order(self) -> bool:
+        """
+        Возвращает порядок сортировки сообщений по дате
+        """
+        return self._sort_order
+
+    @sort_order.setter
     def sort_order(self, value: str):
         """
         Устанавливает порядок сортировки сообщений по дате
         """
-        self._sort_order = True if value == '0' else False
+        self._sort_order = False if value == '0' else True
 
+    @property
+    def date_from(self) -> Optional[datetime]:
+        """
+        Возвращает дату, с которой получать сообщения
+        """
+        return self._date_from
+
+    @date_from.setter
     def date_from(self, value: str):
         """
         Устанавливает дату, с которой получать сообщения
         """
         self._date_from = self.set_date(value)
 
+    @property
+    def date_to(self) -> Optional[datetime]:
+        """
+        Возвращает дату, до которой получать сообщения
+        """
+        return self._date_to
+
+    @date_to.setter
     def date_to(self, value: str):
         """
         Устанавливает дату, до которой получать сообщения
         """
         self._date_to = self.set_date(value)
 
+    @property
+    def message_query(self) -> Optional[str]:
+        """
+        Возвращает фильтр по названию диалогов
+        """
+        return self._message_query
+
+    @message_query.setter
     def message_query(self, value: str):
         """
         Устанавливает фильтр по названию диалогов
         """
         self._message_query = value if value else None
 
-    def get_filters(self) -> Dict[str, Union[str, int]]:
-        """
-        Возвращает текущие фильтры
-        """
-        field = FieldNames.MESSAGE_SETTINGS
-        return {
-            field['sort_order']: self._sort_order,
-            field['date_from']: self._date_from,
-            field['date_to']: self._date_to,
-            field['message_query']: self._message_query,
-        }
-
     def sort_message_group_list(self, message_group_list: List[TgMessageGroup]) -> List[TgMessageGroup]:
         """
         Сортировка списка групп сообщений по дате
         """
-        return sorted(message_group_list, key=lambda x: x.date, reverse=self._sort_order)
+        result = sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
+        return result
 
+
+@dataclass
+class TgDetails:
+    """
+    A class to represent details of a Telegram message.
+    """
+    dialog_id: int
+    message_group_id: str
+    date: datetime
+    text: str
+    files: List[Dict[str, Any]]
+    files_report: Optional[str] = None
+
+    def __init__(self, dialog_id: int, message_group_id: str, date: datetime, text: str,
+                 files: List[Dict[str, Any]], files_report: Optional[str] = None):
+        self.dialog_id = dialog_id
+        self.message_group_id = message_group_id
+        self.date = date
+        self.text = text
+        self.files = files
+        self.files_report = files_report if files_report else ''
+
+@dataclass
+class TgMessageFile:
+    """
+    A class to represent a Telegram message file.
+    """
+    dialog_id: int
+    message: Message
+    full_path: str
+    web_path: str
+    size: int
+    web_name: str
+    type: str
+
+    def __init__(self, dialog_id: int, message: Message, full_path: str, web_path: str,
+                 size: int, web_name: str, type: str):
+        self.dialog_id = dialog_id
+        self.message = message
+        self.full_path = full_path
+        self.web_path = web_path
+        self.size = size
+        self.web_name = web_name
+        self.type = type
 
 @dataclass
 class TgCurrentState:
     dialog_list: List[TgDialog] = None
     selected_dialog_id: int = None
-    message_group_list: Dict[str, Dict[str, Any]] = None
+    message_group_list: List[TgMessageGroup] = None
     selected_message_group_id: str = None
     message_details: Dict[str, Any] = None
     message_files: Dict[str, Dict[str, Any]] = None
@@ -303,7 +372,7 @@ class TelegramHandler:
         entity = loop.run_until_complete(self.client.get_entity(entity_id))
         return entity
 
-    def get_tg_dialog_by_id(self, dialog_id: int) -> Optional[TgDialog]:
+    def get_dialog_by_id(self, dialog_id: int) -> Optional[TgDialog]:
         """
         Получение диалога по id
         """
@@ -311,7 +380,7 @@ class TelegramHandler:
         return found_tg_dialog
 
     @staticmethod
-    def get_tg_message_group_by_id(message_group_list: list, grouped_id: str) -> Optional[TgMessageGroup]:
+    def get_message_group_by_id(message_group_list: list, grouped_id: str) -> Optional[TgMessageGroup]:
         """
         Получение группы сообщений по grouped_id
         """
@@ -332,62 +401,65 @@ class TelegramHandler:
         print(f'{len(dialog_list)} chats loaded')
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
 
-    def get_message_group_list(self, dialog_id: int) -> List[TgMessageGroup]:
+    def get_message_list(self, dialog_id: int) -> List[Message]:
         """
-        Получение списка групп сообщений из заданного чата с учетом фильтров, сортировки и группировки
+        Получение списка сообщений из заданного чата с учетом фильтров и сортировки
         """
-        current_tg_dialog = self.get_tg_dialog_by_id(dialog_id)
+        current_tg_dialog = self.get_dialog_by_id(dialog_id)
         if current_tg_dialog:
             print(f'Loading messages for "{current_tg_dialog.title}" dialog...')
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
-        # Получаем текущие данные фильтра сообщений
-        message_filters = self.message_sort_filter.get_filters()
-        message_filters['entity'] = dialog
-        # Устанавливаем параметры фильтрации по дате через id сообщений
-        field = FieldNames.MESSAGE_SETTINGS
-        if message_filters.get(field['date_from']):
+        # Формируем текущие данные фильтра сообщений
+        message_filters = {'entity': dialog}
+        # Устанавливаем параметры фильтрации по минимальной дате через id сообщений
+        if self.message_sort_filter.date_from:
             message_from = loop.run_until_complete(
-                self.client.get_messages(entity=dialog, offset_date=message_filters.get(field['date_from']), limit=1))
+                self.client.get_messages(entity=dialog, offset_date=self.message_sort_filter.date_from, limit=1))
             message_filters['min_id'] = message_from[0].id if message_from else 0
-        message_filters.pop(field['date_from'])
-        if message_filters.get(field['date_to']):
+        # Устанавливаем параметры фильтрации по максимальной дате через id сообщений
+        if self.message_sort_filter.date_to:
             message_to = loop.run_until_complete(
-                self.client.get_messages(entity=dialog, offset_date=message_filters.get(field['date_to']), limit=1,
+                self.client.get_messages(entity=dialog, offset_date=self.message_sort_filter.date_to, limit=1,
                                          reverse=True))
             message_filters['max_id'] = message_to[0].id if message_to else sys.maxsize
-        message_filters.pop(field['date_to'])
         # Установка параметра порядка сортировки по дате
-        message_filters['reverse'] = message_filters.get(field['sort_order'])
-        # Удаление и восстановление фильтра поиска по тексту сообщения и порядка сортировки
-        search_filter = message_filters.pop(field['message_query'])
-        message_filters.pop(field['sort_order'])
+        message_filters['reverse'] = self.message_sort_filter.sort_order
         # Получение сообщений в соответствии с фильтрами
-        messages = loop.run_until_complete(self.client.get_messages(**message_filters))
-        # Восстановление удаленных фильтров
-        message_filters[field['message_query']] = search_filter
-        message_filters[field['sort_order']] = message_filters.get('reverse')
+        message_list = loop.run_until_complete(self.client.get_messages(**message_filters))
+        print(f'{len(message_list)} messages loaded')
+        return message_list
+
+    def get_message_group_list(self, dialog_id: int) -> List[TgMessageGroup]:
+        """
+        Получение списка групп сообщений из заданного чата с учетом фильтров, сортировки и группировки
+        """
         # Создание списка групп сообщений с учетом параметра группировки и фильтра по тексту
         message_group_list = []
         # Составление списка сообщений с учетом группировки по message.grouped_id
-        for message in messages:
+        for message in self.get_message_list(dialog_id):
             # Если message.grouped_id сообщения не установлен, то используем строку "Message_{message.id}"
             message_grouped_id = str(message.grouped_id) if message.grouped_id else f'Message_{message.id}'
             # Проверяем существование группы сообщений с текущим grouped_id
-            tg_message_group = self.get_tg_message_group_by_id(message_group_list, message_grouped_id)
+            tg_message_group = self.get_message_group_by_id(message_group_list, message_grouped_id)
             # Если группа сообщений с текущим grouped_id не существует, создаем ее и добавляем в список групп сообщений
             if tg_message_group is None:
                 tg_message_group = TgMessageGroup(message_grouped_id, dialog_id)
                 message_group_list.append(tg_message_group)
             # Добавляем текущее сообщение в группу сообщений
             tg_message_group.add_message(message)
+
+        # проверить фильтр по тексту сообщений
+        # доделать файлы
+        # доделать детали сообщений
+        # разобраться с сортировкой диалогов и групп сообщений
+
         # Применение фильтра по тексту группы сообщений, если он задан
-        if message_filters.get(FieldNames.MESSAGE_SETTINGS['message_query']):
+        if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
-                if not message_filters.get(FieldNames.MESSAGE_SETTINGS['message_query']).lower() in \
-                       message_group.text.lower():
+                if not self.message_sort_filter.message_query.lower() in message_group.text.lower():
                     message_group_list.remove(message_group)
-        print(f'{len(message_group_list)} messages loaded')
+        print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
     def get_message_detail(self, message_group_id: str) -> Dict[str, Any]:
@@ -395,22 +467,29 @@ class TelegramHandler:
         Получение сообщения по id диалога и id группы сообщений
         """
         # Получаем текущую группу сообщений по id
-        current_message_group = self.current_state.message_group_list.get(message_group_id)
-        cmg_field = FieldNames.MESSAGE_GROUP_INFO
+        current_message_group = self.get_message_group_by_id(message_group_id)
+        # cmg_field = FieldNames.MESSAGE_GROUP_INFO
         det_field = FieldNames.DETAILS_INFO
         fil_field = FieldNames.MESSAGE_FILE_INFO
-        message_date_str = current_message_group[cmg_field['date']].strftime(ProjectConst.message_datetime_format)
+        message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
-        details = {det_field['dialog_id']: current_message_group[cmg_field['dialog_id']],
-                   det_field['mess_group_id']: message_group_id,
-                   det_field['date']: message_date_str,
-                   det_field['text']: '\n\n'.join(current_message_group[cmg_field['text']]),
-                   det_field['files']: sorted(current_message_group[cmg_field['files']],
-                                              key=lambda x: x[fil_field['type']]),
-                   det_field['files_report']: current_message_group[cmg_field['files_report']],
-                   }
+        tg_details = TgDetails(dialog_id=current_message_group.dialog_id,
+                               message_group_id=message_group_id,
+                               date=current_message_group.date,
+                               text=current_message_group.text if current_message_group.text else '',
+                               files=[],  # sorted(current_message_group.files, key=lambda x: x[fil_field['type']]),
+                               files_report=current_message_group.files_report if current_message_group.files_report else '')
+        # details = {det_field['dialog_id']: current_message_group.dialog_id,
+        #            det_field['mess_group_id']: message_group_id,
+        #            det_field['date']: message_date_str,
+        #            det_field['text']: current_message_group.text if current_message_group.text else '',
+        #            det_field['files']: sorted(current_message_group.files,
+        #                                       key=lambda x: x[fil_field['type']]),
+        #            det_field[
+        #                'files_report']: current_message_group.files_report if current_message_group.files_report else '',
+        #            }
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-        details[det_field['text']] = convert_text_hyperlinks(details[det_field['text']])
+        tg_details.text = convert_text_hyperlinks(tg_details.text)
         # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет
         for message_file_info in details[det_field['files']]:
             self.download_message_file(message_file_info)
@@ -482,7 +561,7 @@ class TelegramHandler:
         else:
             file_ext = file_type.default_ext
         # Формирование пути к файлу
-        dialog_dir = f'{self.get_tg_dialog_by_id(dialog_id).title}_{dialog_id}'
+        dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
         file_name = f'{message.date.astimezone().strftime('%H-%M-%S')}_{message.id}_{file_type.sign}{file_ext}'
         message_file_info[field['full_path']] = Path(ProjectDirs.media_dir) / clean_file_path(
             dialog_dir) / message.date.astimezone().strftime('%Y-%m-%d') / file_name
