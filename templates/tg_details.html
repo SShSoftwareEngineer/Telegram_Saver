@@ -26,10 +26,10 @@
         {# Вывод графических, видео и других файлов #}
         <br>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            {% for mess_file in tg_details.files %}
+            {% for message_file in tg_details.files %}
                 <div style="width: 45%; height: 45vh;">
-                    <img src="{{ url_for('media_dir', filename=mess_file[file_info['web_path']]) }}"
-                         alt="{{ mess_file[file_info['type']] }}"
+                    <img src="{{ url_for('media_dir', filename=message_file.web_path) }}"
+                         alt="{{ message_file.file_type }}"
                          style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
             {% endfor %}

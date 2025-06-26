@@ -25,9 +25,6 @@ def inject_field_names():
     """
     return {
         'date_from_default': tg_handler.message_sort_filter.date_from_default,
-        'message_group_info': FieldNames.MESSAGE_GROUP_INFO,
-        'details_info': FieldNames.DETAILS_INFO,
-        'file_info': FieldNames.MESSAGE_FILE_INFO,
         'constants': ProjectConst
     }
 
@@ -158,46 +155,47 @@ def save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    cur_stat = tg_handler.current_state
-    cmg_field = FieldNames.MESSAGE_GROUP_INFO
+    # cur_stat = tg_handler.current_state
+    # cmg_field = FieldNames.MESSAGE_GROUP_INFO
     # dia_field = FieldNames.DIALOG_INFO
-    fil_field = FieldNames.MESSAGE_FILE_INFO
-    for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
-        # Сохраняем группу сообщений в базе данных
+    # fil_field = FieldNames.MESSAGE_FILE_INFO
+    # for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
+    #     pass
+            # Сохраняем группу сообщений в базе данных
 
         # Сохранять в отдельной функции в DatabaseHandler
 
         # Если сообщение отмечено для сохранения
-        if message_group[cmg_field['selected']]:
-
-            # Сохраняем или обновляем диалог
-            cur_dialog = cur_stat.dialog_list[message_group[cmg_field['dialog_id']]]
-            dialog = Dialog(
-                dialog_id=message_group[cmg_field['dialog_id']],
-                dialog_title=cur_dialog.title,
-                # dialog_type=db_handler.session.get(DialogType, cur_dialog.dialog_type),
-            )
-            # Сохраняем или обновляем группу сообщений
-            group = Group(
-                grouped_id=message_group_id,
-                date_time=message_group[cmg_field['date']],
-                text=message_group[cmg_field['text']],
-                dialog=dialog,
-            )
-            # Сохраняем или обновляем ID сообщений, входящих в группу
-            for message_id in message_group[cmg_field['ids']]:
-                message = Message(
-                    message_id=message_id,
-                    group=group,
-                )
-            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
-            for file in message_group[cmg_field['files']]:
-                file = File(
-                    file_path=fil_field[fil_field['file_path']],
-                    size=file[fil_field['size']],
-                    group=group,
-                    file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
-                )
+        # if message_group[cmg_field['selected']]:
+        #
+        #     # Сохраняем или обновляем диалог
+        #     cur_dialog = cur_stat.dialog_list[message_group[cmg_field['dialog_id']]]
+        #     dialog = Dialog(
+        #         dialog_id=message_group[cmg_field['dialog_id']],
+        #         dialog_title=cur_dialog.title,
+        #         # dialog_type=db_handler.session.get(DialogType, cur_dialog.dialog_type),
+        #     )
+        #     # Сохраняем или обновляем группу сообщений
+        #     group = Group(
+        #         grouped_id=message_group_id,
+        #         date_time=message_group[cmg_field['date']],
+        #         text=message_group[cmg_field['text']],
+        #         dialog=dialog,
+        #     )
+        #     # Сохраняем или обновляем ID сообщений, входящих в группу
+        #     for message_id in message_group[cmg_field['ids']]:
+        #         message = Message(
+        #             message_id=message_id,
+        #             group=group,
+        #         )
+        #     # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+        #     for file in message_group[cmg_field['files']]:
+        #         file = File(
+        #             file_path=fil_field[fil_field['file_path']],
+        #             size=file[fil_field['size']],
+        #             group=group,
+        #             file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
+        #         )
     return ''
 
 

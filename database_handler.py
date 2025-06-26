@@ -122,14 +122,11 @@ class FileType(Base):
     __tablename__ = TableNames.file_types
     file_type_id: Mapped[int] = mapped_column(primary_key=True)
     type_name: Mapped[str] = mapped_column(String, unique=True)
-    web_name: Mapped[str] = mapped_column(String)
+    alt_text: Mapped[str] = mapped_column(String)
     default_ext: Mapped[str] = mapped_column(String, nullable=True)
     sign: Mapped[str] = mapped_column(String, nullable=True)
     # Relationships to 'File' table
     files: Mapped['File'] = relationship(back_populates='file_type')
-
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
 
 
 class DatabaseHandler:
@@ -151,23 +148,24 @@ class DatabaseHandler:
         # Создаем таблицы в базе данных, если они отсутствуют
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
-        for member in configs.config.DialogTypes:
-            member_existing = self.session.query(DialogType).filter_by(dialog_type_id=member.value).first()
-            if member_existing:
-                member_existing.name = member.name
+        for dialog_type in configs.config.DialogTypes:
+            dialog_type_existing = self.session.query(DialogType).filter_by(dialog_type_id=dialog_type.value).first()
+            if dialog_type_existing:
+                dialog_type_existing.name = dialog_type.name
             else:
-                self.session.add(DialogType(dialog_type_id=member.value, name=member.name))
+                self.session.add(DialogType(dialog_type_id=dialog_type.value, name=dialog_type.name))
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
-        for member in configs.config.MessageFileTypes:
-            member_existing = self.session.query(FileType).filter_by(file_type_id=member.type_id).first()
-            if member_existing:
-                member_existing.type_name = member.name.title()
-                member_existing.web_name = member.web_name
-                member_existing.default_ext = member.default_ext
-                member_existing.sign = member.sign
+        for file_type in configs.config.MessageFileTypes:
+            file_type_existing = self.session.query(FileType).filter_by(file_type_id=file_type.type_id).first()
+            if file_type_existing:
+                file_type_existing.type_name = file_type.name.title()
+                file_type_existing.alt_text = file_type.alt_text
+                file_type_existing.default_ext = file_type.default_ext
+                file_type_existing.sign = file_type.sign
             else:
-                self.session.add(FileType(file_type_id=member.type_id, type_name=member.name, web_name=member.web_name,
-                                          default_ext=member.default_ext, sign=member.sign))
+                self.session.add(
+                    FileType(file_type_id=file_type.type_id, type_name=file_type.name, alt_text=file_type.alt_text,
+                             default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
 
     def save_message_group(self, message_group):
