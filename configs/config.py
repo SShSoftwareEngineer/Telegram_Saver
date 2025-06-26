@@ -70,9 +70,9 @@ class MessageFileTypes(Enum):
     AUDIO = (5, 'Audio', '.mp4', 'aud')
     UNKNOWN = (6, 'Unknown', '.unk', 'unk')
 
-    def __init__(self, type_id: int, web_name: str, default_ext: str, sign: str):
+    def __init__(self, type_id: int, alt_text: str, default_ext: str, sign: str):
         self.type_id = type_id
-        self.web_name = web_name
+        self.alt_text = alt_text
         self.default_ext = default_ext
         self.sign = sign
 
@@ -104,16 +104,16 @@ class FieldNames:
     #     'type_name': 'type_name',
     #     'title_query': 'title_query',
     # }
-    MESSAGE_GROUP_INFO = {
-        'dialog_id': 'dialog_id',
-        'sender_id': 'sender_id',
-        'date': 'date_time',
-        'text': 'text',
-        'ids': 'ids',
-        'files': 'files',
-        'files_report': 'files_report',
-        'selected': 'selected',
-    }
+    # MESSAGE_GROUP_INFO = {
+    #     'dialog_id': 'dialog_id',
+    #     'sender_id': 'sender_id',
+    #     'date': 'date_time',
+    #     'text': 'text',
+    #     'ids': 'ids',
+    #     'files': 'files',
+    #     'files_report': 'files_report',
+    #     'selected': 'selected',
+    # }
     # MESSAGE_SETTINGS = {
     #     'sort_order': 'sorting_order',
     #     'date_from': 'date_from',
@@ -121,23 +121,23 @@ class FieldNames:
     #     'message_query': 'message_query',
     #     'date_from_default': (datetime.now() - timedelta(days=ProjectConst.last_days_by_default)).strftime('%d-%m-%Y'),
     # }
-    DETAILS_INFO = {
-        'dialog_id': 'dialog_id',
-        'mess_group_id': 'message_group_id',
-        'date': 'date',
-        'text': 'text',
-        'files': 'files',
-        'files_report': 'files_report',
-    }
-    MESSAGE_FILE_INFO = {
-        'dialog_id': 'dialog_id',
-        'message': 'message',
-        'full_path': 'full_path',
-        'web_path': 'web_path',
-        'size': 'file_size',
-        'web_name': 'web_name',
-        'type': 'file_type',
-    }
+    # DETAILS_INFO = {
+    #     'dialog_id': 'dialog_id',
+    #     'mess_group_id': 'message_group_id',
+    #     'date': 'date',
+    #     'text': 'text',
+    #     'files': 'files',
+    #     'files_report': 'files_report',
+    # }
+    # MESSAGE_FILE_INFO = {
+    #     'dialog_id': 'dialog_id',
+    #     'message': 'message',
+    #     'full_path': 'full_path',
+    #     'web_path': 'web_path',
+    #     'size': 'file_size',
+    #     'alt_text': 'alt_text',
+    #     'type': 'file_type',
+    # }
 
 
 class TableNames:

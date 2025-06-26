@@ -5,7 +5,7 @@ import sys
 
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
-    PhotoSizeProgressive  # , Message
+    PhotoSizeProgressive
 
 from pathlib import Path
 from dataclasses import dataclass
@@ -27,7 +27,6 @@ class TgDialog:
     """
     dialog_id: int
     title: str
-    name: str
     unread_count: int = 0
     last_message_date: Optional[datetime] = None
     type: DialogTypes = DialogTypes.Unknown
@@ -40,12 +39,6 @@ class TgDialog:
             self.title = dialog.name
         else:
             self.title = 'No title'
-        if dialog.name:
-            self.name = dialog.name
-        elif dialog.entity.username:
-            self.name = dialog.entity.username
-        else:
-            self.name = 'No name'
         self.unread_count = dialog.unread_count if dialog.unread_count else 0
         self.last_message_date = dialog.date.astimezone() if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
@@ -140,6 +133,30 @@ class TgDialogSortFilter:
 
 
 @dataclass
+class TgFile:
+    """
+    A class to represent a Telegram message file.
+    """
+    dialog_id: int
+    message: Message
+    full_path: str
+    web_path: str
+    alt_text: str
+    size: int
+    file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
+
+    def __init__(self, dialog_id: int, message: Message, full_path: str, web_path: str, alt_text: str,
+                 size: int, file_type: MessageFileTypes):
+        self.dialog_id = dialog_id
+        self.message = message
+        self.full_path = full_path
+        self.web_path = web_path
+        self.size = size
+        self.alt_text = alt_text
+        self.file_type = file_type
+
+
+@dataclass
 class TgMessageGroup:
     """
     A class to represent a Telegram message group in this program.
@@ -147,20 +164,21 @@ class TgMessageGroup:
     grouped_id: str
     dialog_id: int
     ids: List[int]
-    date: datetime = None
+    files: List[TgFile]
+    date: Optional[datetime] = None
     from_id: Optional[int] = None
     reply_to: Optional[int] = None
-    text: Optional[str] = ''
-    files: Optional[Dict[str, Any]] = None
-    files_report: Optional[str] = None
+    text: str = ''
+    files_report: Optional[str] = ''
     selected: bool = False
 
-    def __init__(self, grouped_id: str = None, dialog_id: int = None):
+    def __init__(self, grouped_id: str, dialog_id: int):
         self.grouped_id = grouped_id
         self.dialog_id = dialog_id
         self.ids = []
+        self.files = []
 
-    def add_message(self, message: Message):
+    def add_message(self, message: Message, message_file: Optional[TgFile] = None):
         """
         Добавляет сообщение в группу сообщений
         """
@@ -170,24 +188,20 @@ class TgMessageGroup:
         self.ids.append(message.id)
         if message.text:
             self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text])
+        # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         self.text = convert_text_hyperlinks(self.text) if self.text is not None else None
-        # self.files = files if files else {}
-        # self.files_report = files_report
-        #                      field['files']: [
-        #                          self.get_message_file_info(dialog_id, message)] if message.file else [],
-        #                      field['files_report']: None,
+        if message_file:
+            self.files.append(message_file)
+            # (Пере)формирование строки отчета по имеющимся в группе сообщений файлам и их типам
+            alt_texts = set(file.alt_text for file in self.files)
+            # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
+            if MessageFileTypes.THUMBNAIL.alt_text in alt_texts:
+                alt_texts.remove(MessageFileTypes.THUMBNAIL.alt_text)
+                alt_texts.add(MessageFileTypes.VIDEO.alt_text)
+            self.files_report = ' '.join(sorted(self.files_report))
 
-
-# if message.file:
-#     current_message_group[field['files']].append(self.get_message_file_info(dialog_id, message))
-
-# # Формирование строки отчета по имеющимся файлам и их типам в группе сообщений
-# files_report = set(
-#     [file.get(FieldNames.MESSAGE_FILE_INFO['type']) for file in current_message_group[field['files']]])
-# current_message_group[field['files_report']] = ' '.join(sorted(files_report))
-# # Если есть видео, то заменяем в отчете тип файла thumbnail на video
-# current_message_group[field['files_report']].replace(MessageFileTypes.THUMBNAIL.web_name,
-#                                                      MessageFileTypes.VIDEO.web_name)
+формирование строки отчета по имеющимся в группе сообщений файлам и их типам
+использовать темпфайлы для просмотра деталей
 
 
 @dataclass
@@ -297,11 +311,11 @@ class TgDetails:
     message_group_id: str
     date: datetime
     text: str
-    files: List[Dict[str, Any]]
-    files_report: Optional[str] = None
+    files: List[TgFile]
+    files_report: Optional[str] = ''
 
     def __init__(self, dialog_id: int, message_group_id: str, date: datetime, text: str,
-                 files: List[Dict[str, Any]], files_report: Optional[str] = None):
+                 files: List[TgFile], files_report: Optional[str] = None):
         self.dialog_id = dialog_id
         self.message_group_id = message_group_id
         self.date = date
@@ -309,28 +323,6 @@ class TgDetails:
         self.files = files
         self.files_report = files_report if files_report else ''
 
-@dataclass
-class TgMessageFile:
-    """
-    A class to represent a Telegram message file.
-    """
-    dialog_id: int
-    message: Message
-    full_path: str
-    web_path: str
-    size: int
-    web_name: str
-    type: str
-
-    def __init__(self, dialog_id: int, message: Message, full_path: str, web_path: str,
-                 size: int, web_name: str, type: str):
-        self.dialog_id = dialog_id
-        self.message = message
-        self.full_path = full_path
-        self.web_path = web_path
-        self.size = size
-        self.web_name = web_name
-        self.type = type
 
 @dataclass
 class TgCurrentState:
@@ -367,7 +359,7 @@ class TelegramHandler:
 
     def get_entity(self, entity_id: int) -> Any:
         """
-        Получение сущности по id
+        Получение Telegram сущности по id
         """
         entity = loop.run_until_complete(self.client.get_entity(entity_id))
         return entity
@@ -432,7 +424,7 @@ class TelegramHandler:
 
     def get_message_group_list(self, dialog_id: int) -> List[TgMessageGroup]:
         """
-        Получение списка групп сообщений из заданного чата с учетом фильтров, сортировки и группировки
+        Формирование списка групп сообщений из сообщений заданного чата с учетом фильтров, сортировки и группировки
         """
         # Создание списка групп сообщений с учетом параметра группировки и фильтра по тексту
         message_group_list = []
@@ -446,14 +438,9 @@ class TelegramHandler:
             if tg_message_group is None:
                 tg_message_group = TgMessageGroup(message_grouped_id, dialog_id)
                 message_group_list.append(tg_message_group)
-            # Добавляем текущее сообщение в группу сообщений
-            tg_message_group.add_message(message)
-
-        # проверить фильтр по тексту сообщений
-        # доделать файлы
-        # доделать детали сообщений
-        # разобраться с сортировкой диалогов и групп сообщений
-
+            # Добавляем текущее сообщение в соответствующую группу сообщений
+            message_file = self.get_message_file_info(dialog_id, message)
+            tg_message_group.add_message(message, message_file)
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
@@ -462,41 +449,34 @@ class TelegramHandler:
         print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
-    def get_message_detail(self, message_group_id: str) -> Dict[str, Any]:
+    def get_message_detail(self, message_group_id: str) -> TgDetails:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
         # Получаем текущую группу сообщений по id
-        current_message_group = self.get_message_group_by_id(message_group_id)
-        # cmg_field = FieldNames.MESSAGE_GROUP_INFO
-        det_field = FieldNames.DETAILS_INFO
-        fil_field = FieldNames.MESSAGE_FILE_INFO
+        current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
         message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
         tg_details = TgDetails(dialog_id=current_message_group.dialog_id,
                                message_group_id=message_group_id,
                                date=current_message_group.date,
                                text=current_message_group.text if current_message_group.text else '',
-                               files=[],  # sorted(current_message_group.files, key=lambda x: x[fil_field['type']]),
+                               files=current_message_group.files,
+                               # sorted(current_message_group.files, key=lambda x: x[fil_field['type']]),
                                files_report=current_message_group.files_report if current_message_group.files_report else '')
-        # details = {det_field['dialog_id']: current_message_group.dialog_id,
-        #            det_field['mess_group_id']: message_group_id,
-        #            det_field['date']: message_date_str,
-        #            det_field['text']: current_message_group.text if current_message_group.text else '',
-        #            det_field['files']: sorted(current_message_group.files,
-        #                                       key=lambda x: x[fil_field['type']]),
-        #            det_field[
-        #                'files_report']: current_message_group.files_report if current_message_group.files_report else '',
-        #            }
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         tg_details.text = convert_text_hyperlinks(tg_details.text)
         # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет
-        for message_file_info in details[det_field['files']]:
-            self.download_message_file(message_file_info)
-        print('Message details loaded')
-        return details
+        for file in tg_details.files:
+            if not Path(file.full_path).exists():
+                print(f'Downloading file {file.full_path}...')
+                self.download_message_file(file)
 
-    def get_message_file_info(self, dialog_id: int, message, thumbnail: bool = True) -> Optional[Dict]:
+
+        print('Message details loaded')
+        return tg_details
+
+    def get_message_file_info(self, dialog_id: int, message, thumbnail: bool = True) -> Optional[TgFile]:
         """
         Получение информации о файле сообщения
         Определение типа файла, его расширения и размера, формирование пути к файлу
@@ -518,16 +498,8 @@ class TelegramHandler:
 
         if not message.file:
             return None
-        field = FieldNames.MESSAGE_FILE_INFO
-        message_file_info = {
-            field['dialog_id']: dialog_id,
-            field['message']: message,
-            field['full_path']: None,
-            field['size']: None,
-            field['type']: None,
-        }
+        # Определяем тип файла
         mess_doc = None
-        # Определение типа файла
         file_type = MessageFileTypes.UNKNOWN
         if isinstance(message.media, MessageMediaPhoto):
             file_type = MessageFileTypes.PHOTO
@@ -541,17 +513,7 @@ class TelegramHandler:
                 file_type = MessageFileTypes.VIDEO
             elif all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
                 file_type = MessageFileTypes.THUMBNAIL
-        message_file_info[field['type']] = file_type.web_name
-        # Определение размера файла
-        if isinstance(message.media, MessageMediaPhoto):
-            message_file_info[field['size']] = get_image_size(message.media.photo.sizes)
-        elif isinstance(message.media, MessageMediaDocument):
-            mess_doc = message.media.document
-            if all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
-                message_file_info[field['size']] = get_image_size(mess_doc.thumbs)
-            else:
-                message_file_info[field['size']] = mess_doc.size
-        # Определение расширения файла
+        # Определяем расширение файла
         if file_type == MessageFileTypes.UNKNOWN:
             file_ext = getattr(message.file, 'ext', None)
             if file_ext is None:
@@ -560,38 +522,50 @@ class TelegramHandler:
                 file_ext = ''
         else:
             file_ext = file_type.default_ext
+        # Получаем размер файла
+        file_size = 0
+        if isinstance(message.media, MessageMediaPhoto):
+            file_size = get_image_size(message.media.photo.sizes)
+        elif isinstance(message.media, MessageMediaDocument):
+            mess_doc = message.media.document
+            if all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
+                file_size = get_image_size(mess_doc.thumbs)
+            else:
+                file_size = mess_doc.size
         # Формирование пути к файлу
         dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
         file_name = f'{message.date.astimezone().strftime('%H-%M-%S')}_{message.id}_{file_type.sign}{file_ext}'
-        message_file_info[field['full_path']] = Path(ProjectDirs.media_dir) / clean_file_path(
-            dialog_dir) / message.date.astimezone().strftime('%Y-%m-%d') / file_name
-        message_file_info[field['web_path']] = message_file_info[field['full_path']].as_posix()
-        return message_file_info
+        full_path = Path(ProjectDirs.media_dir) / clean_file_path(dialog_dir) / message.date.astimezone().strftime(
+            '%Y-%m-%d') / file_name
+        # Создаем объект TgFile с информацией о файле сообщения
+        tg_file = TgFile(dialog_id=dialog_id,
+                         message=message,
+                         full_path=full_path,
+                         web_path=full_path.as_posix(),
+                         alt_text=file_type.alt_text,
+                         size=file_size,
+                         file_type=file_type)
+        return tg_file
 
-
-def download_message_file(self, message_file_info: dict) -> Optional[str]:
-    """
-    Загрузка файла сообщения
-    """
-    downloading_param = dict()
-    field = FieldNames.MESSAGE_FILE_INFO
-    # Проверка существования файла и его размера
-    if all([not Path(message_file_info[field['full_path']]).exists,
-            # if all([not os.path.exists(message_file_info[field['full_path']]),
-            0 < message_file_info[field['size']] <= ProjectConst.max_download_file_size]):
-        # Если файл не существует, то создаем соответствующие директории и загружаем файл
-        Path(message_file_info[field['full_path']]).parent.mkdir(parents=True, exist_ok=True)
-        # os.makedirs(os.path.dirname(message_file_info[field['full_path']]),
-        #             exist_ok=True)
-        downloading_param['message'] = message_file_info[field['message']]
-        downloading_param['file'] = message_file_info[field['full_path']]
-        if message_file_info[field['type']] == MessageFileTypes.THUMBNAIL.web_name:
-            downloading_param['thumb'] = -1
-        result = loop.run_until_complete(self.client.download_media(**downloading_param))
-    else:
-        # Если файл уже существует, то возвращаем его имя
-        result = message_file_info[field['full_path']]
-    return result
+    def download_message_file(self, tg_file: TgFile) -> Optional[str]:
+        """
+        Загрузка файла сообщения
+        """
+        downloading_param = dict()
+        # Проверка существования файла и его размера
+        if all([not Path(tg_file.full_path).exists(),
+                0 < tg_file.size <= ProjectConst.max_download_file_size]):
+            # Если файл не существует, то создаем соответствующие директории и загружаем файл
+            Path(tg_file.full_path).parent.mkdir(parents=True, exist_ok=True)
+            downloading_param['message'] = tg_file.message
+            downloading_param['file'] = tg_file.full_path
+            if tg_file.file_type == MessageFileTypes.THUMBNAIL:
+                downloading_param['thumb'] = -1
+            result = loop.run_until_complete(self.client.download_media(**downloading_param))
+        else:
+            # Если файл уже существует, то возвращаем его имя
+            result = tg_file.full_path
+        return result
 
 
 def clean_file_path(file_path: str | None) -> str | None:
