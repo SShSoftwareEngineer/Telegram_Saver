@@ -1,23 +1,21 @@
-import asyncio
 import re
-import mimetypes
-import sys
-
+from asyncio import new_event_loop, set_event_loop
+from mimetypes import guess_extension
+from sys import maxsize
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive
-
 from pathlib import Path
+from textwrap import shorten
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-
-from configs.config import ProjectDirs, ProjectConst, FieldNames, MessageFileTypes, DialogTypes
+from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes
 
 # Создаем и сохраняем цикл событий
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
+loop = new_event_loop()
+set_event_loop(loop)
 
 
 @dataclass
@@ -138,17 +136,21 @@ class TgFile:
     A class to represent a Telegram message file.
     """
     dialog_id: int
+    message_grouped_id: str
     message: Message
+    message_id: int
     full_path: str
     web_path: str
     alt_text: str
     size: int
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
-    def __init__(self, dialog_id: int, message: Message, full_path: str, web_path: str, alt_text: str,
-                 size: int, file_type: MessageFileTypes):
+    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, full_path: str, web_path: str,
+                 alt_text: str, size: int, file_type: MessageFileTypes):
         self.dialog_id = dialog_id
+        self.message_grouped_id = message_grouped_id
         self.message = message
+        self.message_id = message.id
         self.full_path = full_path
         self.web_path = web_path
         self.size = size
@@ -169,6 +171,7 @@ class TgMessageGroup:
     from_id: Optional[int] = None
     reply_to: Optional[int] = None
     text: str = ''
+    truncated_text: str = ''
     files_report: Optional[str] = ''
     selected: bool = False
 
@@ -178,7 +181,7 @@ class TgMessageGroup:
         self.ids = []
         self.files = []
 
-    def add_message(self, message: Message, message_file: Optional[TgFile] = None):
+    def add_message(self, message: Message, message_file: Optional[TgFile] = None) -> None:
         """
         Добавляет сообщение в группу сообщений
         """
@@ -187,21 +190,63 @@ class TgMessageGroup:
         self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
         self.ids.append(message.id)
         if message.text:
-            self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text])
-        # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-        self.text = convert_text_hyperlinks(self.text) if self.text is not None else None
+            self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
         if message_file:
             self.files.append(message_file)
-            # (Пере)формирование строки отчета по имеющимся в группе сообщений файлам и их типам
-            alt_texts = set(file.alt_text for file in self.files)
-            # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
-            if MessageFileTypes.THUMBNAIL.alt_text in alt_texts:
-                alt_texts.remove(MessageFileTypes.THUMBNAIL.alt_text)
-                alt_texts.add(MessageFileTypes.VIDEO.alt_text)
-            self.files_report = ' '.join(sorted(self.files_report))
 
-формирование строки отчета по имеющимся в группе сообщений файлам и их типам
-использовать темпфайлы для просмотра деталей
+    def set_files_report(self) -> None:
+        """
+        (Пере)формирование строки отчета по имеющимся в группе сообщений файлам и их типам
+        """
+        alt_texts = set()
+        for file in self.files:
+            if file.file_type == MessageFileTypes.THUMBNAIL:
+                # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
+                alt_texts.add(MessageFileTypes.VIDEO.alt_text)
+            else:
+                alt_texts.add(file.alt_text)
+        self.files_report = ' '.join(sorted(alt_texts))
+
+    def text_hyperlink_conversion(self) -> None:
+        """
+        Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+        """
+        if self.text:
+            self.text = convert_text_hyperlinks(self.text)
+
+    def set_truncated_text(self) -> None:
+        """
+        Ограничение длины текста сообщения для отображения в веб-интерфейсе
+        """
+        if self.text:
+            # Если текст сообщения не содержит гиперссылок обрезаем до заданной длины
+            if any([self.text.find('<a href') == -1,
+                    self.text.find('<a href') > ProjectConst.truncated_text_length]):
+                self.truncated_text = shorten(self.text, width=ProjectConst.truncated_text_length, placeholder='...')
+            else:
+                self.truncated_text = shorten(self.text, width=ProjectConst.truncated_text_length + 50,
+                                              placeholder='...')
+            #     hyperlinks = re.findall(r'.*?(<a href.*?>)(.*?)(<\/a>).*?', self.text)
+            #     if hyperlinks:
+            #         for hyperlink in hyperlinks:
+            #             hyperlink_text = ''.join(hyperlink)
+            #             truncated_text_length = self.text.find(hyperlink_text)
+            #             if truncated_text_length  >= ProjectConst.truncated_text_length:
+            #                 pass
+            #             if truncated_text_length+len(hyperlink[1]) >= ProjectConst.truncated_text_length:
+            #                 self.truncated_text = shorten(self.text, placeholder='...',
+            #                                               width=truncated_text_length + len(hyperlink_text))
+            #                 break
+            # if not self.truncated_text:
+            #     self.truncated_text = self.text
+
+        # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >«Перезавантаження: розширення можливостей для працевлаштування» </a>
+        # shorten             из             модуля             textwrap
+
+
+# TODO: продумать, возможно сохранять текст сообщения в HTML файл с локальными ссылками на файлы
+# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
+# TODO: проверить превращение статусной строки в ссылку в Message_Group
 
 
 @dataclass
@@ -414,7 +459,7 @@ class TelegramHandler:
             message_to = loop.run_until_complete(
                 self.client.get_messages(entity=dialog, offset_date=self.message_sort_filter.date_to, limit=1,
                                          reverse=True))
-            message_filters['max_id'] = message_to[0].id if message_to else sys.maxsize
+            message_filters['max_id'] = message_to[0].id if message_to else maxsize
         # Установка параметра порядка сортировки по дате
         message_filters['reverse'] = self.message_sort_filter.sort_order
         # Получение сообщений в соответствии с фильтрами
@@ -438,14 +483,19 @@ class TelegramHandler:
             if tg_message_group is None:
                 tg_message_group = TgMessageGroup(message_grouped_id, dialog_id)
                 message_group_list.append(tg_message_group)
-            # Добавляем текущее сообщение в соответствующую группу сообщений
-            message_file = self.get_message_file_info(dialog_id, message)
+            # Получаем информацию о файле сообщения, если он есть
+            message_file = self.get_message_file_info(dialog_id, message_grouped_id, message)
+            # Добавляем текущее сообщение и его файл, если он есть, в соответствующую группу сообщений
             tg_message_group.add_message(message, message_file)
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
                 if not self.message_sort_filter.message_query.lower() in message_group.text.lower():
                     message_group_list.remove(message_group)
+        for tg_message_group in message_group_list:
+            tg_message_group.text_hyperlink_conversion()
+            tg_message_group.set_files_report()
+            tg_message_group.set_truncated_text()
         print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
@@ -466,17 +516,16 @@ class TelegramHandler:
                                files_report=current_message_group.files_report if current_message_group.files_report else '')
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         tg_details.text = convert_text_hyperlinks(tg_details.text)
-        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет
-        for file in tg_details.files:
-            if not Path(file.full_path).exists():
-                print(f'Downloading file {file.full_path}...')
-                self.download_message_file(file)
-
-
+        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
+        for tg_file in tg_details.files:
+            if not Path(tg_file.full_path).exists():
+                print(f'Downloading file {tg_file.full_path}...')
+                self.download_message_file(tg_file)
         print('Message details loaded')
         return tg_details
 
-    def get_message_file_info(self, dialog_id: int, message, thumbnail: bool = True) -> Optional[TgFile]:
+    def get_message_file_info(self, dialog_id: int, message_grouped_id: str, message,
+                              thumbnail: bool = True) -> Optional[TgFile]:
         """
         Получение информации о файле сообщения
         Определение типа файла, его расширения и размера, формирование пути к файлу
@@ -517,9 +566,9 @@ class TelegramHandler:
         if file_type == MessageFileTypes.UNKNOWN:
             file_ext = getattr(message.file, 'ext', None)
             if file_ext is None:
-                file_ext = mimetypes.guess_extension(mess_doc.mime_type)
+                file_ext = guess_extension(mess_doc.mime_type)
             if file_ext is None:
-                file_ext = ''
+                file_ext = MessageFileTypes.UNKNOWN.default_ext
         else:
             file_ext = file_type.default_ext
         # Получаем размер файла
@@ -532,13 +581,15 @@ class TelegramHandler:
                 file_size = get_image_size(mess_doc.thumbs)
             else:
                 file_size = mess_doc.size
-        # Формирование пути к файлу
+        # Формирование локального пути к файлу
         dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
-        file_name = f'{message.date.astimezone().strftime('%H-%M-%S')}_{message.id}_{file_type.sign}{file_ext}'
+        message_time = message.date.astimezone().strftime('%H-%M-%S')
+        file_name = f'{message_time}_{file_type.sign}_{message_grouped_id}_{message.id}{file_ext}'
         full_path = Path(ProjectDirs.media_dir) / clean_file_path(dialog_dir) / message.date.astimezone().strftime(
             '%Y-%m-%d') / file_name
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
+                         message_grouped_id=message_grouped_id,
                          message=message,
                          full_path=full_path,
                          web_path=full_path.as_posix(),
@@ -552,16 +603,18 @@ class TelegramHandler:
         Загрузка файла сообщения
         """
         downloading_param = dict()
-        # Проверка существования файла и его размера
-        if all([not Path(tg_file.full_path).exists(),
-                0 < tg_file.size <= ProjectConst.max_download_file_size]):
-            # Если файл не существует, то создаем соответствующие директории и загружаем файл
-            Path(tg_file.full_path).parent.mkdir(parents=True, exist_ok=True)
-            downloading_param['message'] = tg_file.message
-            downloading_param['file'] = tg_file.full_path
-            if tg_file.file_type == MessageFileTypes.THUMBNAIL:
-                downloading_param['thumb'] = -1
-            result = loop.run_until_complete(self.client.download_media(**downloading_param))
+        result = None
+        # Проверка существования файла
+        if not Path(tg_file.full_path).exists():
+            # Проверка размера файла
+            if 0 < tg_file.size <= ProjectConst.max_download_file_size:
+                # Если нужно, создаем соответствующие директории и загружаем файл
+                Path(tg_file.full_path).parent.mkdir(parents=True, exist_ok=True)
+                downloading_param['message'] = tg_file.message
+                downloading_param['file'] = tg_file.full_path
+                if tg_file.file_type == MessageFileTypes.THUMBNAIL:
+                    downloading_param['thumb'] = -1
+                result = loop.run_until_complete(self.client.download_media(**downloading_param))
         else:
             # Если файл уже существует, то возвращаем его имя
             result = tg_file.full_path
@@ -576,8 +629,8 @@ def clean_file_path(file_path: str | None) -> str | None:
     if file_path:
         # Удаляем или заменяем недопустимые символы
         clean_filepath = re.sub(r'[<>:"/\\|?*]', '_', file_path)
-        # Заменяем множественные пробелы
-        clean_filepath = re.sub(r'\s+', '_', clean_filepath)
+        # Заменяем множественные пробелы на одинарные
+        clean_filepath = re.sub(r'\s+', ' ', clean_filepath)
         # Убираем лишние точки и пробелы в начале и конце
         clean_filepath = clean_filepath.strip('. ')
     return clean_filepath
