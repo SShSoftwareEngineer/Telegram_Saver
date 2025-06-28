@@ -1,6 +1,6 @@
 <span>
     {% if tg_details %}
-        {% set message_date = tg_details.date %}
+        {% set message_date = tg_details.date.strftime(constants.message_datetime_format) %}
         {% set group = tg_details.message_group_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"

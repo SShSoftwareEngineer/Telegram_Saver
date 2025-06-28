@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, send_from_directory
 
-from configs.config import FieldNames, ProjectConst
+from configs.config import ProjectConst
 from telegram_handler import TelegramHandler
 from database_handler import DatabaseHandler, Message, Dialog, Group, File, DialogType, FileType
 
@@ -202,7 +202,7 @@ def save_selected_message_to_db():
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
+
 
 # Оставлять архивные подписки в базе
 # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
