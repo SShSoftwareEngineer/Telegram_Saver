@@ -27,7 +27,6 @@
                 <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
             </span>
             {# Вывод обрезанного текста и строки информации о файлах в группе сообщений #}
-{#            {{ tg_message.text|truncate(length=150)|replace('\n', '<br>')|safe }}<br>#}
             {{ tg_message.truncated_text|replace('\n', '<br>')|safe }}<br>
             {% if tg_message.files_report %}
                 <b>{{ tg_message.files_report }}</b>

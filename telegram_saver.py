@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, send_from_directory
 
-from configs.config import ProjectConst
+from configs.config import ProjectConst, MessageFileTypes
 from telegram_handler import TelegramHandler
-from database_handler import DatabaseHandler, Message, Dialog, Group, File, DialogType, FileType
+from database_handler import DatabaseHandler, Message, Dialog, MessageGroup, File, DialogType, FileType
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
@@ -25,7 +25,8 @@ def inject_field_names():
     """
     return {
         'date_from_default': tg_handler.message_sort_filter.date_from_default,
-        'constants': ProjectConst
+        'constants': ProjectConst,
+        'file_types': MessageFileTypes,
     }
 
 

@@ -11,29 +11,29 @@ class Base(DeclarativeBase):
     """ A declarative class for creating tables in the database """
 
 
-# Relationships Many-to-Many to 'Group', 'Tag' tables
-group_tag_links = Table(
-    TableNames.group_tag_links, Base.metadata,
-    Column('group_id', ForeignKey(f'{TableNames.groups}.grouped_id'), primary_key=True),
+# Relationships Many-to-Many to 'MessageGroup', 'Tag' tables
+message_group_tag_links = Table(
+    TableNames.message_group_tag_links, Base.metadata,
+    Column('message_group_id', ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
     Column('tag_id', ForeignKey(f'{TableNames.tags}.id'), primary_key=True)
 )
 
 
-class Group(Base):
-    __tablename__ = TableNames.groups
+class MessageGroup(Base):
+    __tablename__ = TableNames.message_groups
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     grouped_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     date_time: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
     # Relationships to 'Dialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
-    dialog: Mapped['Dialog'] = relationship(back_populates='groups')
+    dialog: Mapped['Dialog'] = relationship(back_populates='message_groups')
     # Relationships to 'Message' table
-    messages: Mapped['Message'] = relationship(back_populates='group')
+    messages: Mapped['Message'] = relationship(back_populates='message_group')
     # Relationships to 'File' table
-    files: Mapped['File'] = relationship(back_populates='group')
+    files: Mapped['File'] = relationship(back_populates='message_group')
     # Relationships to 'Tag' table
-    tags: Mapped[List['Tag']] = relationship(secondary=group_tag_links, back_populates='groups')
+    tags: Mapped[List['Tag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
     def __init__(self, **kw: Any):
         super().__init__(**kw)
@@ -44,25 +44,25 @@ class Tag(Base):
     __tablename__ = TableNames.tags
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     tag_name: Mapped[str] = mapped_column(Text)
-    # Relationships to 'Group' table
-    groups: Mapped[List['Group']] = relationship(secondary=group_tag_links, back_populates='tags')
+    # Relationships to 'MessageGroup' table
+    message_groups: Mapped[List['MessageGroup']] = relationship(secondary=message_group_tag_links, back_populates='tags')
 
     def __init__(self, **kw: Any):
         super().__init__(**kw)
-        # self.groups = []
+        # self.message_groups = []
 
 
 class Message(Base):
     __tablename__ = TableNames.messages
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
-    # Relationships to 'Group' table
-    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.groups}.grouped_id'))
-    group: Mapped['Group'] = relationship(back_populates='messages')
+    # Relationships to 'MessageGroup' table
+    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
+    message_group: Mapped['MessageGroup'] = relationship(back_populates='messages')
 
     def __init__(self, **kw: Any):
         super().__init__(**kw)
-        # self.group = None
+        # self.message_group = None
 
 
 class Dialog(Base):
@@ -70,8 +70,10 @@ class Dialog(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     dialog_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
     dialog_title: Mapped[str] = mapped_column(Text)
-    # Relationships to 'Group' table
-    groups: Mapped['Group'] = relationship(back_populates='dialog')
+    unread_count: Mapped[int] = mapped_column(Integer)
+    last_message_date: Mapped[datetime]
+    # Relationships to 'MessageGroup' table
+    message_groups: Mapped['MessageGroup'] = relationship(back_populates='dialog')
     # Relationships to 'DialogType' table
     dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.dialog_type_id'))
     dialog_type: Mapped['DialogType'] = relationship(back_populates='dialogs')
@@ -99,9 +101,9 @@ class File(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     file_path: Mapped[str] = mapped_column(String, unique=True, index=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
-    # Relationships to 'Group' table
-    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.groups}.grouped_id'))
-    group: Mapped['Group'] = relationship(back_populates='files')
+    # Relationships to 'MessageGroup' table
+    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
+    message_group: Mapped['MessageGroup'] = relationship(back_populates='files')
     # Relationships to 'FileType' table
     file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.file_type_id'))
     file_type: Mapped['FileType'] = relationship(back_populates='files')

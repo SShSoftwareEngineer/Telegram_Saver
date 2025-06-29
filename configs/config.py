@@ -69,8 +69,9 @@ class MessageFileTypes(Enum):
     VIDEO = (3, 'Video', '.mp4', 'vid')
     THUMBNAIL = (4, 'Image', '.jpg', 'vth')
     AUDIO = (5, 'Audio', '.mp4', 'aud')
-    CONTENT = (6, 'Content', '.html', 'cnt')
-    UNKNOWN = (7, 'Unknown', '.unk', 'unk')
+    WEBPAGE = (6, 'Image', '.jpg', 'wpg')
+    CONTENT = (7, 'Content', '.html', 'cnt')
+    UNKNOWN = (8, 'Unknown', '.unk', 'unk')
 
     def __init__(self, type_id: int, alt_text: str, default_ext: str, sign: str):
         self.type_id = type_id
@@ -92,11 +93,11 @@ class TableNames:
     messages = 'messages'
     dialogs = 'dialogs'
     dialog_types = 'dialog_types'
-    groups = 'groups'
+    message_groups = 'message_groups'
     files = 'files'
     file_types = 'file_types'
     tags = 'tags'
-    group_tag_links = 'group_tag_links'
+    message_group_tag_links = 'message_group_tag_links'
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@ from mimetypes import guess_extension
 from sys import maxsize
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
-    PhotoSizeProgressive
+    PhotoSizeProgressive, MessageMediaWebPage
 from pathlib import Path
 from textwrap import shorten
 from dataclasses import dataclass
@@ -141,12 +141,13 @@ class TgFile:
     message_id: int
     full_path: str
     web_path: str
+    description: str
     alt_text: str
     size: int
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
     def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, full_path: str, web_path: str,
-                 alt_text: str, size: int, file_type: MessageFileTypes):
+                 description: str, alt_text: str, size: int, file_type: MessageFileTypes):
         self.dialog_id = dialog_id
         self.message_grouped_id = message_grouped_id
         self.message = message
@@ -154,6 +155,7 @@ class TgFile:
         self.full_path = full_path
         self.web_path = web_path
         self.size = size
+        self.description = description
         self.alt_text = alt_text
         self.file_type = file_type
 
@@ -193,10 +195,13 @@ class TgMessageGroup:
             self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
         if message_file:
             self.files.append(message_file)
+            if message_file.description:
+                self.text = message_file.description if self.text is None else '\n\n'.join(
+                    [self.text, message_file.description]).strip()
 
     def set_files_report(self) -> None:
         """
-        (Пере)формирование строки отчета по имеющимся в группе сообщений файлам и их типам
+        Формирование строки отчета по имеющимся в группе сообщений файлам и их типам
         """
         alt_texts = set()
         for file in self.files:
@@ -216,7 +221,7 @@ class TgMessageGroup:
 
     def set_truncated_text(self) -> None:
         """
-        Ограничение длины текста сообщения для отображения в веб-интерфейсе
+        Ограничение длины текста сообщения для отображения в веб-интерфейсе списка сообщений
         """
         if self.text:
             # Если текст сообщения не содержит гиперссылок обрезаем до заданной длины
@@ -492,9 +497,13 @@ class TelegramHandler:
             for message_group in message_group_list.copy():
                 if not self.message_sort_filter.message_query.lower() in message_group.text.lower():
                     message_group_list.remove(message_group)
+        # Постобработка сформированной группы сообщений
         for tg_message_group in message_group_list:
+            # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
             tg_message_group.text_hyperlink_conversion()
+            # Формирование строки отчета по имеющимся в группе сообщений файлам и их типам
             tg_message_group.set_files_report()
+            # Ограничение длины текста сообщения для отображения в веб-интерфейсе списка сообщений
             tg_message_group.set_truncated_text()
         print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
@@ -552,6 +561,8 @@ class TelegramHandler:
         file_type = MessageFileTypes.UNKNOWN
         if isinstance(message.media, MessageMediaPhoto):
             file_type = MessageFileTypes.PHOTO
+        elif isinstance(message.media, MessageMediaWebPage):
+            file_type = MessageFileTypes.WEBPAGE
         elif isinstance(message.media, MessageMediaDocument):
             mess_doc = message.media.document
             if mess_doc.mime_type.startswith('image/'):
@@ -575,12 +586,24 @@ class TelegramHandler:
         file_size = 0
         if isinstance(message.media, MessageMediaPhoto):
             file_size = get_image_size(message.media.photo.sizes)
+        elif isinstance(message.media, MessageMediaWebPage):
+            if hasattr(message.media.webpage, 'photo') and message.media.webpage.photo:
+                file_size = get_image_size(message.media.webpage.photo.sizes)
         elif isinstance(message.media, MessageMediaDocument):
             mess_doc = message.media.document
             if all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
                 file_size = get_image_size(mess_doc.thumbs)
             else:
                 file_size = mess_doc.size
+        # Получаем описание файла
+        description = ''
+        if file_type == MessageFileTypes.WEBPAGE:
+            if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
+                description = f'<a href = "{message.media.webpage.url}" target="_blank" >{message.media.webpage.url}</a>'
+            if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
+                description = '\n\n'.join([description,
+                                           shorten(message.media.webpage.description,
+                                                   width=ProjectConst.truncated_text_length, placeholder='...')])
         # Формирование локального пути к файлу
         dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
         message_time = message.date.astimezone().strftime('%H-%M-%S')
@@ -593,6 +616,7 @@ class TelegramHandler:
                          message=message,
                          full_path=full_path,
                          web_path=full_path.as_posix(),
+                         description=description,
                          alt_text=file_type.alt_text,
                          size=file_size,
                          file_type=file_type)
