@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, send_from_directory
 
 from configs.config import ProjectConst, MessageFileTypes
 from telegram_handler import TelegramHandler
-from database_handler import DatabaseHandler, Message, Dialog, MessageGroup, File, DialogType, FileType
+from database_handler import DatabaseHandler, Dialog, MessageGroup, File, DialogType, FileType
 
 tg_saver = Flask(__name__)
 tg_handler = TelegramHandler()
@@ -69,7 +69,7 @@ def get_tg_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
-    tg_details = tg_handler.get_message_detail(message_group_id) if message_group_id else None
+    tg_details = tg_handler.get_message_detail(int(dialog_id),message_group_id) if message_group_id else None
     tg_handler.current_state.message_details = tg_details
     return render_template("tg_details.html", tg_details=tg_details)
 
@@ -156,47 +156,36 @@ def save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    # cur_stat = tg_handler.current_state
-    # cmg_field = FieldNames.MESSAGE_GROUP_INFO
-    # dia_field = FieldNames.DIALOG_INFO
-    # fil_field = FieldNames.MESSAGE_FILE_INFO
-    # for message_group_id, message_group in tg_handler.current_state.message_group_list.items():
-    #     pass
-            # Сохраняем группу сообщений в базе данных
-
-        # Сохранять в отдельной функции в DatabaseHandler
-
-        # Если сообщение отмечено для сохранения
-        # if message_group[cmg_field['selected']]:
-        #
-        #     # Сохраняем или обновляем диалог
-        #     cur_dialog = cur_stat.dialog_list[message_group[cmg_field['dialog_id']]]
-        #     dialog = Dialog(
-        #         dialog_id=message_group[cmg_field['dialog_id']],
-        #         dialog_title=cur_dialog.title,
-        #         # dialog_type=db_handler.session.get(DialogType, cur_dialog.dialog_type),
-        #     )
-        #     # Сохраняем или обновляем группу сообщений
-        #     group = Group(
-        #         grouped_id=message_group_id,
-        #         date_time=message_group[cmg_field['date']],
-        #         text=message_group[cmg_field['text']],
-        #         dialog=dialog,
-        #     )
-        #     # Сохраняем или обновляем ID сообщений, входящих в группу
-        #     for message_id in message_group[cmg_field['ids']]:
-        #         message = Message(
-        #             message_id=message_id,
-        #             group=group,
-        #         )
-        #     # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
-        #     for file in message_group[cmg_field['files']]:
-        #         file = File(
-        #             file_path=fil_field[fil_field['file_path']],
-        #             size=file[fil_field['size']],
-        #             group=group,
-        #             file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
-        #         )
+    cur_stat = tg_handler.current_state
+    for tg_message_group in tg_handler.current_state.message_group_list:
+        if tg_message_group.selected:
+            # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных
+            # Сохраняем или обновляем диалог
+            tg_dialog=tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
+            db_dialog = Dialog(
+                dialog_id=tg_dialog.dialog_id,
+                title=tg_dialog.title,
+                dialog_type=db_handler.session.get(DialogType, tg_dialog.type),
+            )
+            # Сохраняем или обновляем группу сообщений
+            db_message_group = MessageGroup(
+                grouped_id=tg_message_group.grouped_id,
+                date_time=tg_message_group.date,
+                text=tg_message_group.text,
+                truncated_text=tg_message_group.truncated_text,
+                files_report=tg_message_group.files_report,
+                from_id=tg_message_group.from_id,
+                reply_to=tg_message_group.reply_to,
+                dialog=tg_dialog,
+            )
+            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+            # for file in message_group[cmg_field['files']]:
+            #     file = File(
+            #         file_path=fil_field[fil_field['file_path']],
+            #         size=file[fil_field['size']],
+            #         group=group,
+            #         file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
+            #     )
     return ''
 
 

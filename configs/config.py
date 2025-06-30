@@ -1,6 +1,5 @@
 from enum import Enum
 import re
-from datetime import datetime, timedelta
 from pathlib import Path
 
 # Set the profile for the project
@@ -71,7 +70,7 @@ class MessageFileTypes(Enum):
     AUDIO = (5, 'Audio', '.mp4', 'aud')
     WEBPAGE = (6, 'Image', '.jpg', 'wpg')
     CONTENT = (7, 'Content', '.html', 'cnt')
-    UNKNOWN = (8, 'Unknown', '.unk', 'unk')
+    UNKNOWN = (10, 'Unknown', '.unk', 'unk')
 
     def __init__(self, type_id: int, alt_text: str, default_ext: str, sign: str):
         self.type_id = type_id
@@ -90,7 +89,6 @@ class MessageFileTypes(Enum):
 
 
 class TableNames:
-    messages = 'messages'
     dialogs = 'dialogs'
     dialog_types = 'dialog_types'
     message_groups = 'message_groups'
