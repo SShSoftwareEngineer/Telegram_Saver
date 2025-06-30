@@ -25,11 +25,13 @@ class MessageGroup(Base):
     grouped_id: Mapped[str] = mapped_column(String, unique=True, index=True)
     date_time: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
+    truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
+    files_report: Mapped[str] = mapped_column(Text, nullable=True)
+    from_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    reply_to: Mapped[int] = mapped_column(Integer, nullable=True)
     # Relationships to 'Dialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['Dialog'] = relationship(back_populates='message_groups')
-    # Relationships to 'Message' table
-    messages: Mapped['Message'] = relationship(back_populates='message_group')
     # Relationships to 'File' table
     files: Mapped['File'] = relationship(back_populates='message_group')
     # Relationships to 'Tag' table
@@ -43,90 +45,65 @@ class MessageGroup(Base):
 class Tag(Base):
     __tablename__ = TableNames.tags
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    tag_name: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text)
     # Relationships to 'MessageGroup' table
-    message_groups: Mapped[List['MessageGroup']] = relationship(secondary=message_group_tag_links, back_populates='tags')
+    message_groups: Mapped[List['MessageGroup']] = relationship(secondary=message_group_tag_links,
+                                                                back_populates='tags')
 
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
-        # self.message_groups = []
-
-
-class Message(Base):
-    __tablename__ = TableNames.messages
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    message_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
-    # Relationships to 'MessageGroup' table
-    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
-    message_group: Mapped['MessageGroup'] = relationship(back_populates='messages')
-
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
-        # self.message_group = None
+    # def __init__(self, **kw: Any):
+    #     super().__init__(**kw)
+    #     self.message_groups = []
 
 
 class Dialog(Base):
     __tablename__ = TableNames.dialogs
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     dialog_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
-    dialog_title: Mapped[str] = mapped_column(Text)
-    unread_count: Mapped[int] = mapped_column(Integer)
-    last_message_date: Mapped[datetime]
+    title: Mapped[str] = mapped_column(Text)
     # Relationships to 'MessageGroup' table
     message_groups: Mapped['MessageGroup'] = relationship(back_populates='dialog')
     # Relationships to 'DialogType' table
-    dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.dialog_type_id'))
+    dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.type_id'))
     dialog_type: Mapped['DialogType'] = relationship(back_populates='dialogs')
 
     def __init__(self, **kw: Any):
         super().__init__(**kw)
         self.dialog_id = kw.get('dialog_id')
-        self.dialog_title = kw.get('dialog_title')
+        self.title = kw.get('dialog_title')
         self.dialog_type = kw.get('dialog_type')
 
 
 class DialogType(Base):
     __tablename__ = TableNames.dialog_types
-    dialog_type_id: Mapped[int] = mapped_column(primary_key=True, unique=True)
+    type_id: Mapped[int] = mapped_column(primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     # Relationships to 'Dialog' table
     dialogs: Mapped['Dialog'] = relationship(back_populates='dialog_type')
 
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
 
 
 class File(Base):
     __tablename__ = TableNames.files
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    file_path: Mapped[str] = mapped_column(String, unique=True, index=True)
+    message_id: Mapped[int] = mapped_column(Integer)
+    file_path: Mapped[str] = mapped_column(String, unique=True)
+    web_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
     # Relationships to 'MessageGroup' table
     grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
     message_group: Mapped['MessageGroup'] = relationship(back_populates='files')
     # Relationships to 'FileType' table
-    file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.file_type_id'))
+    file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.type_id'))
     file_type: Mapped['FileType'] = relationship(back_populates='files')
-
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
-
-    @property
-    def web_path(self) -> str:
-        """
-        Returns the web path of the file.
-        Возвращает веб-путь файла.
-        """
-        return self.file_path.replace('\\', '/')
 
 
 class FileType(Base):
     __tablename__ = TableNames.file_types
-    file_type_id: Mapped[int] = mapped_column(primary_key=True)
-    type_name: Mapped[str] = mapped_column(String, unique=True)
+    type_id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String, unique=True)
     alt_text: Mapped[str] = mapped_column(String)
-    default_ext: Mapped[str] = mapped_column(String, nullable=True)
-    sign: Mapped[str] = mapped_column(String, nullable=True)
+    default_ext: Mapped[str] = mapped_column(String)
+    sign: Mapped[str] = mapped_column(String)
     # Relationships to 'File' table
     files: Mapped['File'] = relationship(back_populates='file_type')
 
@@ -151,14 +128,14 @@ class DatabaseHandler:
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in configs.config.DialogTypes:
-            dialog_type_existing = self.session.query(DialogType).filter_by(dialog_type_id=dialog_type.value).first()
+            dialog_type_existing = self.session.query(DialogType).filter_by(type_id=dialog_type.value).first()
             if dialog_type_existing:
                 dialog_type_existing.name = dialog_type.name
             else:
-                self.session.add(DialogType(dialog_type_id=dialog_type.value, name=dialog_type.name))
+                self.session.add(DialogType(type_id=dialog_type.value, name=dialog_type.name))
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
         for file_type in configs.config.MessageFileTypes:
-            file_type_existing = self.session.query(FileType).filter_by(file_type_id=file_type.type_id).first()
+            file_type_existing = self.session.query(FileType).filter_by(type_id=file_type.type_id).first()
             if file_type_existing:
                 file_type_existing.type_name = file_type.name.title()
                 file_type_existing.alt_text = file_type.alt_text
@@ -166,7 +143,7 @@ class DatabaseHandler:
                 file_type_existing.sign = file_type.sign
             else:
                 self.session.add(
-                    FileType(file_type_id=file_type.type_id, type_name=file_type.name, alt_text=file_type.alt_text,
+                    FileType(type_id=file_type.type_id, name=file_type.name, alt_text=file_type.alt_text,
                              default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
 

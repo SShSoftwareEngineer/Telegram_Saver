@@ -170,10 +170,10 @@ class TgMessageGroup:
     ids: List[int]
     files: List[TgFile]
     date: Optional[datetime] = None
-    from_id: Optional[int] = None
-    reply_to: Optional[int] = None
     text: str = ''
     truncated_text: str = ''
+    from_id: Optional[int] = None
+    reply_to: Optional[int] = None
     files_report: Optional[str] = ''
     selected: bool = False
 
@@ -252,6 +252,7 @@ class TgMessageGroup:
 # TODO: продумать, возможно сохранять текст сообщения в HTML файл с локальными ссылками на файлы
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение статусной строки в ссылку в Message_Group
+# TODO: разобраться с сортировкой списка сообщений и диалогов
 
 
 @dataclass
@@ -508,7 +509,7 @@ class TelegramHandler:
         print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
-    def get_message_detail(self, message_group_id: str) -> TgDetails:
+    def get_message_detail(self, dialog_id: int, message_group_id: str) -> TgDetails:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
@@ -516,7 +517,7 @@ class TelegramHandler:
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
         message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
-        tg_details = TgDetails(dialog_id=current_message_group.dialog_id,
+        tg_details = TgDetails(dialog_id=dialog_id,
                                message_group_id=message_group_id,
                                date=current_message_group.date,
                                text=current_message_group.text if current_message_group.text else '',
