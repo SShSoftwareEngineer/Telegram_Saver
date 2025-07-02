@@ -69,7 +69,7 @@ def get_tg_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
-    tg_details = tg_handler.get_message_detail(int(dialog_id),message_group_id) if message_group_id else None
+    tg_details = tg_handler.get_message_detail(int(dialog_id), message_group_id) if message_group_id else None
     tg_handler.current_state.message_details = tg_details
     return render_template("tg_details.html", tg_details=tg_details)
 
@@ -156,70 +156,74 @@ def save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    cur_stat = tg_handler.current_state
     for tg_message_group in tg_handler.current_state.message_group_list:
         if tg_message_group.selected:
-            # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных
+            # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных.
             # Сохраняем или обновляем диалог
-            tg_dialog=tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
-            db_dialog = Dialog(
-                dialog_id=tg_dialog.dialog_id,
-                title=tg_dialog.title,
-                dialog_type=db_handler.session.get(DialogType, tg_dialog.type),
-            )
-            # Сохраняем или обновляем группу сообщений
-            db_message_group = MessageGroup(
-                grouped_id=tg_message_group.grouped_id,
-                date_time=tg_message_group.date,
-                text=tg_message_group.text,
-                truncated_text=tg_message_group.truncated_text,
-                files_report=tg_message_group.files_report,
-                from_id=tg_message_group.from_id,
-                reply_to=tg_message_group.reply_to,
-                dialog=tg_dialog,
-            )
+            tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
+            db_handler.session.add(
+                Dialog(
+                    dialog_id=tg_dialog.dialog_id,
+                    title=tg_dialog.title,
+                    dialog_type=db_handler.session.query(DialogType).filter_by(type_id=tg_dialog.type.value).first()
+                ))
+            # Сохраняем группу сообщений
+            db_handler.session.add(
+                MessageGroup(
+                    grouped_id=tg_message_group.grouped_id,
+                    date_time=tg_message_group.date,
+                    text=tg_message_group.text,
+                    truncated_text=tg_message_group.truncated_text,
+                    files_report=tg_message_group.files_report,
+                    from_id=tg_message_group.from_id,
+                    reply_to=tg_message_group.reply_to,
+                    dialog=tg_dialog,
+                ))
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
-            # for file in message_group[cmg_field['files']]:
-            #     file = File(
-            #         file_path=fil_field[fil_field['file_path']],
-            #         size=file[fil_field['size']],
-            #         group=group,
-            #         file_type=db_handler.session.get(FileType, file[fil_field['file_type']]),
-            #     )
-    return ''
+            for tg_file in tg_message_group.files:
+                db_handler.session.add(
+                    File(
+                        grouped_id=tg_file.message_grouped_id,
+                        file_path=tg_file.file_path,
+                        web_path=tg_file.web_path,
+                        size=tg_file.size,
+                        message_id=tg_file.message_id,
+                        file_type=db_handler.session.query(FileType).filter_by(
+                            type_id=tg_file.file_type.type_id).first()
+                    ))
+            # Сохраняем изменения в базе данных
+            db_handler.session.commit()
+        return ''
 
+    if __name__ == '__main__':
+        tg_saver.run(debug=True, use_reloader=False)
 
-if __name__ == '__main__':
-    tg_saver.run(debug=True, use_reloader=False)
+    # Оставлять архивные подписки в базе
+    # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
+    # Режимы: просмотр базы с возможностью удаления
+    # Режимы: синхронизация чата и базы с условиями (продумать условия)
+    # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
+    # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
+    # Установить отдельно предельные размеры для файлов и медиа разных типов
+    # Установить фильтры: непрочитанные сообщения, поиск по тегам.
+    # Добавить инструкцию по получению своих параметров Телеграм
 
+    # with tg_saver.test_request_context("/tg_dialogs"):
+    #     result = get_tg_dialogs()
 
+    # with tg_saver.test_request_context('/set_table_headers'):
+    #     # Теперь доступен request как при настоящем запросе
+    #     result = set_table_headers()
+    #     # return f"Handler1 called Handler2 via HTTP context: {result}"
 
-# Оставлять архивные подписки в базе
-# Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
-# Режимы: просмотр базы с возможностью удаления
-# Режимы: синхронизация чата и базы с условиями (продумать условия)
-# Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
-# Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
-# Установить отдельно предельные размеры для файлов и медиа разных типов
-# Установить фильтры: непрочитанные сообщения, поиск по тегам.
-# Добавить инструкцию по получению своих параметров Телеграм
-
-# with tg_saver.test_request_context("/tg_dialogs"):
-#     result = get_tg_dialogs()
-
-# with tg_saver.test_request_context('/set_table_headers'):
-#     # Теперь доступен request как при настоящем запросе
-#     result = set_table_headers()
-#     # return f"Handler1 called Handler2 via HTTP context: {result}"
-
-# @tg_saver.route('/update_headers', methods=['POST'])
-# def set_table_headers():
-#     """
-#     Установка заголовков таблицы
-#     """
-#     response = make_response(render_template('table_headers.html'))
-#
-#     # Указываем, какое событие нужно вызвать
-#     # Это запустит обновление заголовка без необходимости JS
-#     response.headers["HX-Trigger"] = "update-header-now"
-#     return response
+    # @tg_saver.route('/update_headers', methods=['POST'])
+    # def set_table_headers():
+    #     """
+    #     Установка заголовков таблицы
+    #     """
+    #     response = make_response(render_template('table_headers.html'))
+    #
+    #     # Указываем, какое событие нужно вызвать
+    #     # Это запустит обновление заголовка без необходимости JS
+    #     response.headers["HX-Trigger"] = "update-header-now"
+    #     return response
