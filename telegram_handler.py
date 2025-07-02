@@ -139,7 +139,7 @@ class TgFile:
     message_grouped_id: str
     message: Message
     message_id: int
-    full_path: str
+    file_path: str
     web_path: str
     description: str
     alt_text: str
@@ -152,7 +152,7 @@ class TgFile:
         self.message_grouped_id = message_grouped_id
         self.message = message
         self.message_id = message.id
-        self.full_path = full_path
+        self.file_path = full_path
         self.web_path = web_path
         self.size = size
         self.description = description
@@ -528,8 +528,8 @@ class TelegramHandler:
         tg_details.text = convert_text_hyperlinks(tg_details.text)
         # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
         for tg_file in tg_details.files:
-            if not Path(tg_file.full_path).exists():
-                print(f'Downloading file {tg_file.full_path}...')
+            if not Path(tg_file.file_path).exists():
+                print(f'Downloading file {tg_file.file_path}...')
                 self.download_message_file(tg_file)
         print('Message details loaded')
         return tg_details
@@ -630,19 +630,19 @@ class TelegramHandler:
         downloading_param = dict()
         result = None
         # Проверка существования файла
-        if not Path(tg_file.full_path).exists():
+        if not Path(tg_file.file_path).exists():
             # Проверка размера файла
             if 0 < tg_file.size <= ProjectConst.max_download_file_size:
                 # Если нужно, создаем соответствующие директории и загружаем файл
-                Path(tg_file.full_path).parent.mkdir(parents=True, exist_ok=True)
+                Path(tg_file.file_path).parent.mkdir(parents=True, exist_ok=True)
                 downloading_param['message'] = tg_file.message
-                downloading_param['file'] = tg_file.full_path
+                downloading_param['file'] = tg_file.file_path
                 if tg_file.file_type == MessageFileTypes.THUMBNAIL:
                     downloading_param['thumb'] = -1
                 result = loop.run_until_complete(self.client.download_media(**downloading_param))
         else:
             # Если файл уже существует, то возвращаем его имя
-            result = tg_file.full_path
+            result = tg_file.file_path
         return result
 
 
