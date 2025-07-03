@@ -29,7 +29,7 @@
             {% for message_file in tg_details.files %}
                 <div style="width: 45%; height: 45vh;">
                     {% if message_file.alt_text==file_types.IMAGE.alt_text %}
-                        <img src="{{ url_for('media_dir', filename=message_file.web_path) }}"
+                        <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                              alt="{{ message_file.alt_text }}"
                              style="width: 100%; height: 100%; object-fit: contain;">
                     {% endif %}
