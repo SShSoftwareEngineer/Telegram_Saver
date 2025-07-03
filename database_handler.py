@@ -11,7 +11,7 @@ class Base(DeclarativeBase):
     """ A declarative class for creating tables in the database """
 
 
-# Relationships Many-to-Many to 'MessageGroup', 'Tag' tables
+# Relationships Many-to-Many to 'MessageGroup', 'DbTag' tables
 message_group_tag_links = Table(
     TableNames.message_group_tag_links, Base.metadata,
     Column('message_group_id', ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
@@ -19,7 +19,7 @@ message_group_tag_links = Table(
 )
 
 
-class MessageGroup(Base):
+class DbMessageGroup(Base):
     __tablename__ = TableNames.message_groups
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     grouped_id: Mapped[str] = mapped_column(String, unique=True, index=True)
@@ -29,25 +29,25 @@ class MessageGroup(Base):
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
     from_id: Mapped[int] = mapped_column(Integer, nullable=True)
     reply_to: Mapped[int] = mapped_column(Integer, nullable=True)
-    # Relationships to 'Dialog' table
+    # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
-    dialog: Mapped['Dialog'] = relationship(back_populates='message_groups')
-    # Relationships to 'File' table
-    files: Mapped['File'] = relationship(back_populates='message_group')
-    # Relationships to 'Tag' table
-    tags: Mapped[List['Tag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
+    dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
+    # Relationships to 'DbFile' table
+    files: Mapped['DbFile'] = relationship(back_populates='message_group')
+    # Relationships to 'DbTag' table
+    tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
+    # def __init__(self, **kw: Any):
+    #     super().__init__(**kw)
         # self.tags = []
 
 
-class Tag(Base):
+class DbTag(Base):
     __tablename__ = TableNames.tags
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(Text)
-    # Relationships to 'MessageGroup' table
-    message_groups: Mapped[List['MessageGroup']] = relationship(secondary=message_group_tag_links,
+    # Relationships to 'DbMessageGroup' table
+    message_groups: Mapped[List['DbMessageGroup']] = relationship(secondary=message_group_tag_links,
                                                                 back_populates='tags')
 
     # def __init__(self, **kw: Any):
@@ -55,57 +55,56 @@ class Tag(Base):
     #     self.message_groups = []
 
 
-class Dialog(Base):
+class DbDialog(Base):
     __tablename__ = TableNames.dialogs
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     dialog_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
     title: Mapped[str] = mapped_column(Text)
-    # Relationships to 'MessageGroup' table
-    message_groups: Mapped['MessageGroup'] = relationship(back_populates='dialog')
-    # Relationships to 'DialogType' table
+    # Relationships to 'DbMessageGroup' table
+    message_groups: Mapped['DbMessageGroup'] = relationship(back_populates='dialog')
+    # Relationships to 'DbDialogType' table
     dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.type_id'))
-    dialog_type: Mapped['DialogType'] = relationship(back_populates='dialogs')
+    dialog_type: Mapped['DbDialogType'] = relationship(back_populates='dialogs')
 
-    def __init__(self, **kw: Any):
-        super().__init__(**kw)
-        self.dialog_id = kw.get('dialog_id')
-        self.title = kw.get('dialog_title')
-        self.dialog_type = kw.get('dialog_type')
+    # def __init__(self, **kw: Any):
+    #     super().__init__(**kw)
+    #     self.dialog_id = kw.get('dialog_id')
+    #     self.title = kw.get('dialog_title')
+    #     self.dialog_type = kw.get('dialog_type')
 
 
-class DialogType(Base):
+class DbDialogType(Base):
     __tablename__ = TableNames.dialog_types
     type_id: Mapped[int] = mapped_column(primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String, unique=True)
-    # Relationships to 'Dialog' table
-    dialogs: Mapped['Dialog'] = relationship(back_populates='dialog_type')
+    # Relationships to 'DbDialog' table
+    dialogs: Mapped['DbDialog'] = relationship(back_populates='dialog_type')
 
 
 
-class File(Base):
+class DbFile(Base):
     __tablename__ = TableNames.files
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message_id: Mapped[int] = mapped_column(Integer)
     file_path: Mapped[str] = mapped_column(String, unique=True)
-    web_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
-    # Relationships to 'MessageGroup' table
+    # Relationships to 'DbMessageGroup' table
     grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
-    message_group: Mapped['MessageGroup'] = relationship(back_populates='files')
-    # Relationships to 'FileType' table
+    message_group: Mapped['DbMessageGroup'] = relationship(back_populates='files')
+    # Relationships to 'DbFileType' table
     file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.type_id'))
-    file_type: Mapped['FileType'] = relationship(back_populates='files')
+    file_type: Mapped['DbFileType'] = relationship(back_populates='files')
 
 
-class FileType(Base):
+class DbFileType(Base):
     __tablename__ = TableNames.file_types
     type_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     alt_text: Mapped[str] = mapped_column(String)
     default_ext: Mapped[str] = mapped_column(String)
     sign: Mapped[str] = mapped_column(String)
-    # Relationships to 'File' table
-    files: Mapped['File'] = relationship(back_populates='file_type')
+    # Relationships to 'DbFile' table
+    files: Mapped['DbFile'] = relationship(back_populates='file_type')
 
 
 class DatabaseHandler:
@@ -128,22 +127,22 @@ class DatabaseHandler:
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in configs.config.DialogTypes:
-            dialog_type_existing = self.session.query(DialogType).filter_by(type_id=dialog_type.value).first()
+            dialog_type_existing = self.session.query(DbDialogType).filter_by(type_id=dialog_type.value).first()
             if dialog_type_existing:
                 dialog_type_existing.name = dialog_type.name
             else:
-                self.session.add(DialogType(type_id=dialog_type.value, name=dialog_type.name))
+                self.session.add(DbDialogType(type_id=dialog_type.value, name=dialog_type.name))
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
         for file_type in configs.config.MessageFileTypes:
-            file_type_existing = self.session.query(FileType).filter_by(type_id=file_type.type_id).first()
+            file_type_existing = self.session.query(DbFileType).filter_by(type_id=file_type.type_id).first()
             if file_type_existing:
-                file_type_existing.type_name = file_type.name.title()
+                file_type_existing.type_name = file_type.name
                 file_type_existing.alt_text = file_type.alt_text
                 file_type_existing.default_ext = file_type.default_ext
                 file_type_existing.sign = file_type.sign
             else:
                 self.session.add(
-                    FileType(type_id=file_type.type_id, name=file_type.name, alt_text=file_type.alt_text,
+                    DbFileType(type_id=file_type.type_id, name=file_type.name, alt_text=file_type.alt_text,
                              default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
 

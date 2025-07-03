@@ -140,20 +140,18 @@ class TgFile:
     message: Message
     message_id: int
     file_path: str
-    web_path: str
     description: str
     alt_text: str
     size: int
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
-    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, full_path: str, web_path: str,
+    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, file_path: str,
                  description: str, alt_text: str, size: int, file_type: MessageFileTypes):
         self.dialog_id = dialog_id
         self.message_grouped_id = message_grouped_id
         self.message = message
         self.message_id = message.id
-        self.file_path = full_path
-        self.web_path = web_path
+        self.file_path = file_path
         self.size = size
         self.description = description
         self.alt_text = alt_text
@@ -609,14 +607,14 @@ class TelegramHandler:
         dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
         message_time = message.date.astimezone().strftime('%H-%M-%S')
         file_name = f'{message_time}_{file_type.sign}_{message_grouped_id}_{message.id}{file_ext}'
-        full_path = Path(ProjectDirs.media_dir) / clean_file_path(dialog_dir) / message.date.astimezone().strftime(
+        file_path = Path(ProjectDirs.media_dir) / clean_file_path(dialog_dir) / message.date.astimezone().strftime(
             '%Y-%m-%d') / file_name
+        file_path = file_path.as_posix()
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
                          message_grouped_id=message_grouped_id,
                          message=message,
-                         full_path=full_path,
-                         web_path=full_path.as_posix(),
+                         file_path=file_path,
                          description=description,
                          alt_text=file_type.alt_text,
                          size=file_size,
