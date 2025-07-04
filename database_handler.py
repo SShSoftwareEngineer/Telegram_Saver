@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Any
+from typing import List, Any, Type, Dict, TypeVar
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
@@ -10,6 +10,9 @@ from configs.config import ProjectDirs, TableNames
 class Base(DeclarativeBase):
     """ A declarative class for creating tables in the database """
 
+
+# TypeVar for model classes, bound to Base
+ModelType = TypeVar('ModelType', bound=Base)
 
 # Relationships Many-to-Many to 'MessageGroup', 'DbTag' tables
 message_group_tag_links = Table(
@@ -37,10 +40,6 @@ class DbMessageGroup(Base):
     # Relationships to 'DbTag' table
     tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
-    # def __init__(self, **kw: Any):
-    #     super().__init__(**kw)
-        # self.tags = []
-
 
 class DbTag(Base):
     __tablename__ = TableNames.tags
@@ -48,11 +47,7 @@ class DbTag(Base):
     name: Mapped[str] = mapped_column(Text)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped[List['DbMessageGroup']] = relationship(secondary=message_group_tag_links,
-                                                                back_populates='tags')
-
-    # def __init__(self, **kw: Any):
-    #     super().__init__(**kw)
-    #     self.message_groups = []
+                                                                  back_populates='tags')
 
 
 class DbDialog(Base):
@@ -66,12 +61,6 @@ class DbDialog(Base):
     dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.type_id'))
     dialog_type: Mapped['DbDialogType'] = relationship(back_populates='dialogs')
 
-    # def __init__(self, **kw: Any):
-    #     super().__init__(**kw)
-    #     self.dialog_id = kw.get('dialog_id')
-    #     self.title = kw.get('dialog_title')
-    #     self.dialog_type = kw.get('dialog_type')
-
 
 class DbDialogType(Base):
     __tablename__ = TableNames.dialog_types
@@ -79,7 +68,6 @@ class DbDialogType(Base):
     name: Mapped[str] = mapped_column(String, unique=True)
     # Relationships to 'DbDialog' table
     dialogs: Mapped['DbDialog'] = relationship(back_populates='dialog_type')
-
 
 
 class DbFile(Base):
@@ -113,6 +101,24 @@ class DatabaseHandler:
     Класс для обработки операций с базой данных.
     """
 
+    def upsert_record(self, model_class: Type[ModelType],
+                      filter_fields: Dict[str, Any],
+                      update_fields: Dict[str, Any]) -> ModelType:
+        """
+        Универсальная функция для поиска и обновления/создания записи в любой модели БД
+        """
+        # Проверяем запись на существование
+        existing = self.session.query(model_class).filter_by(**filter_fields).first()
+        if existing:
+            # Обновляем существующую запись
+            for key, value in update_fields.items():
+                setattr(existing, key, value)
+        else:
+            # Создаем новую запись
+            existing = model_class(**{**filter_fields, **update_fields})
+            self.session.add(existing)
+        return existing
+
     def __init__(self):
         """
         Initializes the database handler by creating an engine, a session, and the necessary tables.
@@ -127,37 +133,14 @@ class DatabaseHandler:
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in configs.config.DialogTypes:
-            dialog_type_existing = self.session.query(DbDialogType).filter_by(type_id=dialog_type.value).first()
-            if dialog_type_existing:
-                dialog_type_existing.name = dialog_type.name
-            else:
-                self.session.add(DbDialogType(type_id=dialog_type.value, name=dialog_type.name))
+            self.upsert_record(DbDialogType, {'type_id': dialog_type.value}, {'name': dialog_type.name})
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
         for file_type in configs.config.MessageFileTypes:
-            file_type_existing = self.session.query(DbFileType).filter_by(type_id=file_type.type_id).first()
-            if file_type_existing:
-                file_type_existing.type_name = file_type.name
-                file_type_existing.alt_text = file_type.alt_text
-                file_type_existing.default_ext = file_type.default_ext
-                file_type_existing.sign = file_type.sign
-            else:
-                self.session.add(
-                    DbFileType(type_id=file_type.type_id, name=file_type.name, alt_text=file_type.alt_text,
-                             default_ext=file_type.default_ext, sign=file_type.sign))
+            self.upsert_record(DbFileType, {'type_id': file_type.type_id},
+                               {'name': file_type.name, 'alt_text': file_type.alt_text,
+                                'default_ext': file_type.default_ext, 'sign': file_type.sign})
         self.session.commit()
 
-    def save_message_group(self, message_group):
-        """
-        Saves a message group to the database.
-        Сохраняет группу сообщений в базе данных.
-        """
-        pass
-
-
-# engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}')
-# session = Session(engine)
-
-# init_database()
 
 if __name__ == '__main__':
     pass
