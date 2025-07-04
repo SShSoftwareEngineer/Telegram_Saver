@@ -161,69 +161,71 @@ def save_selected_message_to_db():
             # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных.
             # Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
-#TODO: Добавить проверку на существование диалога в базе данных
-#TODO: Добавить проверку на существование группы сообщений в базе данных
-#TODO: Добавить проверку на существование файлов в базе данных
-#TODO: Продумать добавление в индекс ИД диалога
-            new_dialog = DbDialog(
-                dialog_id=tg_dialog.dialog_id,
-                title=tg_dialog.title,
-                dialog_type=db_handler.session.query(DbDialogType).filter_by(type_id=tg_dialog.type.value).first()
-            )
-            db_handler.session.add(new_dialog
-                                   # DbDialog(
-                                   #     dialog_id=tg_dialog.dialog_id,
-                                   #     title=tg_dialog.title,
-                                   #     dialog_type=db_handler.session.query(DbDialogType).filter_by(type_id=tg_dialog.type.value).first()
-                                   # )
-                                   )
+# TODO: Продумать добавление в индекс message_group ID диалога
+            filter_fields = {'dialog_id': tg_dialog.dialog_id}
+            update_fields = {'title': tg_dialog.title,
+                             'dialog_type': db_handler.session.query(DbDialogType).filter_by(
+                                 type_id=tg_dialog.type.value).first()}
+            new_dialog = db_handler.upsert_record(DbDialog, filter_fields, update_fields)
+            # new_dialog = DbDialog(
+            #     dialog_id=tg_dialog.dialog_id,
+            #     title=tg_dialog.title,
+            #     dialog_type=db_handler.session.query(DbDialogType).filter_by(type_id=tg_dialog.type.value).first()
+            # )
+            # db_handler.session.add(new_dialog)
             # Сохраняем группу сообщений
-            new_message_group = DbMessageGroup(
-                grouped_id=tg_message_group.grouped_id,
-                date_time=tg_message_group.date,
-                text=tg_message_group.text,
-                truncated_text=tg_message_group.truncated_text,
-                files_report=tg_message_group.files_report,
-                from_id=tg_message_group.from_id,
-                reply_to=tg_message_group.reply_to,
-                dialog=new_dialog,
-            )
-            db_handler.session.add(new_message_group
-                                   # DbMessageGroup(
-                                   #     grouped_id=tg_message_group.grouped_id,
-                                   #     date_time=tg_message_group.date,
-                                   #     text=tg_message_group.text,
-                                   #     truncated_text=tg_message_group.truncated_text,
-                                   #     files_report=tg_message_group.files_report,
-                                   #     from_id=tg_message_group.from_id,
-                                   #     reply_to=tg_message_group.reply_to,
-                                   #     dialog=tg_dialog
-                                   # )
-                                   )
+            filter_fields = {'grouped_id': tg_message_group.grouped_id}
+            update_fields = {'date_time': tg_message_group.date,
+                             'text': tg_message_group.text,
+                             'truncated_text': tg_message_group.truncated_text,
+                             'files_report': tg_message_group.files_report,
+                             'from_id': tg_message_group.from_id,
+                             'reply_to': tg_message_group.reply_to,
+                             'dialog': new_dialog}
+            new_message_group = db_handler.upsert_record(DbMessageGroup, filter_fields, update_fields)
+            # new_message_group = DbMessageGroup(
+            #     grouped_id=tg_message_group.grouped_id,
+            #     date_time=tg_message_group.date,
+            #     text=tg_message_group.text,
+            #     truncated_text=tg_message_group.truncated_text,
+            #     files_report=tg_message_group.files_report,
+            #     from_id=tg_message_group.from_id,
+            #     reply_to=tg_message_group.reply_to,
+            #     dialog=new_dialog,
+            # )
+            # db_handler.session.add(new_message_group)
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
             for tg_file in tg_message_group.files:
-                new_file = DbFile(
-                    message_id=tg_file.message_id,
-                    file_path=tg_file.file_path,
-                    size=tg_file.size,
-                    message_group=db_handler.session.query(DbMessageGroup).filter_by(
-                        grouped_id=new_message_group.grouped_id).first(),
-                    file_type=db_handler.session.query(DbFileType).filter_by(type_id=tg_file.file_type.type_id).first()
-                )
-                db_handler.session.add(new_file
-                                       # DbFile(
-                                       #     grouped_id=tg_file.message_grouped_id,
-                                       #     file_path=tg_file.file_path,
-                                       #     size=tg_file.size,
-                                       #     message_id=tg_file.message_id,
-                                       #     file_type=db_handler.session.query(DbFileType).filter_by(
-                                       #         type_id=tg_file.file_type.type_id).first()
-                                       # )
-                                       )
+                filter_fields = {}
+                update_fields = {'message_id': tg_file.message_id,
+                                 'file_path': tg_file.file_path,
+                                 'size': tg_file.size,
+                                 'message_group':new_message_group,
+                                 'file_type': db_handler.session.query(DbFileType).filter_by(type_id=tg_file.file_type.type_id).first()}
+                new_file = db_handler.upsert_record(DbFile, filter_fields, update_fields)
+
+                # new_file = DbFile(
+                #     message_id=tg_file.message_id,
+                #     file_path=tg_file.file_path,
+                #     size=tg_file.size,
+                #     message_group=db_handler.session.query(DbMessageGroup).filter_by(
+                #         grouped_id=new_message_group.grouped_id).first(),
+                #     file_type=db_handler.session.query(DbFileType).filter_by(type_id=tg_file.file_type.type_id).first()
+                # )
+                # db_handler.session.add(new_file)
+                   # DbFile(
+                   #     grouped_id=tg_file.message_grouped_id,
+                   #     file_path=tg_file.file_path,
+                   #     size=tg_file.size,
+                   #     message_id=tg_file.message_id,
+                   #     file_type=db_handler.session.query(DbFileType).filter_by(
+                   #         type_id=tg_file.file_type.type_id).first()
+                   # )
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
-        return ''
 
+
+    return ''
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
