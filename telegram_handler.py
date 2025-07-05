@@ -479,8 +479,8 @@ class TelegramHandler:
         message_group_list = []
         # Составление списка сообщений с учетом группировки по message.grouped_id
         for message in self.get_message_list(dialog_id):
-            # Если message.grouped_id сообщения не установлен, то используем строку "Message_{message.id}"
-            message_grouped_id = str(message.grouped_id) if message.grouped_id else f'Message_{message.id}'
+            # Если message.grouped_id сообщения не установлен, то используем message.id
+            message_grouped_id = f'{dialog_id}_{message.grouped_id if message.grouped_id else message.id}'
             # Проверяем существование группы сообщений с текущим grouped_id
             tg_message_group = self.get_message_group_by_id(message_group_list, message_grouped_id)
             # Если группа сообщений с текущим grouped_id не существует, создаем ее и добавляем в список групп сообщений
