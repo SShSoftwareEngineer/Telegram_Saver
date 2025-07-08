@@ -80,8 +80,8 @@ class DbFile(Base):
     grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
     message_group: Mapped['DbMessageGroup'] = relationship(back_populates='files')
     # Relationships to 'DbFileType' table
-    file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.type_id'))
-    file_type: Mapped['DbFileType'] = relationship(back_populates='files')
+    type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.type_id'))
+    file_type: Mapped['DbFileType'] = relationship(back_populates='file')
 
 
 class DbFileType(Base):
@@ -92,7 +92,7 @@ class DbFileType(Base):
     default_ext: Mapped[str] = mapped_column(String)
     sign: Mapped[str] = mapped_column(String)
     # Relationships to 'DbFile' table
-    files: Mapped['DbFile'] = relationship(back_populates='file_type')
+    file: Mapped['DbFile'] = relationship(back_populates='file_type')
 
 
 class DatabaseHandler:
