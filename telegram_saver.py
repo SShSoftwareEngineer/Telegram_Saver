@@ -60,10 +60,20 @@ def get_tg_messages(dialog_id):
     """
     Получение списка сообщений при обновлении текущего диалога
     """
-    tg_messages = tg_handler.get_message_group_list(int(dialog_id))
+    # Получаем список групп сообщений для выбранного диалога
+    tg_message_groups = tg_handler.get_message_group_list(int(dialog_id))
+    # Проверяем какие группы сообщений уже сохранены в базе данных
+    message_group_ids = [tg_message_group.grouped_id for tg_message_group in tg_message_groups]
+    saved_group_ids = set(db_handler.session.query(DbMessageGroup.grouped_id)
+                          .filter(DbMessageGroup.grouped_id.in_(message_group_ids)).all())
+    saved_group_ids = [x[0] for x in saved_group_ids]
+    # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
+    for tg_message_group in tg_message_groups:
+        tg_message_group.saved_to_db = tg_message_group.grouped_id in saved_group_ids
+    # Устанавливаем текущее состояние диалога и списка групп сообщений
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
-    tg_handler.current_state.message_group_list = tg_messages
-    return render_template("tg_messages.html", tg_messages=tg_messages)
+    tg_handler.current_state.message_group_list = tg_message_groups
+    return render_template("tg_messages.html", tg_messages=tg_message_groups)
 
 
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
@@ -165,8 +175,11 @@ def save_selected_message_to_db():
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
             db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
                                                  dict(title=tg_dialog.title,
-                                                      dialog_type=db_handler.session.query(DbDialogType).filter_by(
-                                                          type_id=tg_dialog.type.value).first()))
+                                                      dialog_type_id=tg_dialog.type.value))
+            # Устанавливаем relationship
+            if db_dialog.dialog_type is None:
+                db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
+                    dialog_type_id=tg_dialog.type.value).first()
             # Сохраняем группу сообщений
             db_message_group = db_handler.upsert_record(DbMessageGroup, dict(grouped_id=tg_message_group.grouped_id),
                                                         dict(date_time=tg_message_group.date,
@@ -175,19 +188,27 @@ def save_selected_message_to_db():
                                                              files_report=tg_message_group.files_report,
                                                              from_id=tg_message_group.from_id,
                                                              reply_to=tg_message_group.reply_to,
-                                                             dialog=db_dialog))
+                                                             dialog_id=tg_dialog.dialog_id))
+            # Устанавливаем relationship
+            if db_message_group.dialog is None:
+                db_message_group.dialog = db_dialog
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
             for tg_file in tg_message_group.files:
-                ffft=db_handler.session.query(DbFileType).filter_by(type_id=tg_file.file_type.type_id).first()
-                db_handler.upsert_record(DbFile, dict(),
-                                         dict(message_id=tg_file.message_id,
-                                              file_path=tg_file.file_path,
-                                              size=tg_file.size,
-                                              message_group=db_message_group,
-                                              file_type=db_handler.session.query(DbFileType).filter_by(
-                                                  type_id=tg_file.file_type.type_id).first()))
+                db_file = db_handler.upsert_record(DbFile, dict(file_path=tg_file.file_path),
+                                                   dict(message_id=tg_file.message_id,
+                                                        size=tg_file.size,
+                                                        grouped_id=tg_message_group.grouped_id,
+                                                        file_type_id=tg_file.file_type.type_id))
+                # Устанавливаем relationships
+                if db_file.message_group is None:
+                    db_file.message_group = db_message_group
+                if db_file.file_type is None:
+                    db_file.file_type = db_handler.session.query(DbFileType).filter_by(
+                        file_type_id=tg_file.file_type.type_id).first()
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
+            # Сбрасываем отметку сохранения после сохранения в БД
+            tg_message_group.selected = False
     return ''
 
 

@@ -1,5 +1,6 @@
 import re
 from asyncio import new_event_loop, set_event_loop
+from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
 from telethon.tl.custom import Dialog, Message
@@ -173,6 +174,7 @@ class TgMessageGroup:
     from_id: Optional[int] = None
     reply_to: Optional[int] = None
     files_report: Optional[str] = ''
+    saved_to_db: bool = False
     selected: bool = False
 
     def __init__(self, grouped_id: str, dialog_id: int):
@@ -201,14 +203,16 @@ class TgMessageGroup:
         """
         Формирование строки отчета по имеющимся в группе сообщений файлам и их типам
         """
-        alt_texts = set()
+        alt_texts_list = []
         for file in self.files:
-            if file.file_type == MessageFileTypes.THUMBNAIL:
-                # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
-                alt_texts.add(MessageFileTypes.VIDEO.alt_text)
-            else:
-                alt_texts.add(file.alt_text)
-        self.files_report = ' '.join(sorted(alt_texts))
+            # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
+            alt_text = MessageFileTypes.VIDEO.alt_text if file.file_type == MessageFileTypes.THUMBNAIL else file.alt_text
+            alt_texts_list.append(alt_text)
+        alt_texts_dict = dict(sorted(Counter(alt_texts_list).items()))
+        alt_texts_list.clear()
+        for alt_text, count in alt_texts_dict.items():
+            alt_texts_list.append(alt_text) if count == 1 else alt_texts_list.append(f'{alt_text} ({count})')
+        self.files_report = ' '.join(sorted(alt_texts_list))
 
     def text_hyperlink_conversion(self) -> None:
         """

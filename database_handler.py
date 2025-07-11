@@ -24,8 +24,8 @@ message_group_tag_links = Table(
 
 class DbMessageGroup(Base):
     __tablename__ = TableNames.message_groups
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    grouped_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
     date_time: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
@@ -36,7 +36,7 @@ class DbMessageGroup(Base):
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
     # Relationships to 'DbFile' table
-    files: Mapped['DbFile'] = relationship(back_populates='message_group')
+    files: Mapped[List['DbFile']] = relationship(back_populates='message_group')
     # Relationships to 'DbTag' table
     tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
@@ -52,19 +52,19 @@ class DbTag(Base):
 
 class DbDialog(Base):
     __tablename__ = TableNames.dialogs
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    dialog_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    dialog_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(Text)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped['DbMessageGroup'] = relationship(back_populates='dialog')
     # Relationships to 'DbDialogType' table
-    dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.type_id'))
+    dialog_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialog_types}.dialog_type_id'))
     dialog_type: Mapped['DbDialogType'] = relationship(back_populates='dialogs')
 
 
 class DbDialogType(Base):
     __tablename__ = TableNames.dialog_types
-    type_id: Mapped[int] = mapped_column(primary_key=True, unique=True)
+    dialog_type_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     # Relationships to 'DbDialog' table
     dialogs: Mapped['DbDialog'] = relationship(back_populates='dialog_type')
@@ -80,19 +80,19 @@ class DbFile(Base):
     grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
     message_group: Mapped['DbMessageGroup'] = relationship(back_populates='files')
     # Relationships to 'DbFileType' table
-    type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.type_id'))
-    file_type: Mapped['DbFileType'] = relationship(back_populates='file')
+    file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.file_type_id'))
+    file_type: Mapped['DbFileType'] = relationship(back_populates='files')
 
 
 class DbFileType(Base):
     __tablename__ = TableNames.file_types
-    type_id: Mapped[int] = mapped_column(primary_key=True)
+    file_type_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     alt_text: Mapped[str] = mapped_column(String)
     default_ext: Mapped[str] = mapped_column(String)
     sign: Mapped[str] = mapped_column(String)
     # Relationships to 'DbFile' table
-    file: Mapped['DbFile'] = relationship(back_populates='file_type')
+    files: Mapped[List['DbFile']] = relationship(back_populates='file_type')
 
 
 class DatabaseHandler:
@@ -117,6 +117,7 @@ class DatabaseHandler:
             # Создаем новую запись
             existing = model_class(**{**filter_fields, **update_fields})
             self.session.add(existing)
+            self.session.flush()  # Flush to get the ID if it's an autoincrement field
         return existing
 
     def __init__(self):
@@ -133,12 +134,13 @@ class DatabaseHandler:
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in configs.config.DialogTypes:
-            self.upsert_record(DbDialogType, {'type_id': dialog_type.value}, {'name': dialog_type.name})
+            self.upsert_record(DbDialogType, dict(dialog_type_id=dialog_type.value),
+                               dict(name=dialog_type.name))
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
         for file_type in configs.config.MessageFileTypes:
-            self.upsert_record(DbFileType, {'type_id': file_type.type_id},
-                               {'name': file_type.name, 'alt_text': file_type.alt_text,
-                                'default_ext': file_type.default_ext, 'sign': file_type.sign})
+            self.upsert_record(DbFileType, dict(file_type_id=file_type.type_id),
+                               dict(name=file_type.name, alt_text=file_type.alt_text,
+                                    default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
 
 
