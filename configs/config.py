@@ -29,8 +29,8 @@ class ProjectConst:
     last_days_by_default = 30  # Default number of last days for messages filter
     message_datetime_format = '%d-%m-%Y %H:%M :%S'
     file_datetime_format = '%Y-%m-%d %H_%M_%S'
-    saved_to_db_label = '✔ Saved to the DB'
-    save_to_db_label = 'Save to the DB'
+    saved_to_db_label = '✔ Saved in the DB'
+    save_to_db_label = 'Save to DB'
     mess_group_id = 'message_group_id'
     select_to_save = 'select_to_save_to_db'
 

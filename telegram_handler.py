@@ -364,16 +364,18 @@ class TgDetails:
     date: datetime
     text: str
     files: List[TgFile]
-    files_report: Optional[str] = ''
+    files_report: Optional[str]
+    saved_to_db: bool
 
     def __init__(self, dialog_id: int, message_group_id: str, date: datetime, text: str,
-                 files: List[TgFile], files_report: Optional[str] = None):
+                 files: List[TgFile], files_report: Optional[str], saved_to_db: bool):
         self.dialog_id = dialog_id
         self.message_group_id = message_group_id
         self.date = date
         self.text = text
         self.files = files
         self.files_report = files_report if files_report else ''
+        self.saved_to_db = saved_to_db
 
 
 @dataclass
@@ -406,7 +408,7 @@ class TelegramHandler:
                                      self._connection_settings['API_HASH'], loop=loop)
         self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
         # Получаем список всех диалогов аккаунта Telegram
-        self.all_dialogues_list = self.get_dialog_list()
+        self.all_dialogues_list = self.get_tg_dialog_list()
         self.current_state.dialog_list = self.all_dialogues_list
 
     def get_entity(self, entity_id: int) -> Any:
@@ -431,7 +433,7 @@ class TelegramHandler:
         found_tg_message_group = next((x for x in message_group_list if x.grouped_id == grouped_id), None)
         return found_tg_message_group
 
-    def get_dialog_list(self) -> List[TgDialog]:
+    def get_tg_dialog_list(self) -> List[TgDialog]:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
@@ -523,11 +525,11 @@ class TelegramHandler:
                                date=current_message_group.date,
                                text=current_message_group.text if current_message_group.text else '',
                                files=current_message_group.files,
-                               # sorted(current_message_group.files, key=lambda x: x[fil_field['type']]),
-                               files_report=current_message_group.files_report if current_message_group.files_report else '')
+                               files_report=current_message_group.files_report if current_message_group.files_report else '',
+                               saved_to_db=current_message_group.saved_to_db)
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         tg_details.text = convert_text_hyperlinks(tg_details.text)
-        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
+        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет заданной директории файловой системы
         for tg_file in tg_details.files:
             if not Path(tg_file.file_path).exists():
                 print(f'Downloading file {tg_file.file_path}...')

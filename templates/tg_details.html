@@ -7,17 +7,20 @@
                value="{{ tg_details.message_group_id }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-            <span style="margin-left: 30px; color: green;">{{ constants.saved_to_db_label }}</span>
-            <span style="margin-left: 30px;">
-                {# Создание чекбокса для отметки на сохранение в БД #}
-                {% set checkbox_name = constants.select_to_save+'_det = '+group %}
-                <input type="checkbox" name="{{ checkbox_name }}"
-                       hx-post="/select_details_to_save"
-                       hx-trigger="change"
-                       hx-include="input[name='{{ constants.mess_group_id+'_det = '+group }}'],
-                                   input[name='{{ checkbox_name }}'],">
-                <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
-            </span>
+            {% if tg_details.saved_to_db %}
+                <span style="float: right; color: green;">{{ constants.saved_to_db_label }}</span>
+            {% else %}
+                <span style="float: right;">
+                    {# Создание чекбокса для отметки на сохранение в БД #}
+                    {% set checkbox_name = constants.select_to_save+'_det = '+group %}
+                    <input type="checkbox" name="{{ checkbox_name }}"
+                           hx-post="/select_details_to_save"
+                           hx-trigger="change"
+                           hx-include="input[name='{{ constants.mess_group_id+'_det = '+group }}'],
+                                       input[name='{{ checkbox_name }}'],">
+                    <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
+                </span>
+            {% endif %}
         </div>
         <br>
         {# Вывод текста сообщения #}
@@ -27,7 +30,12 @@
         <br>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
             {% for message_file in tg_details.files %}
-                <div style="width: 45%; height: 45vh;">
+                <div style="{% if tg_details.files|length>1 %}width: 45%; height: 45vh; {% else %} width: 90%; height: 90vh;{% endif %}">
+                    {% if message_file.alt_text==file_types.VIDEO.alt_text %}
+                        <video src="{{ url_for('media_dir', filename=message_file.file_path) }}" controls preload="metadata">
+                            Video is not supported by your browser
+                        </video>
+                    {% endif %}
                     {% if message_file.alt_text==file_types.IMAGE.alt_text %}
                         <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                              alt="{{ message_file.alt_text }}"
