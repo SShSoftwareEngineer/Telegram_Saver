@@ -37,11 +37,14 @@ def index():
     """
     Главная страница приложения
     """
-    tg_dialogs = tg_handler.get_dialog_list()
+    tg_dialogs = tg_handler.get_tg_dialog_list()
     tg_handler.current_state.dialog_list = tg_dialogs
     if tg_dialogs:
         # Получаем id первого диалога
         tg_handler.current_state.selected_dialog_id = tg_dialogs[0].dialog_id
+    # Получаем список диалогов из базы данных
+    db_dialogs = db_handler.get_db_dialog_list()
+
     return render_template("index.html", tg_dialogs=tg_dialogs)
 
 
@@ -50,7 +53,7 @@ def get_tg_dialogs():
     """
     Получение списка диалогов Telegram
     """
-    tg_dialogs = tg_handler.get_dialog_list()
+    tg_dialogs = tg_handler.get_tg_dialog_list()
     tg_handler.current_state.dialog_list = tg_dialogs
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
@@ -99,7 +102,7 @@ def tg_dialog_apply_filters():
     dial_filter.dialog_type(form.get('dialog_type'))
     dial_filter.title_query(form.get('title_query'))
     # Получение списка диалогов с применением фильтров
-    tg_dialogs = tg_handler.get_dialog_list()
+    tg_dialogs = tg_handler.get_tg_dialog_list()
     tg_handler.current_state.dialog_list = tg_dialogs
     return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
 
@@ -176,7 +179,7 @@ def save_selected_message_to_db():
             db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
                                                  dict(title=tg_dialog.title,
                                                       dialog_type_id=tg_dialog.type.value))
-            # Устанавливаем relationship
+            # Устанавливаем relationship для диалога
             if db_dialog.dialog_type is None:
                 db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
                     dialog_type_id=tg_dialog.type.value).first()
@@ -189,7 +192,7 @@ def save_selected_message_to_db():
                                                              from_id=tg_message_group.from_id,
                                                              reply_to=tg_message_group.reply_to,
                                                              dialog_id=tg_dialog.dialog_id))
-            # Устанавливаем relationship
+            # Устанавливаем relationship для группы сообщений
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
@@ -199,16 +202,24 @@ def save_selected_message_to_db():
                                                         size=tg_file.size,
                                                         grouped_id=tg_message_group.grouped_id,
                                                         file_type_id=tg_file.file_type.type_id))
-                # Устанавливаем relationships
+                # Устанавливаем relationships для файла
                 if db_file.message_group is None:
                     db_file.message_group = db_message_group
                 if db_file.file_type is None:
                     db_file.file_type = db_handler.session.query(DbFileType).filter_by(
                         file_type_id=tg_file.file_type.type_id).first()
+                # Скачиваем файл, если его нет в заданной директории файловой системы и его размер меньше предельного
+                print(f'Downloading file {tg_file.file_path}...')
+                downloading_result = tg_handler.download_message_file(tg_file)
+                if downloading_result:
+                    print(f'File {tg_file.file_path} downloaded successfully')
+                else:
+                    print(f'Failed to download file {tg_file.file_path}')
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
-            # Сбрасываем отметку сохранения после сохранения в БД
+            # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
             tg_message_group.selected = False
+            tg_message_group.saved_to_db = True
     return ''
 
 
@@ -216,7 +227,7 @@ if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
     # Оставлять архивные подписки в базе
-    # Режимы: просмотр чата, отметка на сохранение, автоматические отметки по условию (продумать условия)
+    # Режимы: автоматические отметки по условию (продумать условия)
     # Режимы: просмотр базы с возможностью удаления
     # Режимы: синхронизация чата и базы с условиями (продумать условия)
     # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)

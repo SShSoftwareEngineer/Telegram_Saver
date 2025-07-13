@@ -184,12 +184,12 @@
 <div id="tab2" class="tab-content">
 
     <style>
-        /* Стили для контейнера и зон */
+        /* Стили для контейнера и зон второй вкладки (база данных) */
         .db-container {
             display: grid;
             grid-template-areas:
-                "filters messages header1"
-                "chat_list message_list sidebar"
+                "filters_h messages_h details_h"
+                "filters message_list details"
                 "footer1 footer2 footer3";
             grid-template-columns: 1fr 1fr 1fr;
             grid-template-rows: auto 1fr auto;
@@ -200,12 +200,12 @@
 
         /* @formatter:off */
 
+        .db-filters_h { grid-area: filters_h; }
+        .db-messages_h { grid-area: messages_h; }
+        .db-details_h { grid-area: details_h; }
         .db-filters { grid-area: filters; }
-        .db-messages { grid-area: messages; }
-        .db-header1 { grid-area: header1; }
-        .db-chat_list { grid-area: chat_list; }
         .db-message_list { grid-area: message_list; }
-        .db-sidebar { grid-area: sidebar; }
+        .db-details { grid-area: details; }
         .db-footer1 { grid-area: footer1; }
         .db-footer2 { grid-area: footer2; }
         .db-footer3 { grid-area: footer3; }
@@ -215,12 +215,18 @@
     </style>
 
     <div class="db-container">
-        <div class="header db-filters">Filters</div>
-        <div class="header db-messages">Messages</div>
-        <div class="header db-header1">header1</div>
-        <div class="grid scroll db-chat_list">Chat list</div>
+        <div class="header db-filters_h">Filters</div>
+        <div class="header db-messages_h">
+            Messages (<span id="db-messages-count">{{ db_messages|length }}</span>)
+        </div>
+        <div class="header db-details_h">
+            Message details
+        </div>
+        <div class="grid scroll db-filters">
+            {% include "db_message_filter.html" %}
+        </div>
         <div class="grid scroll db-message_list">Message list</div>
-        <div class="grid scroll db-sidebar">UFO</div>
+        <div class="grid scroll db-details">Details</div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>
         <div class="grid db-footer3">Footer 3</div>

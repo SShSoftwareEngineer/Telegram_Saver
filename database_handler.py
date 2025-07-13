@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Any, Type, Dict, TypeVar
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 import configs.config
@@ -98,7 +98,7 @@ class DbFileType(Base):
 class DatabaseHandler:
     """
     A class for handling database operations.
-    Класс для обработки операций с базой данных.
+    Класс для операций с базой данных.
     """
 
     def upsert_record(self, model_class: Type[ModelType],
@@ -142,6 +142,17 @@ class DatabaseHandler:
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
+
+    def get_db_dialog_list(self) -> List[DbDialog]:
+        """
+        Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
+        """
+        dialogs = self.session.query(DbDialog).all()
+        dialog_list = []
+        for db_dialog in dialogs:
+            dialog_list.append(db_dialog)
+        print(f'{len(dialog_list)} chats loaded from the database')
+        return dialog_list
 
 
 if __name__ == '__main__':
