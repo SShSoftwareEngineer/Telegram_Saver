@@ -143,16 +143,16 @@ class DatabaseHandler:
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
 
-    def get_db_dialog_list(self) -> List[DbDialog]:
+    def get_db_dialog_list(self) -> list[DbDialog]:
         """
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
         """
-        dialogs = self.session.query(DbDialog).all()
+        dialogs = self.session.execute(select(DbDialog)).scalars().all()
         dialog_list = []
         for db_dialog in dialogs:
             dialog_list.append(db_dialog)
         print(f'{len(dialog_list)} chats loaded from the database')
-        return dialog_list
+        return list(dialogs)
 
 
 if __name__ == '__main__':
