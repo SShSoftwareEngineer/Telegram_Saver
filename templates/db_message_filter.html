@@ -1,10 +1,36 @@
+<!-- Filtering by dialog title -->
+<div hx-ext="class-tools">
+    <label for="title_query">
+        <p class="settings-sub-header">Filter by chat name</p>
+    </label>
+    <input type="text"
+           id="title_query"
+           name="title_query"
+           placeholder="Filter by chat name..."
+           style="width: 80%;">
+    <button type="button"
+            hx-on:click="document.getElementById('title_query').value = ''"
+            class="clear-button X-button">
+        ✖
+    </button>
+</div>
+
 <!-- Dialog filter -->
-<select name="categories" id="categories" multiple>
-    <option value="news">Новости</option>
-    <option value="sport">Спорт</option>
-    <option value="tech">Технологии</option>
-    <option value="culture">Культура</option>
-</select>
+<div hx-ext="class-tools">
+    <label for="db_dialog_select">
+        <p class="settings-sub-header">Chat filter</p>
+    </label>
+    <select id="db_dialog_select" name="db_dialog_select" size="6" style="width: 80%;" multiple>
+        {% for db_dialog in db_dialog_list %}
+            <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
+        {% endfor %}
+    </select>
+    <button type="button"
+            hx-on:click="document.getElementById('db_dialog_select').value = ''"
+            class="clear-button X-button">
+        ✖
+    </button>
+</div>
 
 <!-- Dialog messages sort order radiobuttons -->
 <p class="settings-sub-header">Messages sort order</p>
@@ -26,7 +52,6 @@
         <input type="text" style="width: 70px;"
                id="date_from"
                name="date_from"
-               value="{{ date_from_default }}"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
@@ -51,23 +76,6 @@
             ✖
         </button>
     </div>
-</div>
-
-<!-- Filtering by dialog title -->
-<div hx-ext="class-tools">
-    <label for="title_query">
-        <p class="settings-sub-header">Filter by chat name</p>
-    </label>
-    <input type="text"
-           id="title_query"
-           name="title_query"
-           placeholder="Filter by chat name..."
-           style="width: 80%;">
-    <button type="button"
-            hx-on:click="document.getElementById('title_query').value = ''"
-            class="clear-button X-button">
-        ✖
-    </button>
 </div>
 
 

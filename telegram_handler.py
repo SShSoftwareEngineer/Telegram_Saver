@@ -380,6 +380,9 @@ class TgDetails:
 
 @dataclass
 class TgCurrentState:
+    """
+    Текущее состояние клиента Telegram
+    """
     dialog_list: List[TgDialog] = None
     selected_dialog_id: int = None
     message_group_list: List[TgMessageGroup] = None
@@ -389,6 +392,10 @@ class TgCurrentState:
 
 
 class TelegramHandler:
+    """
+    A class for handling Telegram operations.
+    """
+
     all_dialogues_list: List[TgDialog] = None
     dialog_sort_filter: TgDialogSortFilter = TgDialogSortFilter()
     message_sort_filter: TgMessageSortFilter = TgMessageSortFilter()
@@ -409,7 +416,13 @@ class TelegramHandler:
         self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
         # Получаем список всех диалогов аккаунта Telegram
         self.all_dialogues_list = self.get_tg_dialog_list()
-        self.current_state.dialog_list = self.all_dialogues_list
+        # Устанавливаем текущее состояние клиента Telegram
+        self.current_state.dialog_list = list(self.all_dialogues_list)
+        if self.current_state.dialog_list:
+            # Получаем id первого диалога
+            self.current_state.selected_dialog_id = self.current_state.dialog_list[0].dialog_id
+        self.current_state.message_group_list = []
+        self.current_state.message_details = None
 
     def get_entity(self, entity_id: int) -> Any:
         """
