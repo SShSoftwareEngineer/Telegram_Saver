@@ -1,5 +1,6 @@
+from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Any, Type, Dict, TypeVar
+from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
@@ -95,11 +96,31 @@ class DbFileType(Base):
     files: Mapped[List['DbFile']] = relationship(back_populates='file_type')
 
 
+@dataclass
+class DbMessageSortFilter:
+    """
+    A class to represent sorting and filtering of database dialogs.
+    """
+    _sorting_field = None # по дате или по диалогу
+    _sort_order: bool = False
+    _title_query: Optional[str] = None
+    _selected_dialog_list: Optional[List[int]] = None
+    _date_from: Optional[datetime] = None
+    _date_to: Optional[datetime] = None
+    _message_query: Optional[str] = None
+
+
+
+
+
+
 class DatabaseHandler:
     """
     A class for handling database operations.
     Класс для операций с базой данных.
     """
+
+    all_dialogues_list: List[DbDialog]
 
     def upsert_record(self, model_class: Type[ModelType],
                       filter_fields: Dict[str, Any],
@@ -142,8 +163,10 @@ class DatabaseHandler:
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
+        # Получаем список диалогов из базы данных
+        self.all_dialogues_list = self.get_db_dialog_list()
 
-    def get_db_dialog_list(self) -> list[DbDialog]:
+    def get_db_dialog_list(self) -> List[DbDialog]:
         """
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
         """
@@ -152,7 +175,7 @@ class DatabaseHandler:
         for db_dialog in dialogs:
             dialog_list.append(db_dialog)
         print(f'{len(dialog_list)} chats loaded from the database')
-        return list(dialogs)
+        return sorted(dialog_list, key=lambda x: x.title)
 
 
 if __name__ == '__main__':

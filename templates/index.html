@@ -138,7 +138,10 @@
             Chats (<span id="chats-count-display">{{ tg_dialogs|length }}</span>)
         </div>
         <div class="header tg-message_h">
-            Messages (<span id="messages-count-display">{{ tg_messages|length }}</span>)
+            Messages
+            {% if tg_messages|length > 0 %}
+                (<span id="messages-count-display">{{ tg_messages|length }}</span>)
+            {% endif %}
         </div>
         <div class="header tg-detail_h">
             Message Details
@@ -191,7 +194,7 @@
                 "filters_h messages_h details_h"
                 "filters message_list details"
                 "footer1 footer2 footer3";
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 25fr 30fr 45fr;
             grid-template-rows: auto 1fr auto;
             height: 100%;
             gap: 5px;

@@ -11,15 +11,6 @@ tg_handler = TelegramHandler()
 db_handler = DatabaseHandler()
 
 
-@tg_saver.route(f'/media_dir/<path:filename>')
-def media_dir(filename):
-    """
-    Регистрация пути для хранения кэшированных изображений.
-    Принимает полный путь включая ProjectDirs.media_dir
-    """
-    return send_from_directory('.', filename)
-
-
 @tg_saver.context_processor
 def inject_field_names():
     """
@@ -29,7 +20,32 @@ def inject_field_names():
         'date_from_default': tg_handler.message_sort_filter.date_from_default,
         'constants': ProjectConst,
         'file_types': MessageFileTypes,
+        'tg_dialogs': tg_handler.current_state.dialog_list,
+        'tg_messages': tg_handler.current_state.message_group_list,
+        'tg_details': tg_handler.current_state.message_details,
+        'db_dialog_list': db_handler.all_dialogues_list,
     }
+
+
+def initialize_data():
+    """
+    Инициализация данных при запуске
+    """
+    pass
+
+
+# Инициализация после создания приложения
+with tg_saver.app_context():
+    initialize_data()
+
+
+@tg_saver.route(f'/media_dir/<path:filename>')
+def media_dir(filename):
+    """
+    Регистрация пути для хранения кэшированных изображений.
+    Принимает полный путь включая ProjectDirs.media_dir
+    """
+    return send_from_directory('.', filename)
 
 
 @tg_saver.route("/")
@@ -37,15 +53,7 @@ def index():
     """
     Главная страница приложения
     """
-    tg_dialogs = tg_handler.get_tg_dialog_list()
-    tg_handler.current_state.dialog_list = tg_dialogs
-    if tg_dialogs:
-        # Получаем id первого диалога
-        tg_handler.current_state.selected_dialog_id = tg_dialogs[0].dialog_id
-    # Получаем список диалогов из базы данных
-    db_dialogs = db_handler.get_db_dialog_list()
-
-    return render_template("index.html", tg_dialogs=tg_dialogs)
+    return render_template("index.html")
 
 
 @tg_saver.route("/tg_dialogs")
@@ -53,9 +61,8 @@ def get_tg_dialogs():
     """
     Получение списка диалогов Telegram
     """
-    tg_dialogs = tg_handler.get_tg_dialog_list()
-    tg_handler.current_state.dialog_list = tg_dialogs
-    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
+    tg_handler.current_state.dialog_list = tg_handler.get_tg_dialog_list()
+    return render_template("tg_dialogs.html")
 
 
 @tg_saver.route("/tg_messages/<string:dialog_id>")
@@ -76,7 +83,7 @@ def get_tg_messages(dialog_id):
     # Устанавливаем текущее состояние диалога и списка групп сообщений
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_message_groups
-    return render_template("tg_messages.html", tg_messages=tg_message_groups)
+    return render_template("tg_messages.html")
 
 
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
@@ -84,9 +91,9 @@ def get_tg_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
-    tg_details = tg_handler.get_message_detail(int(dialog_id), message_group_id) if message_group_id else None
-    tg_handler.current_state.message_details = tg_details
-    return render_template("tg_details.html", tg_details=tg_details)
+    tg_handler.current_state.message_details = tg_handler.get_message_detail(int(dialog_id),
+                                                                             message_group_id) if message_group_id else None
+    return render_template("tg_details.html")
 
 
 @tg_saver.route('/tg_dialog_apply_filters', methods=['POST'])
@@ -102,9 +109,8 @@ def tg_dialog_apply_filters():
     dial_filter.dialog_type(form.get('dialog_type'))
     dial_filter.title_query(form.get('title_query'))
     # Получение списка диалогов с применением фильтров
-    tg_dialogs = tg_handler.get_tg_dialog_list()
-    tg_handler.current_state.dialog_list = tg_dialogs
-    return render_template("tg_dialogs.html", tg_dialogs=tg_dialogs)
+    tg_handler.current_state.dialog_list = tg_handler.get_tg_dialog_list()
+    return render_template("tg_dialogs.html")
 
 
 @tg_saver.route('/tg_message_apply_filters', methods=['POST'])
@@ -119,9 +125,9 @@ def tg_message_apply_filters():
     mess_filter.date_to = form.get('date_to')
     mess_filter.message_query = form.get('message_query')
     # Получение списка сообщений с применением фильтров
-    tg_messages = tg_handler.get_message_group_list(tg_handler.current_state.selected_dialog_id)
-    tg_handler.current_state.message_group_list = tg_messages
-    return render_template("tg_messages.html", tg_messages=tg_messages)
+    tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
+        tg_handler.current_state.selected_dialog_id)
+    return render_template("tg_messages.html")
 
 
 def get_dict_value_by_partial_key(my_dict: dict, key_part: str) -> Optional[str]:
