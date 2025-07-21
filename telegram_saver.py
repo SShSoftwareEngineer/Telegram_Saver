@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import Optional
 
 from flask import Flask, render_template, request, send_from_directory
 
-from configs.config import ProjectConst, MessageFileTypes
+from configs.config import ProjectConst, MessageFileTypes, ProjectDirs
 from telegram_handler import TelegramHandler
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -223,6 +224,25 @@ def save_selected_message_to_db():
                     print(f'Failed to download file {tg_file.file_path}')
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
+            # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
+            # Формирование набора данных с контентом группы сообщений для возможного сохранения в файловую систему
+            message_group_export_data = {
+                'message_date': tg_message_group.date.strftime(ProjectConst.message_datetime_format),
+                'dialog_title': tg_dialog.title,
+                'text': tg_message_group.text,
+                'files_report': tg_message_group.files_report,
+                'from_id': tg_message_group.from_id,
+                'reply_to': tg_message_group.reply_to,
+                'files': [Path(tg_file.file_path).name for tg_file in tg_message_group.files],
+            }
+            html_content = render_template('export_message.html', **message_group_export_data)
+            message_group_time = tg_message_group.date.astimezone().strftime('%H-%M-%S')
+            file_name = (f'{message_group_time}_{MessageFileTypes.CONTENT.sign}_'
+                         f'{tg_message_group.grouped_id}{MessageFileTypes.CONTENT.default_ext}')
+            file_path = Path(
+                ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
+            with open(file_path, 'w', encoding='utf-8') as cf:
+                cf.write(html_content)
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
             tg_message_group.selected = False
             tg_message_group.saved_to_db = True
@@ -232,32 +252,35 @@ def save_selected_message_to_db():
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-    # Оставлять архивные подписки в базе
-    # Режимы: автоматические отметки по условию (продумать условия)
-    # Режимы: просмотр базы с возможностью удаления
-    # Режимы: синхронизация чата и базы с условиями (продумать условия)
-    # Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
-    # Проверять есть ли в базе текущее сообщение и если есть, то не добавлять его и грузить из базы
-    # Установить отдельно предельные размеры для файлов и медиа разных типов
-    # Установить фильтры: непрочитанные сообщения, поиск по тегам.
-    # Добавить инструкцию по получению своих параметров Телеграм
+# TODO: продумать, возможно сохранять текст сообщения в HTML файл с локальными ссылками на файлы
+# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
+# TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
+# TODO: сделать поиск по тегам, поиск без тегов, поиск по дате, по диалогу, по тексту сообщения
+# TODO: Режимы: автоматические отметки по условию (продумать условия)
+# TODO: Режимы: просмотр базы с возможностью удаления
+# TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
+# TODO: Добавить инструкцию по получению своих параметров Телеграм
 
-    # with tg_saver.test_request_context("/tg_dialogs"):
-    #     result = get_tg_dialogs()
+# Оставлять архивные подписки в базе
+# Режимы: синхронизация чата и базы с условиями (продумать условия)
+# Установить отдельно предельные размеры для файлов и медиа разных типов
 
-    # with tg_saver.test_request_context('/set_table_headers'):
-    #     # Теперь доступен request как при настоящем запросе
-    #     result = set_table_headers()
-    #     # return f"Handler1 called Handler2 via HTTP context: {result}"
+# with tg_saver.test_request_context("/tg_dialogs"):
+#     result = get_tg_dialogs()
 
-    # @tg_saver.route('/update_headers', methods=['POST'])
-    # def set_table_headers():
-    #     """
-    #     Установка заголовков таблицы
-    #     """
-    #     response = make_response(render_template('table_headers.html'))
-    #
-    #     # Указываем, какое событие нужно вызвать
-    #     # Это запустит обновление заголовка без необходимости JS
-    #     response.headers["HX-Trigger"] = "update-header-now"
-    #     return response
+# with tg_saver.test_request_context('/set_table_headers'):
+#     # Теперь доступен request как при настоящем запросе
+#     result = set_table_headers()
+#     # return f"Handler1 called Handler2 via HTTP context: {result}"
+
+# @tg_saver.route('/update_headers', methods=['POST'])
+# def set_table_headers():
+#     """
+#     Установка заголовков таблицы
+#     """
+#     response = make_response(render_template('table_headers.html'))
+#
+#     # Указываем, какое событие нужно вызвать
+#     # Это запустит обновление заголовка без необходимости JS
+#     response.headers["HX-Trigger"] = "update-header-now"
+#     return response
