@@ -4,8 +4,7 @@ from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-import configs.config
-from configs.config import ProjectDirs, TableNames
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes
 
 
 class Base(DeclarativeBase):
@@ -154,11 +153,11 @@ class DatabaseHandler:
         # Создаем таблицы в базе данных, если они отсутствуют
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
-        for dialog_type in configs.config.DialogTypes:
+        for dialog_type in DialogTypes:
             self.upsert_record(DbDialogType, dict(dialog_type_id=dialog_type.value),
                                dict(name=dialog_type.name))
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
-        for file_type in configs.config.MessageFileTypes:
+        for file_type in MessageFileTypes:
             self.upsert_record(DbFileType, dict(file_type_id=file_type.type_id),
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))

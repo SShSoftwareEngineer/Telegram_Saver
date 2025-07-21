@@ -41,6 +41,7 @@ class TgDialog:
         self.unread_count = dialog.unread_count if dialog.unread_count else 0
         self.last_message_date = dialog.date.astimezone() if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
+        self.dialog_dir = clean_file_path(f'{self.title}_{self.dialog_id}')
 
     @staticmethod
     def set_type(is_channel: bool, is_group: bool, is_user: bool) -> DialogTypes:
@@ -55,6 +56,12 @@ class TgDialog:
             return DialogTypes.User
         else:
             return DialogTypes.Unknown
+
+    def get_self_dir(self) -> str:
+        """
+        Возвращает путь к директории диалога
+        """
+        return f'{self.title}_{self.dialog_id}'
 
 
 @dataclass
@@ -250,10 +257,11 @@ class TgMessageGroup:
         # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >«Перезавантаження: розширення можливостей для працевлаштування» </a>
         # shorten             из             модуля             textwrap
 
-
-# TODO: продумать, возможно сохранять текст сообщения в HTML файл с локальными ссылками на файлы
-# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
-# TODO: проверить превращение статусной строки в ссылку в Message_Group
+    def get_self_dir(self) -> str:
+        """
+        Возвращает путь к директории группы сообщений
+        """
+        return self.date.astimezone().strftime('%Y-%m-%d')
 
 
 @dataclass
@@ -506,7 +514,7 @@ class TelegramHandler:
                 tg_message_group = TgMessageGroup(message_grouped_id, dialog_id)
                 message_group_list.append(tg_message_group)
             # Получаем информацию о файле сообщения, если он есть
-            message_file = self.get_message_file_info(dialog_id, message_grouped_id, message)
+            message_file = self.get_message_file_info(dialog_id, tg_message_group, message)
             # Добавляем текущее сообщение и его файл, если он есть, в соответствующую группу сообщений
             tg_message_group.add_message(message, message_file)
         # Применение фильтра по тексту группы сообщений, если он задан
@@ -550,7 +558,7 @@ class TelegramHandler:
         print('Message details loaded')
         return tg_details
 
-    def get_message_file_info(self, dialog_id: int, message_grouped_id: str, message,
+    def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup, message,
                               thumbnail: bool = True) -> Optional[TgFile]:
         """
         Получение информации о файле сообщения
@@ -621,18 +629,16 @@ class TelegramHandler:
                 description = '\n\n'.join([description,
                                            shorten(message.media.webpage.description,
                                                    width=ProjectConst.truncated_text_length, placeholder='...')])
-        # Формирование локального пути к файлу
-        dialog_dir = f'{self.get_dialog_by_id(dialog_id).title}_{dialog_id}'
+        # Формирование пути к файлу в файловой системе
         message_time = message.date.astimezone().strftime('%H-%M-%S')
-        file_name = f'{message_time}_{file_type.sign}_{message_grouped_id}_{message.id}{file_ext}'
-        file_path = Path(ProjectDirs.media_dir) / clean_file_path(dialog_dir) / message.date.astimezone().strftime(
-            '%Y-%m-%d') / file_name
-        file_path = file_path.as_posix()
+        file_name = f'{message_time}_{file_type.sign}_{message_group.grouped_id}_{message.id}{file_ext}'
+        file_path = Path(ProjectDirs.media_dir) / self.get_dialog_by_id(
+            dialog_id).get_self_dir() / message_group.get_self_dir() / file_name
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
-                         message_grouped_id=message_grouped_id,
+                         message_grouped_id=message_group.grouped_id,
                          message=message,
-                         file_path=file_path,
+                         file_path=file_path.as_posix(),
                          description=description,
                          alt_text=file_type.alt_text,
                          size=file_size,
