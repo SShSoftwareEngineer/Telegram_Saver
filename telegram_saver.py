@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from flask import Flask, render_template, request, send_from_directory
+from sqlalchemy import or_
 
 from configs.config import ProjectConst, MessageFileTypes, ProjectDirs
 from telegram_handler import TelegramHandler
@@ -233,7 +234,8 @@ def save_selected_message_to_db():
                 'files_report': tg_message_group.files_report,
                 'from_id': tg_message_group.from_id,
                 'reply_to': tg_message_group.reply_to,
-                'files': [Path(tg_file.file_path).name for tg_file in tg_message_group.files],
+                'files': [{'file_name': Path(tg_file.file_path).name,
+                           'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
             }
             html_content = render_template('export_message.html', **message_group_export_data)
             message_group_time = tg_message_group.date.astimezone().strftime('%H-%M-%S')
@@ -246,6 +248,31 @@ def save_selected_message_to_db():
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
             tg_message_group.selected = False
             tg_message_group.saved_to_db = True
+    return ''
+
+
+@tg_saver.route('/sync_local_files_with_db', methods=["POST"])
+def sync_local_files_with_db():
+    """
+    Синхронизация локальных медиа файлов с базой данных
+    """
+    ext_to_sync = ['.jpg', '.mp4']
+    # Получаем из БД все файлы с указанными расширениями
+    database_files = db_handler.session.query(DbFile.file_path).filter(
+        or_(*[DbFile.file_path.endswith(ext) for ext in ext_to_sync])).all()
+    database_files = set([x[0] for x in database_files])
+    # Находим все локальные файлы с указанными расширениями рекурсивно
+    local_files = []
+    for ext in ext_to_sync:
+        local_files.extend(Path(ProjectDirs.media_dir).rglob(f'**/*{ext}'))
+    local_files = set([x.as_posix() for x in local_files])
+    # Сравниваем списки и находим файлы, какие надо удалить и какие нужно докачать
+    files_to_delete = local_files - database_files
+    files_to_download = database_files - local_files
+    # Удаляем файлы, которые есть в локальной файловой системе, но отсутствуют в базе данных
+    deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
+asas
+    pass
     return ''
 
 
