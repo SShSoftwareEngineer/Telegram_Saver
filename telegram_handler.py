@@ -151,6 +151,7 @@ class TgFile:
     description: str
     alt_text: str
     size: int
+    exists: bool = False
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
     def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, file_path: str,
@@ -164,6 +165,13 @@ class TgFile:
         self.description = description
         self.alt_text = alt_text
         self.file_type = file_type
+
+    def is_exists(self) -> bool:
+        """
+        Проверяет, был ли файл загружен в файловую систему
+        """
+        self.exists = Path(self.file_path).exists() if self.file_path else False
+        return self.exists
 
 
 @dataclass
@@ -190,7 +198,7 @@ class TgMessageGroup:
         self.ids = []
         self.files = []
 
-    def add_message(self, message: Message, message_file: Optional[TgFile] = None) -> None:
+    def add_message(self, message: Message) -> None:
         """
         Добавляет сообщение в группу сообщений
         """
@@ -200,6 +208,8 @@ class TgMessageGroup:
         self.ids.append(message.id)
         if message.text:
             self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
+
+    def add_message_file(self, message_file: Optional[TgFile] = None) -> None:
         if message_file:
             self.files.append(message_file)
             if message_file.description:
@@ -213,8 +223,8 @@ class TgMessageGroup:
         alt_texts_list = []
         for file in self.files:
             # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
-            alt_text = MessageFileTypes.VIDEO.alt_text if file.file_type == MessageFileTypes.THUMBNAIL else file.alt_text
-            alt_texts_list.append(alt_text)
+            # alt_text = MessageFileTypes.VIDEO.alt_text if file.file_type == MessageFileTypes.THUMBNAIL else file.alt_text
+            alt_texts_list.append(file.alt_text)
         alt_texts_dict = dict(sorted(Counter(alt_texts_list).items()))
         alt_texts_list.clear()
         for alt_text, count in alt_texts_dict.items():
@@ -372,6 +382,7 @@ class TgDetails:
     date: datetime
     text: str
     files: List[TgFile]
+    existing_files: List[TgFile]
     files_report: Optional[str]
     saved_to_db: bool
 
@@ -382,6 +393,7 @@ class TgDetails:
         self.date = date
         self.text = text
         self.files = files
+        self.existing_files = [file for file in files if file.is_exists()]
         self.files_report = files_report if files_report else ''
         self.saved_to_db = saved_to_db
 
@@ -513,10 +525,17 @@ class TelegramHandler:
             if tg_message_group is None:
                 tg_message_group = TgMessageGroup(message_grouped_id, dialog_id)
                 message_group_list.append(tg_message_group)
+            # Добавляем текущее сообщение в соответствующую группу сообщений
+            tg_message_group.add_message(message)
             # Получаем информацию о файле сообщения, если он есть
-            message_file = self.get_message_file_info(dialog_id, tg_message_group, message)
-            # Добавляем текущее сообщение и его файл, если он есть, в соответствующую группу сообщений
-            tg_message_group.add_message(message, message_file)
+            message_file = self.get_message_file_info(dialog_id, tg_message_group, message, False)
+            # Добавляем файл, если он есть, в соответствующую группу сообщений
+            if message_file:
+                tg_message_group.add_message_file(message_file)
+                # Если это файл с видео, то проверяем на наличие и получаем информацию о файле с thumbnail
+                if message_file.file_type == MessageFileTypes.VIDEO:
+                    message_file = self.get_message_file_info(dialog_id, tg_message_group, message, True)
+                    tg_message_group.add_message_file(message_file)
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
@@ -550,16 +569,18 @@ class TelegramHandler:
                                saved_to_db=current_message_group.saved_to_db)
         # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         tg_details.text = convert_text_hyperlinks(tg_details.text)
-        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет заданной директории файловой системы
+        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
         for tg_file in tg_details.files:
-            if not Path(tg_file.file_path).exists():
-                print(f'Downloading file {tg_file.file_path}...')
-                self.download_message_file(tg_file)
+            if not tg_file.is_exists():
+                if tg_file.file_type != MessageFileTypes.VIDEO:
+                    print(f'Downloading file {tg_file.file_path}...')
+                    self.download_message_file(tg_file)
+        tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
         print('Message details loaded')
         return tg_details
 
     def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup, message,
-                              thumbnail: bool = True) -> Optional[TgFile]:
+                              thumbnail: bool) -> Optional[TgFile]:
         """
         Получение информации о файле сообщения
         Определение типа файла, его расширения и размера, формирование пути к файлу
@@ -652,7 +673,7 @@ class TelegramHandler:
         downloading_param = dict()
         result = None
         # Проверка существования файла
-        if not Path(tg_file.file_path).exists():
+        if not tg_file.is_exists():
             # Проверка размера файла
             if 0 < tg_file.size <= ProjectConst.max_download_file_size:
                 # Если нужно, создаем соответствующие директории и загружаем файл
