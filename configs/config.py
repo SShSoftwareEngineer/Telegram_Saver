@@ -78,13 +78,17 @@ class MessageFileTypes(Enum):
         self.default_ext = default_ext
         self.sign = sign
 
-    def get_alt_text_by_extension(self, file_name:str) -> str:
+    @classmethod
+    def get_file_type_by_type_id(cls, type_id: int) -> 'MessageFileTypes':
         """
-        Returns the alternate text for a given file.
+        Returns the MessageFileTypes for a given file type_id.
         """
-        for member in self.__class__:
-            if Path(file_name).suffix.lower() == member.default_ext:
-                return member.alt_text
+        for item in cls:
+            if item.type_id == type_id:
+                return item
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}.{self.name}'
 
 
 class TableNames:

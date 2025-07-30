@@ -575,6 +575,14 @@ class TelegramHandler:
                 if tg_file.file_type != MessageFileTypes.VIDEO:
                     print(f'Downloading file {tg_file.file_path}...')
                     self.download_message_file(tg_file)
+
+                # print(f'Downloading file {tg_file.file_path}...')
+                # downloading_result = tg_handler.download_message_file(tg_file)
+                # if downloading_result:
+                #     print(f'File {tg_file.file_path} downloaded successfully')
+                # else:
+                #     print(f'Failed to download file {tg_file.file_path}')
+
         tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
         print('Message details loaded')
         return tg_details
@@ -684,9 +692,55 @@ class TelegramHandler:
                     downloading_param['thumb'] = -1
                 result = loop.run_until_complete(self.client.download_media(**downloading_param))
         else:
-            # Если файл уже существует, то возвращаем его имя
+            # Если файл уже существует, то возвращаем его полный путь
             result = tg_file.file_path
         return result
+
+    def download_message_file_from_list(self, downloaded_file_list: list) -> str:
+        """
+        Загрузка файла по списку с параметрами файла
+        """
+        # Установка счетчиков
+        successfully_download = 0
+        failed_to_download = 0
+        no_messages_found = 0
+        # Скачивание файлов по списку
+        for counter, downloaded_file in enumerate(downloaded_file_list, 1):
+            progress = f'{counter} / {len(downloaded_file_list)}'
+            dialog = self.get_entity(downloaded_file['dialog_id'])
+            message = loop.run_until_complete(
+                self.client.get_messages(entity=dialog, ids=downloaded_file['message_id']))
+            if message:
+                # Если сообщение найдено, то создаем объект TgFile и загружаем файл
+                tg_file = TgFile(dialog_id=downloaded_file['dialog_id'],
+                                 message_grouped_id='message_grouped_id',
+                                 message=message,
+                                 file_path=downloaded_file['file_path'],
+                                 description='description',
+                                 alt_text='alt_text',
+                                 size=downloaded_file['size'],
+                                 file_type=MessageFileTypes.get_file_type_by_type_id(downloaded_file['file_type_id']))
+                # Загружаем файл сообщения
+                print(f'{progress}  Download: {tg_file.file_path}')
+                downloading_result = self.download_message_file(tg_file)
+                # В зависимости от результата загрузки файла увеличиваем счетчики
+                if downloading_result:
+                    print(f'{progress}  Successfully!')
+                    successfully_download += 1
+                else:
+                    print(f'{progress}  Download failed...')
+                    failed_to_download += 1
+            else:
+                print(f'{counter} / {len(downloaded_file_list)} No messages found for dialog {dialog.title} '
+                      f'and message id {downloaded_file["message_id"]}')
+                no_messages_found += 1
+        # Формирование отчета по результатам загрузки файлов
+        resulting_report= (f'Files to download: {len(downloaded_file_list)}\n'
+                           f'Downloaded files: {successfully_download}\n'
+                           f'Failed to download files: {failed_to_download}\n'
+                           f'No messages found: {no_messages_found}')
+        print(resulting_report)
+        return resulting_report
 
 
 def clean_file_path(file_path: str | None) -> str | None:
@@ -717,6 +771,3 @@ def convert_text_hyperlinks(message_text: str) -> Optional[str]:
 
 if __name__ == "__main__":
     pass
-
-# def progress_callback(current, total):
-#     print(f'{current / total:.2%}')

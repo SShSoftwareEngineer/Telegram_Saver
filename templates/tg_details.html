@@ -31,8 +31,9 @@
         {# Вывод графических, видео и других файлов #}
         <br>
         <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-            <div style="{% if tg_details.exists_files|length > 1 %}width: 45%; height: 45vh; {% else %} width: 90%; height: 90vh;{% endif %}">
                 {% for message_file in tg_details.existing_files %}
+                    <div style=" {% if tg_details.existing_files|length > 1 %} width: 45%; height: 45vh;
+                                 {% else %}                                    width: 90%; height: 90vh;   {% endif %}">
                     {# Вывод графических файлов #}
                     {% if message_file.alt_text==file_types.IMAGE.alt_text %}
                         <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
@@ -46,8 +47,8 @@
                             Video is not supported by your browser
                         </video>
                     {% endif %}
+                    </div>
                 {% endfor %}
-            </div>
         </div>
 
     {% else %}
