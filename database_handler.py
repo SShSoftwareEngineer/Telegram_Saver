@@ -100,17 +100,13 @@ class DbMessageSortFilter:
     """
     A class to represent sorting and filtering of database dialogs.
     """
-    _sorting_field = None # по дате или по диалогу
+    _sorting_field = None  # по дате или по диалогу
     _sort_order: bool = False
     _title_query: Optional[str] = None
     _selected_dialog_list: Optional[List[int]] = None
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
-
-
-
-
 
 
 class DatabaseHandler:
@@ -175,23 +171,6 @@ class DatabaseHandler:
             dialog_list.append(db_dialog)
         print(f'{len(dialog_list)} chats loaded from the database')
         return sorted(dialog_list, key=lambda x: x.title)
-
-    def sync_files_with_database(self,) -> None:
-        """
-        Синхронизация файлов с базой данных.
-        Проверяет наличие файлов в базе данных и добавляет новые, если они отсутствуют.
-        """
-        # Получаем список всех файлов в директории
-        files_in_directory = set(Path(ProjectDirs.data_dir).glob('**/*.*'))
-        # Получаем список всех файлов в базе данных
-        files_in_db = set(self.session.query(DbFile.file_path).all())
-        # Находим новые файлы, которые есть в директории, но отсутствуют в базе данных
-        new_files = files_in_directory - files_in_db
-        for file_path in new_files:
-            file_type = MessageFileTypes.get_alt_text_by_extension(file_path.name)
-            new_file = DbFile(file_path=str(file_path), file_type=file_type)
-            self.session.add(new_file)
-        self.session.commit()
 
 
 if __name__ == '__main__':

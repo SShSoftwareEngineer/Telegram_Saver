@@ -271,8 +271,20 @@ def sync_local_files_with_db():
     files_to_download = database_files - local_files
     # Удаляем файлы, которые есть в локальной файловой системе, но отсутствуют в базе данных
     deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
-asas
-    pass
+    print(f'Deleted {deleted_count} files from local storage')
+    # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
+    downloaded_file_list = []
+    for file_path in files_to_download:
+        # Получаем информацию о файле из базы данных
+        db_file = db_handler.session.query(DbFile).filter_by(file_path=file_path).first()
+        if db_file:
+            downloaded_file=dict(dialog_id= db_file.message_group.dialog_id,
+                                 message_id=db_file.message_id,
+                                 file_path=db_file.file_path,
+                                 size= db_file.size,
+                                 file_type_id=db_file.file_type_id,)
+            downloaded_file_list.append(downloaded_file)
+    tg_handler.download_message_file_from_list(downloaded_file_list)
     return ''
 
 
