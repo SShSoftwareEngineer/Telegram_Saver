@@ -1,7 +1,7 @@
 <!-- Шаблон информации о диалоге в списке диалогов Telegram -->
 
 {# Вывод в заголовке формы количества загруженных диалогов #}
-<span id="chats-count-display" hx-swap-oob="true">{{ tg_dialogs|length }}</span>
+<span id="tg-chats-count" hx-swap-oob="true">{{ tg_dialogs|length }}</span>
 
 <ul style="list-style-type: none; padding-left: 5px;">
     {% for tg_dialog in tg_dialogs %}
