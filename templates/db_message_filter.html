@@ -1,23 +1,25 @@
 <!-- Шаблон для фильтрации диалогов в базе данных -->
 
 <!-- Filtering by dialog title -->
-<div hx-ext="class-tools">
-    <label for="title_query">
-        <p class="settings-sub-header">Filter by chat name</p>
-    </label>
-    <input type="text"
-           id="title_query"
-           name="title_query"
-           placeholder="Filter by chat name..."
-           style="width: 80%;">
-    <button type="button"
-            hx-on:click="document.getElementById('title_query').value = ''"
-            class="clear-button X-button">
-        ✖
-    </button>
-</div>
+{#<div hx-ext="class-tools">#}
+{#    <label for="title_query">#}
+{#        <p class="settings-sub-header">Filter by chat name</p>#}
+{#    </label>#}
+{#    <input type="text"#}
+{#           id="title_query"#}
+{#           name="title_query"#}
+{#           placeholder="Filter by chat name..."#}
+{#           style="width: 80%;">#}
+{#    <button type="button"#}
+{#            hx-on:click="document.getElementById('title_query').value = ''"#}
+{#            class="clear-button X-button">#}
+{#        ✖#}
+{#    </button>#}
+{#</div>#}
 
-<!-- Dialog filter -->
+проверить имена и ИД, что бы не было путаницы с tg_messages_filter.html
+
+<!-- Database dialog filter -->
 <div hx-ext="class-tools">
     <label for="db_dialog_select">
         <p class="settings-sub-header">Chat filter</p>
@@ -34,18 +36,30 @@
     </button>
 </div>
 
-<!-- Dialog messages sort order radiobuttons -->
-<p class="settings-sub-header">Messages sort order</p>
+<!-- Database messages sort field radiobuttons -->
+<p class="settings-sub-header">Sorting messages</p>
+<div>
+    <input type="radio" id="sort_messages_field_0" name="sort_messages_field" value="0" checked>
+    <label for="sort_messages_field_0">Sort by chat name</label>
+</div>
+<div>
+    <input type="radio" id="sort_messages_field_1" name="sort_messages_field" value="1">
+    <label for="sort_messages_field_1">Sort by date</label>
+</div>
+
+
+<!-- Database messages sort order radiobuttons -->
+<p class="settings-sub-header">Sort order</p>
 <div>
     <input type="radio" id="mess_reverse_0" name="sort_order" value="0">
-    <label for="mess_reverse_0">Sort by date in ascending</label>
+    <label for="mess_reverse_0">Ascending</label>
 </div>
 <div>
     <input type="radio" id="mess_reverse_1" name="sort_order" value="1" checked>
-    <label for="mess_reverse_1">Sort by date in descending</label>
+    <label for="mess_reverse_1">Descending</label>
 </div>
 
-<!-- Filtering by date -->
+<!-- Filter database messages by date -->
 <p class="settings-sub-header">Filter by message date</p>
 <div style="display: flex; gap: 5px;">
     <!-- Filtering by date from -->
@@ -81,7 +95,7 @@
 </div>
 
 
-<!-- Filtering by message text -->
+<!-- Filtering database messages by message text -->
 <div hx-ext="class-tools">
     <label class="settings-sub-header" for="message_query">
         <p class="settings-sub-header">Filter by message text</p>
@@ -98,13 +112,13 @@
     </button>
 </div>
 
-<!-- Apply message filters button -->
+<!-- Apply database message filters button -->
 <button style="width: 100%; margin-top: 10px;"
-        hx-post="/tg_message_apply_filters"
+        hx-post="/db_message_apply_filters"
         hx-include="input[name='sort_order']:checked,
                     input[name='date_from'],
                     input[name='date_to'],
                     input[name='message_query']"
-        hx-target="#tg_messages">
+        hx-target="#db_messages">
     Apply message filters
 </button>
