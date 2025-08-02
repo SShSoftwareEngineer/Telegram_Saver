@@ -1,14 +1,14 @@
 <!-- Шаблон для фильтрации сообщений в выбранном диалоге Telegram -->
 
 <!-- Dialog messages sort order radiobuttons -->
-<p class="settings-sub-header">Messages sort order</p>
+<p class="settings-sub-header" style="margin-top: 0;">Messages sort order</p>
 <div>
-    <input type="radio" id="mess_reverse_0" name="sort_order" value="0">
-    <label for="mess_reverse_0">Sort by date in ascending</label>
+    <input type="radio" id="tg_mess_reverse_0" name="tg_sort_order" value="0">
+    <label for="tg_mess_reverse_0">Oldest first</label>
 </div>
 <div>
-    <input type="radio" id="mess_reverse_1" name="sort_order" value="1" checked>
-    <label for="mess_reverse_1">Sort by date in descending</label>
+    <input type="radio" id="tg_mess_reverse_1" name="tg_sort_order" value="1" checked>
+    <label for="tg_mess_reverse_1">Newest first</label>
 </div>
 
 <!-- Filtering by date -->
@@ -16,31 +16,31 @@
 <div style="display: flex; gap: 5px;">
     <!-- Filtering by date from -->
     <div>
-        <label for="date_from">Date from</label><br>
+        <label for="tg_date_from">Date from:</label><br>
         <input type="text" style="width: 70px;"
-               id="date_from"
-               name="date_from"
+               id="tg_date_from"
+               name="tg_date_from"
                value="{{ date_from_default }}"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('date_from').value = ''"
+                onclick="document.getElementById('tg_date_from').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
     </div>
     <!-- Filtering by date to -->
     <div>
-        <label for="date_to">Date to</label><br>
+        <label for="tg_date_to">Date to:</label><br>
         <input type="text" style="width: 70px; margin-left: 5px;"
-               id="date_to"
-               name="date_to"
+               id="tg_date_to"
+               name="tg_date_to"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('date_to').value = ''"
+                onclick="document.getElementById('tg_date_to').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
@@ -49,16 +49,16 @@
 
 <!-- Filtering by message text -->
 <div hx-ext="class-tools">
-    <label class="settings-sub-header" for="message_query">
+    <label class="settings-sub-header" for="tg_message_query">
         <p class="settings-sub-header">Filter by message text</p>
     </label>
     <input type="text"
-           id="message_query"
-           name="message_query"
+           id="tg_message_query"
+           name="tg_message_query"
            placeholder="Filter by message text..."
            style="width: 80%;">
     <button type="button"
-            hx-on:click="document.getElementById('message_query').value = ''"
+            hx-on:click="document.getElementById('tg_message_query').value = ''"
             class="clear-button X-button">
         ✖
     </button>
@@ -67,10 +67,10 @@
 <!-- Apply message filters button -->
 <button style="width: 100%; margin-top: 10px;"
         hx-post="/tg_message_apply_filters"
-        hx-include="input[name='sort_order']:checked,
-                    input[name='date_from'],
-                    input[name='date_to'],
-                    input[name='message_query']"
+        hx-include="input[name='tg_sort_order']:checked,
+                    input[name='tg_date_from'],
+                    input[name='tg_date_to'],
+                    input[name='tg_message_query']"
         hx-target="#tg_messages">
     Apply message filters
 </button>

@@ -106,10 +106,10 @@ def tg_dialog_apply_filters():
     # Установка фильтров диалогов по значениям из формы
     dial_filter = tg_handler.dialog_sort_filter
     form = request.form
-    dial_filter.sort_field(form.get('sorting_field'))
-    dial_filter.sort_order(form.get('sort_order'))
-    dial_filter.dialog_type(form.get('dialog_type'))
-    dial_filter.title_query(form.get('title_query'))
+    dial_filter.sort_field(form.get('tg_sorting_field'))
+    dial_filter.sort_order(form.get('tg_sort_order'))
+    dial_filter.dialog_type(form.get('tg_dialog_type'))
+    dial_filter.title_query(form.get('tg_title_query'))
     # Получение списка диалогов с применением фильтров
     tg_handler.current_state.dialog_list = tg_handler.get_tg_dialog_list()
     return render_template("tg_dialogs.html")
@@ -122,10 +122,10 @@ def tg_message_apply_filters():
     """
     mess_filter = tg_handler.message_sort_filter
     form = request.form
-    mess_filter.sort_order = form.get('sort_order')
-    mess_filter.date_from = form.get('date_from')
-    mess_filter.date_to = form.get('date_to')
-    mess_filter.message_query = form.get('message_query')
+    mess_filter.sort_order = form.get('tg_sort_order')
+    mess_filter.date_from = form.get('tg_date_from')
+    mess_filter.date_to = form.get('tg_date_to')
+    mess_filter.message_query = form.get('tg_message_query')
     # Получение списка сообщений с применением фильтров
     tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
         tg_handler.current_state.selected_dialog_id)
@@ -278,11 +278,11 @@ def sync_local_files_with_db():
         # Получаем информацию о файле из базы данных
         db_file = db_handler.session.query(DbFile).filter_by(file_path=file_path).first()
         if db_file:
-            downloaded_file=dict(dialog_id= db_file.message_group.dialog_id,
-                                 message_id=db_file.message_id,
-                                 file_path=db_file.file_path,
-                                 size= db_file.size,
-                                 file_type_id=db_file.file_type_id,)
+            downloaded_file = dict(dialog_id=db_file.message_group.dialog_id,
+                                   message_id=db_file.message_id,
+                                   file_path=db_file.file_path,
+                                   size=db_file.size,
+                                   file_type_id=db_file.file_type_id, )
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
     return ''
@@ -295,6 +295,8 @@ if __name__ == '__main__':
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: сделать поиск по тегам, поиск без тегов, поиск по дате, по диалогу, по тексту сообщения
+# TODO: сделать возможность удаления сообщений из базы данных
+# TODO: добавлять к сообщениям теги и рейтинги, чтобы можно было искать по тегам и рейтингам
 # TODO: Режимы: автоматические отметки по условию (продумать условия)
 # TODO: Режимы: просмотр базы с возможностью удаления
 # TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)

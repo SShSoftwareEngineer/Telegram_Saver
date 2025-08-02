@@ -378,6 +378,7 @@ class TgDetails:
     A class to represent details of a Telegram message.
     """
     dialog_id: int
+    dialog_title: str
     message_group_id: str
     date: datetime
     text: str
@@ -386,9 +387,10 @@ class TgDetails:
     files_report: Optional[str]
     saved_to_db: bool
 
-    def __init__(self, dialog_id: int, message_group_id: str, date: datetime, text: str,
+    def __init__(self, dialog_id: int, dialog_title: str, message_group_id: str, date: datetime, text: str,
                  files: List[TgFile], files_report: Optional[str], saved_to_db: bool):
         self.dialog_id = dialog_id
+        self.dialog_title = dialog_title
         self.message_group_id = message_group_id
         self.date = date
         self.text = text
@@ -561,6 +563,7 @@ class TelegramHandler:
         message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
         tg_details = TgDetails(dialog_id=dialog_id,
+                               dialog_title=self.get_dialog_by_id(dialog_id).title,
                                message_group_id=message_group_id,
                                date=current_message_group.date,
                                text=current_message_group.text if current_message_group.text else '',
@@ -735,10 +738,10 @@ class TelegramHandler:
                       f'and message id {downloaded_file["message_id"]}')
                 no_messages_found += 1
         # Формирование отчета по результатам загрузки файлов
-        resulting_report= (f'Files to download: {len(downloaded_file_list)}\n'
-                           f'Downloaded files: {successfully_download}\n'
-                           f'Failed to download files: {failed_to_download}\n'
-                           f'No messages found: {no_messages_found}')
+        resulting_report = (f'Files to download: {len(downloaded_file_list)}\n'
+                            f'Downloaded files: {successfully_download}\n'
+                            f'Failed to download files: {failed_to_download}\n'
+                            f'No messages found: {no_messages_found}')
         print(resulting_report)
         return resulting_report
 
