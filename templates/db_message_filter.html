@@ -17,12 +17,10 @@
 {#    </button>#}
 {#</div>#}
 
-проверить имена и ИД, что бы не было путаницы с tg_messages_filter.html
-
 <!-- Database dialog filter -->
 <div hx-ext="class-tools">
     <label for="db_dialog_select">
-        <p class="settings-sub-header">Chat filter</p>
+        <p class="settings-sub-header">Filter by chat names</p>
     </label>
     <select id="db_dialog_select" name="db_dialog_select" size="6" style="width: 80%;" multiple>
         {% for db_dialog in db_dialog_list %}
@@ -37,76 +35,76 @@
 </div>
 
 <!-- Database messages sort field radiobuttons -->
-<p class="settings-sub-header">Sorting messages</p>
+<p class="settings-sub-header">Messages sorting field</p>
 <div>
-    <input type="radio" id="sort_messages_field_0" name="sort_messages_field" value="0" checked>
-    <label for="sort_messages_field_0">Sort by chat name</label>
+    <input type="radio" id="sort_db_mess_field_0" name="sort_db_mess_field" value="0" checked>
+    <label for="sort_db_mess_field_0">Sort by chat name</label>
 </div>
 <div>
-    <input type="radio" id="sort_messages_field_1" name="sort_messages_field" value="1">
-    <label for="sort_messages_field_1">Sort by date</label>
+    <input type="radio" id="sort_db_mess_field_1" name="sort_db_mess_field" value="1">
+    <label for="sort_db_mess_field_1">Sort by date</label>
 </div>
 
 
 <!-- Database messages sort order radiobuttons -->
-<p class="settings-sub-header">Sort order</p>
+<p class="settings-sub-header">Messages sort order</p>
 <div>
-    <input type="radio" id="mess_reverse_0" name="sort_order" value="0">
-    <label for="mess_reverse_0">Ascending</label>
+    <input type="radio" id="db_mess_reverse_0" name="db_sort_order" value="0">
+    <label for="db_mess_reverse_0">Ascending</label>
 </div>
 <div>
-    <input type="radio" id="mess_reverse_1" name="sort_order" value="1" checked>
-    <label for="mess_reverse_1">Descending</label>
+    <input type="radio" id="db_mess_reverse_1" name="db_sort_order" value="1" checked>
+    <label for="db_mess_reverse_1">Descending</label>
 </div>
 
 <!-- Filter database messages by date -->
 <p class="settings-sub-header">Filter by message date</p>
-<div style="display: flex; gap: 5px;">
+{#<div style="display: flex; gap: 5px;">#}
     <!-- Filtering by date from -->
-    <div>
-        <label for="date_from">Date from</label><br>
+    <div style="display: flex; margin-bottom: 10px;">
+        <label for="db_date_from" style="width: 100px; margin-right: 10px;">Date from:</label><br>
         <input type="text" style="width: 70px;"
-               id="date_from"
-               name="date_from"
+               id="db_date_from"
+               name="db_date_from"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('date_from').value = ''"
+                onclick="document.getElementById('db_date_from').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
     </div>
     <!-- Filtering by date to -->
-    <div>
-        <label for="date_to">Date to</label><br>
+    <div style="display: flex; margin-bottom: 10px;">
+        <label for="db_date_to" style="width: 100px; margin-right: 10px;">Date to:</label><br>
         <input type="text" style="width: 70px; margin-left: 5px;"
-               id="date_to"
-               name="date_to"
+               id="db_date_to"
+               name="db_date_to"
                placeholder="DD/MM/YYYY"
                pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
                title="Enter date as DD/MM/YYYY">
         <button type="button"
-                onclick="document.getElementById('date_to').value = ''"
+                onclick="document.getElementById('db_date_to').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
     </div>
-</div>
+{#</div>#}
 
 
 <!-- Filtering database messages by message text -->
 <div hx-ext="class-tools">
-    <label class="settings-sub-header" for="message_query">
+    <label class="settings-sub-header" for="db_message_query">
         <p class="settings-sub-header">Filter by message text</p>
     </label>
     <input type="text"
-           id="message_query"
-           name="message_query"
+           id="db_message_query"
+           name="db_message_query"
            placeholder="Filter by message text..."
            style="width: 80%;">
     <button type="button"
-            hx-on:click="document.getElementById('message_query').value = ''"
+            hx-on:click="document.getElementById('db_message_query').value = ''"
             class="clear-button X-button">
         ✖
     </button>
@@ -115,10 +113,10 @@
 <!-- Apply database message filters button -->
 <button style="width: 100%; margin-top: 10px;"
         hx-post="/db_message_apply_filters"
-        hx-include="input[name='sort_order']:checked,
-                    input[name='date_from'],
-                    input[name='date_to'],
-                    input[name='message_query']"
+        hx-include="input[name='db_sort_order']:checked,
+                    input[name='db_date_from'],
+                    input[name='db_date_to'],
+                    input[name='db_message_query']"
         hx-target="#db_messages">
     Apply message filters
 </button>
