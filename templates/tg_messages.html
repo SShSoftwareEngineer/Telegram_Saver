@@ -3,13 +3,13 @@
 {# Вывод в заголовке формы количества загруженных групп сообщений #}
 <span id="tg-messages-count" hx-swap-oob="true">{{ tg_messages|length }}</span>
 
-<ul style="list-style-type: none; padding-left: 5px;">
+<ul class="dialogs-messages-list">
     {% for tg_message in tg_messages %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+tg_message.grouped_id }}"
                value="{{ tg_message.grouped_id }}">
         {# Стиль чередования фонов групп сообщений  #}
-        <li style="padding-top: 9px; background-color: {{ loop.cycle('#ffffff', '#f5f5f5') }};">
+        <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
             {# Ссылка на детали сообщения с использованием htmx для загрузки #}
