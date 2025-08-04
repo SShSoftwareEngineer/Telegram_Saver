@@ -23,6 +23,10 @@ message_group_tag_links = Table(
 
 
 class DbMessageGroup(Base):
+    """
+    A class to represent a message group in the database.
+    Класс для представления группы сообщений в базе данных.
+    """
     __tablename__ = TableNames.message_groups
     # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
@@ -42,6 +46,10 @@ class DbMessageGroup(Base):
 
 
 class DbTag(Base):
+    """
+    A class to represent a tag associated with a message group in the database.
+    Класс для представления тега, связанного с группой сообщений в базе данных.
+    """
     __tablename__ = TableNames.tags
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(Text)
@@ -51,6 +59,10 @@ class DbTag(Base):
 
 
 class DbDialog(Base):
+    """
+    A class to represent a dialog (chat) in the database.
+    Класс для представления диалога (чата) в базе данных.
+    """
     __tablename__ = TableNames.dialogs
     # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     dialog_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, index=True, nullable=False)
@@ -63,6 +75,10 @@ class DbDialog(Base):
 
 
 class DbDialogType(Base):
+    """
+    A class to represent a type of dialog (chat) in the database.
+    Класс для представления типа диалога (чата) в базе данных.
+    """
     __tablename__ = TableNames.dialog_types
     dialog_type_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
@@ -71,6 +87,10 @@ class DbDialogType(Base):
 
 
 class DbFile(Base):
+    """
+    A class to represent a file associated with a message group in the database.
+    Класс для представления файла, связанного с группой сообщений в базе данных.
+    """
     __tablename__ = TableNames.files
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     message_id: Mapped[int] = mapped_column(Integer)
@@ -85,6 +105,10 @@ class DbFile(Base):
 
 
 class DbFileType(Base):
+    """
+    A class to represent a type of file associated with a message group in the database.
+    Класс для представления типа файла, связанного с группой сообщений в базе данных.
+    """
     __tablename__ = TableNames.file_types
     file_type_id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, unique=True)
@@ -98,7 +122,8 @@ class DbFileType(Base):
 @dataclass
 class DbMessageSortFilter:
     """
-    A class to represent sorting and filtering of database dialogs.
+    A class to represent sorting and filtering of message groups.
+    Класс для представления параметров сортировки и фильтра для групп сообщений.
     """
     _sorting_field = None  # по дате или по диалогу
     _sort_order: bool = False
@@ -111,10 +136,9 @@ class DbMessageSortFilter:
 
 class DatabaseHandler:
     """
-    A class for handling database operations.
-    Класс для операций с базой данных.
+    A class to represent handle database operations.
+    Класс для представления операций с базой данных.
     """
-
     all_dialogues_list: List[DbDialog]
 
     def upsert_record(self, model_class: Type[ModelType],
@@ -139,9 +163,7 @@ class DatabaseHandler:
     def __init__(self):
         """
         Initializes the database handler by creating an engine, a session, and the necessary tables.
-        This function is called when the module is imported.
         Инициализирует обработчик базы данных, создавая движок, сессию и необходимые таблицы.
-        Эта функция вызывается при импорте модуля.
         """
         self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}')
         self.session = Session(self.engine)

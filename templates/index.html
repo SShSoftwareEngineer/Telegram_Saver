@@ -4,87 +4,16 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Viewer</title>
+    <meta charset="UTF-8">
+    {# Для мобильных устройств #}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Подключение htmx #}
     <script src="{{ url_for('static', filename='js/htmx.min.2.0.4.js') }}"></script>
+    {# Подключение class-tools для htmx #}
     <script src="{{ url_for('static', filename='js/class-tools.js') }}"></script>
-    <style>
-        html, body {
-            height: 100%;
-            margin: 1px;
-            padding: 0;
-            overflow: hidden;
-            --tab-height: 55px; /* Высота панели вкладок */
-        }
-
-        /* Стили для вкладок */
-        .tabs {
-            overflow: hidden;
-            background-color: #f1f1f1;
-            border-bottom: 1px solid #ccc;
-        }
-
-        .tab-button {
-            background-color: inherit;
-            float: left;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 14px 16px;
-            transition: 0.3s;
-            font-size: 16px;
-        }
-
-        .tab-button:hover {
-            background-color: #eee;
-        }
-
-        .tab-button.active {
-            background-color: #ddd;
-        }
-
-        /* Стили для содержимого вкладок */
-        .tab-content {
-            display: none;
-            padding: 0;
-            height: calc(100% - var(--tab-height)); /* Вычитаем высоту панели вкладок */
-        }
-
-        /* Общие стили для CSS Grid всех вкладок */
-
-        .header {
-            padding: 5px;
-            text-align: center;
-            font-size: larger;
-            font-weight: bold;
-        {#border: 1px solid #ddd;#}{#border-radius: 4px;#}
-        }
-
-        .grid {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .scroll {
-            padding: 0;
-            overflow: auto;
-        }
-
-        .settings-sub-header {
-            font-size: 1rem;
-            font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 5px;
-        }
-
-        .X-button {
-            font-size: 0.75rem;
-        }
-
-    </style>
-
+    {# Подключение стилей #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
 <body>
@@ -93,46 +22,13 @@
 <div class="tabs">
     <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
     <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
-    <button class="tab-button" onclick="openTab(event, 'tab3')">Settings</button>
+    <button class="tab-button" onclick="openTab(event, 'tab3')">Service</button>
 </div>
 
 <!-- Содержимое вкладок -->
 
 <div id="tab1" class="tab-content" style="display: block;">
     {# Страница сообщений Телеграм #}
-    <style>
-        /* Стили для CSS Grid контейнера и зон */
-        .tg-container {
-            display: grid;
-            grid-template-areas:
-                "filter_h chat_h message_h detail_h"
-                "dialog_filters chats messages details"
-                "message_filters chats messages details"
-                "filters_1 chats messages details"
-                "footer footer footer footer";
-            grid-template-columns: 15fr 20fr 30fr 35fr;
-            grid-template-rows: auto 1fr 1fr 1fr auto;
-            height: 100%;
-            gap: 5px;
-        }
-
-        /* @formatter:off */
-
-        .tg-filter_h { grid-area: filter_h; }
-        .tg-chat_h { grid-area: chat_h; }
-        .tg-message_h { grid-area: message_h; }
-        .tg-detail_h { grid-area: detail_h; }
-        .tg-dialog_filters { grid-area: dialog_filters; }
-        .tg-message_filters { grid-area: message_filters; }
-        .tg-filters_1 { grid-area: filters_1; }
-        .tg-chats { grid-area: chats; }
-        .tg-messages { grid-area: messages; }
-        .tg-details { grid-area: details; }
-        .tg-footer { grid-area: footer; }
-
-        /* @formatter:on */
-
-    </style>
 
     <div class="tg-container">
         <div class="header tg-filter_h">Filters</div>
@@ -154,8 +50,8 @@
         <div class="grid tg-message_filters">
             {% include "tg_message_filter.html" %}
         </div>
-        <div class="grid tg-filters_1">
-            <button style="width: 100%; height: 100%;"
+        <div class="grid tg-filters_1" style="display: flex; align-items: center;">
+            <button class="save-selected-to-db-button"
                     hx-post="/save_selected_message_to_db"
                     hx-target="#button_target">
                 Save selected to the DB
@@ -187,37 +83,7 @@
 </div>
 
 <div id="tab2" class="tab-content">
-
-    <style>
-        /* Стили для контейнера и зон второй вкладки (база данных) */
-        .db-container {
-            display: grid;
-            grid-template-areas:
-                "filters_h messages_h details_h"
-                "filters message_list details"
-                "footer1 footer2 footer3";
-            grid-template-columns: 25fr 30fr 45fr;
-            grid-template-rows: auto 1fr auto;
-            height: 100%;
-            gap: 5px;
-            margin: 0;
-        }
-
-        /* @formatter:off */
-
-        .db-filters_h { grid-area: filters_h; }
-        .db-messages_h { grid-area: messages_h; }
-        .db-details_h { grid-area: details_h; }
-        .db-filters { grid-area: filters; }
-        .db-message_list { grid-area: message_list; }
-        .db-details { grid-area: details; }
-        .db-footer1 { grid-area: footer1; }
-        .db-footer2 { grid-area: footer2; }
-        .db-footer3 { grid-area: footer3; }
-
-        /* @formatter:on */
-
-    </style>
+    {# Страница сообщений Database #}
 
     <div class="db-container">
         <div class="header db-filters_h">Filters</div>
@@ -241,58 +107,20 @@
 </div>
 
 <div id="tab3" class="tab-content">
-
-    <style>
-
-        .container_tab_3 {
-            display: grid;
-            grid-template-areas:
-            "cell_11 cell_12 cell_13"
-            "cell_21 cell_22 cell_23"
-            "cell_31 cell_32 cell_33";
-            grid-template-columns: 300px 1fr 200px;
-            gap: 4px;
-        }
-
-        /* @formatter:off */
-
-        .zone-cell_11 { grid-area: cell_11; }
-        .zone-cell_12 { grid-area: cell_12; }
-        .zone-cell_13 { grid-area: cell_13; }
-        .zone-cell_21 { grid-area: cell_21; }
-        .zone-cell_22 { grid-area: cell_22; }
-        .zone-cell_23 { grid-area: cell_23; }
-        .zone-cell_31 { grid-area: cell_31; }
-        .zone-cell_32 { grid-area: cell_32; }
-        .zone-cell_33 { grid-area: cell_33; }
-
-        /* @formatter:on */
-
-        .zone {
-        {#padding: 10px;#} border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        .control-group {
-            padding: 10px;
-            background: #f8f8f8;
-            border-radius: 4px;
-        }
-
-    </style>
+    {# Страница сервисных функций #}
 
     <div class="container_tab_3">
-        <div class="zone cell_11" id="synchronize_files">
+        <div class="grid cell_11" id="synchronize_files">
             {% include "synchronize_files.html" %}
         </div>
-        <div class="zone cell_12">cell_12</div>
-        <div class="zone cell_13">cell_13</div>
-        <div class="zone cell_21">cell_21</div>
-        <div class="zone cell_22">cell_22</div>
-        <div class="zone cell_23">cell_23</div>
-        <div class="zone cell_31">cell_31</div>
-        <div class="zone cell_32">cell_32</div>
-        <div class="zone cell_33">cell_33</div>
+        <div class="grid cell_12">cell_12</div>
+        <div class="grid cell_13">cell_13</div>
+        <div class="grid cell_21">cell_21</div>
+        <div class="grid cell_22">cell_22</div>
+        <div class="grid cell_23">cell_23</div>
+        <div class="grid cell_31">cell_31</div>
+        <div class="grid cell_32">cell_32</div>
+        <div class="grid cell_33">cell_33</div>
     </div>
 
 </div>

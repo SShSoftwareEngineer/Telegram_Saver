@@ -1,7 +1,7 @@
 <!-- Шаблон для фильтрации сообщений в выбранном диалоге Telegram -->
 
 <!-- Dialog messages sort order radiobuttons -->
-<p class="settings-sub-header" style="margin-top: 0;">Messages sort order</p>
+<p class="group-label" style="margin-top: 0;">Messages sort order</p>
 <div>
     <input type="radio" id="tg_mess_reverse_0" name="tg_sort_order" value="0">
     <label for="tg_mess_reverse_0">Oldest first</label>
@@ -12,60 +12,57 @@
 </div>
 
 <!-- Filtering by date -->
-<p class="settings-sub-header">Filter by message date</p>
-<div style="display: flex; gap: 5px;">
+<p class="group-label">Filter by message date</p>
+<div class="date-from-to-buttons">
     <!-- Filtering by date from -->
-    <div>
-        <label for="tg_date_from">Date from:</label><br>
-        <input type="text" style="width: 70px;"
-               id="tg_date_from"
-               name="tg_date_from"
-               value="{{ date_from_default }}"
-               placeholder="DD/MM/YYYY"
-               pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-               title="Enter date as DD/MM/YYYY">
-        <button type="button"
-                onclick="document.getElementById('tg_date_from').value = ''"
-                class="clear-button X-button">
-            ✖
-        </button>
-    </div>
-    <!-- Filtering by date to -->
-    <div>
-        <label for="tg_date_to">Date to:</label><br>
-        <input type="text" style="width: 70px; margin-left: 5px;"
-               id="tg_date_to"
-               name="tg_date_to"
-               placeholder="DD/MM/YYYY"
-               pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-               title="Enter date as DD/MM/YYYY">
-        <button type="button"
-                onclick="document.getElementById('tg_date_to').value = ''"
-                class="clear-button X-button">
-            ✖
-        </button>
-    </div>
-</div>
-
-<!-- Filtering by message text -->
-<div hx-ext="class-tools">
-    <label class="settings-sub-header" for="tg_message_query">
-        <p class="settings-sub-header">Filter by message text</p>
-    </label>
-    <input type="text"
-           id="tg_message_query"
-           name="tg_message_query"
-           placeholder="Filter by message text..."
-           style="width: 80%;">
+    <label for="tg_date_from">Date from:</label>
+    <input type="text" style="width: 80px;"
+           id="tg_date_from"
+           name="tg_date_from"
+           value="{{ date_from_default }}"
+           placeholder="DD/MM/YYYY"
+           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
+           title="Enter date as DD/MM/YYYY">
     <button type="button"
-            hx-on:click="document.getElementById('tg_message_query').value = ''"
+            onclick="document.getElementById('tg_date_from').value = ''"
+            class="clear-button X-button">
+        ✖
+    </button>
+    <!-- Filtering by date to -->
+    <label for="tg_date_to">Date to:</label>
+    <input type="text" style="width: 80px;"
+           id="tg_date_to"
+           name="tg_date_to"
+           placeholder="DD/MM/YYYY"
+           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
+           title="Enter date as DD/MM/YYYY">
+    <button type="button"
+            onclick="document.getElementById('tg_date_to').value = ''"
             class="clear-button X-button">
         ✖
     </button>
 </div>
 
+<!-- Filtering by message text -->
+<div hx-ext="class-tools">
+    <label class="group-label" for="tg_message_query">
+        <p class="group-label">Filter by message text</p>
+    </label>
+    <div class="control-X-button">
+        <input type="text"
+               id="tg_message_query"
+               name="tg_message_query"
+               placeholder="Filter by message text...">
+        <button type="button"
+                hx-on:click="document.getElementById('tg_message_query').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
+
 <!-- Apply message filters button -->
-<button style="width: 100%; margin-top: 10px;"
+<button class="apply-filters-buttons"
         hx-post="/tg_message_apply_filters"
         hx-include="input[name='tg_sort_order']:checked,
                     input[name='tg_date_from'],

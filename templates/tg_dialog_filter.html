@@ -2,7 +2,7 @@
 
 
 <!-- Telegram dialogs sort field radiobuttons -->
-<p class="settings-sub-header" style="margin-top: 0;">Chats sorting field</p>
+<p class="group-label" style="margin-top: 0;">Chats sorting field</p>
 <div>
     <input type="radio" id="tg_sort_field_0" name="tg_sorting_field" value="0" checked>
     <label for="tg_sort_field_0">Sort by name</label>
@@ -13,7 +13,7 @@
 </div>
 
 <!-- Telegram dialogs sort order radiobuttons -->
-<p class="settings-sub-header">Chats sort order</p>
+<p class="group-label">Chats sort order</p>
 <div>
     <input type="radio" id="tg_sort_order_0" name="tg_sort_order" value="0" checked>
     <label for="tg_sort_order_0">Ascending</label>
@@ -24,7 +24,7 @@
 </div>
 
 <!-- Dialog types selection radiobuttons -->
-<p class="settings-sub-header">Chat types filter</p>
+<p class="group-label">Chat types filter</p>
 <div>
     <input type="radio" id="tg_type_filter_0" name="tg_dialog_type" value="0" checked>
     <label for="tg_type_filter_0">All chats</label>
@@ -45,22 +45,23 @@
 <!-- Filtering by dialog title -->
 <div hx-ext="class-tools">
     <label for="tg_title_query">
-        <p class="settings-sub-header">Filter by chat name</p>
+        <p class="group-label">Filter by chat name</p>
     </label>
-    <input type="text"
-           id="tg_title_query"
-           name="tg_title_query"
-           placeholder="Filter by chat name..."
-           style="width: 80%;">
-    <button type="button"
-            hx-on:click="document.getElementById('tg_title_query').value = ''"
-            class="clear-button X-button">
-        ✖
-    </button>
+    <div class="control-X-button">
+        <input type="text"
+               id="tg_title_query"
+               name="tg_title_query"
+               placeholder="Filter by chat name...">
+        <button type="button"
+                hx-on:click="document.getElementById('tg_title_query').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
 </div>
 
 <!-- Apply dialog filters button -->
-<button style="width: 100%; margin-top: 10px;"
+<button class="apply-filters-buttons"
         hx-post="/tg_dialog_apply_filters"
         hx-include="input[name='tg_sorting_field']:checked,
                     input[name='tg_sort_order']:checked,

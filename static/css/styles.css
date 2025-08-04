@@ -1,0 +1,221 @@
+/* ===== RESET/NORMALIZE ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+}
+
+/* ===== БАЗОВЫЕ ЭЛЕМЕНТЫ ===== */
+html, body {
+    margin: 1px;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* ===== ПЕРЕМЕННЫЕ ===== */
+:root {
+    --tab-height: 55px; /* Высота панели вкладок */
+}
+
+/* ===== LAYOUT ===== */
+
+/* Стили для вкладок */
+.tabs {
+    overflow: hidden;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab-button {
+    background-color: inherit;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    font-size: 16px;
+}
+
+.tab-button:hover {
+    background-color: #eee;
+}
+
+.tab-button.active {
+    background-color: #ddd;
+}
+
+/* Стили для содержимого вкладок */
+.tab-content {
+    display: none;
+    padding: 0;
+    height: calc(100% - var(--tab-height)); /* Вычитаем высоту панели вкладок */
+}
+
+/* Общие стили для CSS Grid всех вкладок */
+.header {
+    padding: 5px;
+    text-align: center;
+    font-size: larger;
+    font-weight: bold;
+}
+
+.grid {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.scroll {
+    padding: 0;
+    overflow: auto;
+}
+
+/* Стили для CSS Grid контейнера и зон для вкладки Telegram */
+.tg-container {
+    display: grid;
+    grid-template-areas:
+        "filter_h chat_h message_h detail_h"
+        "dialog_filters chats messages details"
+        "message_filters chats messages details"
+        "filters_1 chats messages details"
+        "footer footer footer footer";
+    grid-template-columns: 10fr 25fr 30fr 35fr;
+    grid-template-rows: auto 1fr 1fr 1fr auto;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.tg-filter_h { grid-area: filter_h; }
+.tg-chat_h { grid-area: chat_h; }
+.tg-message_h { grid-area: message_h; }
+.tg-detail_h { grid-area: detail_h; }
+.tg-dialog_filters { grid-area: dialog_filters; }
+.tg-message_filters { grid-area: message_filters; }
+.tg-filters_1 { grid-area: filters_1; }
+.tg-chats { grid-area: chats; }
+.tg-messages { grid-area: messages; }
+.tg-details { grid-area: details; }
+.tg-footer { grid-area: footer; }
+/* @formatter:on */
+
+/* Стили для CSS Grid контейнера и зон для вкладки Database */
+.db-container {
+    display: grid;
+    grid-template-areas:
+        "filters_h messages_h details_h"
+        "filters message_list details"
+        "footer1 footer2 footer3";
+    grid-template-columns: 15fr 40fr 45fr;
+    grid-template-rows: auto 1fr auto;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.db-filters_h { grid-area: filters_h; }
+.db-messages_h { grid-area: messages_h; }
+.db-details_h { grid-area: details_h; }
+.db-filters { grid-area: filters; }
+.db-message_list { grid-area: message_list; }
+.db-details { grid-area: details; }
+.db-footer1 { grid-area: footer1; }
+.db-footer2 { grid-area: footer2; }
+.db-footer3 { grid-area: footer3; }
+/* @formatter:on */
+
+/* Стили для CSS Grid контейнера и зон для вкладки Service */
+.container_tab_3 {
+    display: grid;
+    grid-template-areas:
+        "cell_11 cell_12 cell_13"
+        "cell_21 cell_22 cell_23"
+        "cell_31 cell_32 cell_33";
+    grid-template-columns: 300px 1fr 200px;
+    grid-template-rows: max-content max-content max-content;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.cell_11 { grid-area: cell_11; }
+.cell_12 { grid-area: cell_12; }
+.cell_13 { grid-area: cell_13; }
+.cell_21 { grid-area: cell_21; }
+.cell_22 { grid-area: cell_22; }
+.cell_23 { grid-area: cell_23; }
+.cell_31 { grid-area: cell_31; }
+.cell_32 { grid-area: cell_32; }
+.cell_33 { grid-area: cell_33; }
+/* @formatter:on */
+
+
+/* ===== КОМПОНЕНТЫ ===== */
+
+/* Метка группы */
+.group-label {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 5px;
+}
+
+/* Кнопка очистки поля */
+.X-button {
+    font-size: 0.75rem;
+    height: 1.25rem;
+    aspect-ratio: 1;
+}
+
+/* Поле и кнопка очистки поля */
+.control-X-button {
+    display: grid;
+    grid-template-columns: auto max-content;
+    gap: 5px;
+    align-items: center;
+}
+
+/* Кнопка сохранения выделенных сообщений в базу данных */
+.save-selected-to-db-button {
+    width: 100%;
+    height: max-content;
+}
+
+/* Кнопки выбора даты от и до */
+.date-from-to-buttons {
+    display: grid;
+    grid-template-columns: auto max-content max-content;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Кнопки применения фильтров */
+.apply-filters-buttons {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Списки диалогов и сообщений */
+
+/* Общие параметры */
+.dialogs-messages-list {
+    list-style-type: none;
+    padding-left: 5px;
+}
+
+/* Нечетные чередующиеся цветные строки в списках, цвет #ffffff */
+.alternating-lines-white {
+    padding-top: 9px;
+    background-color: #ffffff;
+}
+
+/* Четные чередующиеся цветные строки в списках, цвет #f5f5f5 */
+.alternating-lines-gray {
+    padding-top: 9px;
+    background-color: #f5f5f5;
+}
