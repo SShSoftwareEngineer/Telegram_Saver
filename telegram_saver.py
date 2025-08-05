@@ -234,7 +234,7 @@ def save_selected_message_to_db():
                 'files_report': tg_message_group.files_report,
                 'from_id': tg_message_group.from_id,
                 'reply_to': tg_message_group.reply_to,
-                'files': [{'file_name': Path(tg_file.file_path).name,
+                'files': [{'file_path': Path(tg_file.file_path).name,
                            'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
             }
             html_content = render_template('export_message.html', **message_group_export_data)

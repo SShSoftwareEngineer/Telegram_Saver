@@ -57,6 +57,8 @@ html, body {
 }
 
 /* Общие стили для CSS Grid всех вкладок */
+
+/* Заголовки */
 .header {
     padding: 5px;
     text-align: center;
@@ -64,12 +66,14 @@ html, body {
     font-weight: bold;
 }
 
+/* Сетка */
 .grid {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
 }
 
+/* Области прокрутки */
 .scroll {
     padding: 0;
     overflow: auto;
@@ -82,7 +86,7 @@ html, body {
         "filter_h chat_h message_h detail_h"
         "dialog_filters chats messages details"
         "message_filters chats messages details"
-        "filters_1 chats messages details"
+        "save_to_db chats messages details"
         "footer footer footer footer";
     grid-template-columns: 10fr 25fr 30fr 35fr;
     grid-template-rows: auto 1fr 1fr 1fr auto;
@@ -97,12 +101,17 @@ html, body {
 .tg-detail_h { grid-area: detail_h; }
 .tg-dialog_filters { grid-area: dialog_filters; }
 .tg-message_filters { grid-area: message_filters; }
-.tg-filters_1 { grid-area: filters_1; }
+.tg-save_to_db { grid-area: save_to_db; }
 .tg-chats { grid-area: chats; }
 .tg-messages { grid-area: messages; }
 .tg-details { grid-area: details; }
 .tg-footer { grid-area: footer; }
 /* @formatter:on */
+
+.save_to_db_area_format {
+    display: flex;
+    align-items: center;
+}
 
 /* Стили для CSS Grid контейнера и зон для вкладки Database */
 .db-container {
@@ -122,7 +131,7 @@ html, body {
 .db-messages_h { grid-area: messages_h; }
 .db-details_h { grid-area: details_h; }
 .db-filters { grid-area: filters; }
-.db-message_list { grid-area: message_list; }
+.db-messages { grid-area: messages; }
 .db-details { grid-area: details; }
 .db-footer1 { grid-area: footer1; }
 .db-footer2 { grid-area: footer2; }
@@ -165,14 +174,14 @@ html, body {
     margin-bottom: 5px;
 }
 
-/* Кнопка очистки поля */
+/* Кнопка очистки поля ввода или выбора */
 .X-button {
     font-size: 0.75rem;
     height: 1.25rem;
     aspect-ratio: 1;
 }
 
-/* Поле и кнопка очистки поля */
+/* Поле и кнопка очистки поля ввода или выбора */
 .control-X-button {
     display: grid;
     grid-template-columns: auto max-content;
@@ -180,13 +189,13 @@ html, body {
     align-items: center;
 }
 
-/* Кнопка сохранения выделенных сообщений в базу данных */
-.save-selected-to-db-button {
+/* Одна кнопка в ячейке */
+.button-in-cell {
     width: 100%;
     height: max-content;
 }
 
-/* Кнопки выбора даты от и до */
+/* Кнопки выбора дат от и до */
 .date-from-to-buttons {
     display: grid;
     grid-template-columns: auto max-content max-content;
@@ -208,14 +217,60 @@ html, body {
     padding-left: 5px;
 }
 
-/* Нечетные чередующиеся цветные строки в списках, цвет #ffffff */
+/* Нечетные чередующиеся цветные строки в списках, цвет белый */
 .alternating-lines-white {
     padding-top: 9px;
     background-color: #ffffff;
 }
 
-/* Четные чередующиеся цветные строки в списках, цвет #f5f5f5 */
+/* Четные чередующиеся цветные строки в списках, цвет серый */
 .alternating-lines-gray {
     padding-top: 9px;
     background-color: #f5f5f5;
+}
+
+/* Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
+.message-checkbox {
+    float: right;
+}
+
+/* Отметка о наличии сохраненного сообщения в БД */
+.saved-message-checkbox {
+    float: right;
+    color: green;
+}
+
+/* Вывод или экспорт деталей сообщения */
+
+/* Форматирование области вывода графических и видео файлов */
+.media-files-area {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Медиафайлы в одну колонку */
+.media-files-one-column {
+    width: 90%;
+    height: 90vh;
+}
+
+/* Медиафайлы в две колонки */
+.media-files-two-column {
+    width: 45%;
+    height: 45vh;
+}
+
+/* Контейнер для медиафайлов */
+.media-files-container {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Вывод названия файла */
+.media-file-name {
+    text-align: center;
+    margin-top: 5px;
 }
