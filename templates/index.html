@@ -50,30 +50,30 @@
         <div class="grid tg-message_filters">
             {% include "tg_message_filter.html" %}
         </div>
-        <div class="grid tg-filters_1" style="display: flex; align-items: center;">
-            <button class="save-selected-to-db-button"
+        <div class="grid tg-save_to_db save_to_db_area_format">
+            <button class="button-in-cell"
                     hx-post="/save_selected_message_to_db"
                     hx-target="#button_target">
                 Save selected to the DB
             </button>
             <div id="button_target"></div>
         </div>
-        <div class="grid scroll tg-chats">
-            <div class="content" id="tg_dialogs">
+        <div class="scroll tg-chats">
+            <div class="grid content" id="tg_dialogs">
                 {% set context = tg_dialogs %}
                 {% include "tg_dialogs.html" with context %}
             </div>
         </div>
-        <div class="grid scroll tg-messages">
-            <div class="content" id="tg_messages">
+        <div class="scroll tg-messages">
+            <div class="grid content" id="tg_messages">
                 {% if tg_messages %}
                     {% set context = tg_messages %}
                     {% include "tg_messages.html" with context %}
                 {% endif %}
             </div>
         </div>
-        <div class="grid scroll tg-details">
-            <div class="content" id="tg_details">
+        <div class="scroll tg-details">
+            <div class="grid content" id="tg_details">
                 {% set context = tg_details %}
                 {% include "tg_details.html" with context %}
             </div>
@@ -93,12 +93,22 @@
         <div class="header db-details_h">
             Message details
         </div>
-        <div class="grid scroll db-filters">
+        <div class="grid db-filters">
             {% include "db_message_filter.html" %}
         </div>
+{#        <div class="scroll db-messages">#}
+{#            <div class="grid content" id="tg_messages">#}
+{#                {% if tg_messages %}#}
+{#                    {% set context = tg_messages %}#}
+{#                    {% include "db_messages.html" with context %}#}
+{#                {% endif %}#}
+{#            </div>#}
+{#        </div>#}
+
         <div class="grid scroll db-message_list">
             {% include "db_messages.html" %}
         </div>
+
         <div class="grid scroll db-details">Details</div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>
