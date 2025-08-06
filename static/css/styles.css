@@ -68,9 +68,10 @@ html, body {
 
 /* Сетка */
 .grid {
-    padding: 10px;
+    padding: 7px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    height: 100%;
 }
 
 /* Области прокрутки */
@@ -118,7 +119,7 @@ html, body {
     display: grid;
     grid-template-areas:
         "filters_h messages_h details_h"
-        "filters message_list details"
+        "filters messages details"
         "footer1 footer2 footer3";
     grid-template-columns: 15fr 40fr 45fr;
     grid-template-rows: auto 1fr auto;

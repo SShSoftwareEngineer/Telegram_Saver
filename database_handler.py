@@ -4,7 +4,7 @@ from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
 
 
 class Base(DeclarativeBase):
@@ -122,16 +122,70 @@ class DbFileType(Base):
 @dataclass
 class DbMessageSortFilter:
     """
-    A class to represent sorting and filtering of message groups.
-    Класс для представления параметров сортировки и фильтра для групп сообщений.
+    A class to represent sorting and filtering of message groups in the database.
+    Класс для представления параметров сортировки и фильтра для групп сообщений в базе данных.
     """
+    _selected_dialog_list: Optional[List[int]] = None
     _sorting_field = None  # по дате или по диалогу
     _sort_order: bool = False
-    _title_query: Optional[str] = None
-    _selected_dialog_list: Optional[List[int]] = None
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
+
+    @staticmethod
+    def _sort_by_dialog_title(x):
+        return x.title
+
+    @staticmethod
+    def _sort_by_date(x):
+        return x.date
+
+    def selected_dialog_list(self, value: List[int]):
+        """
+        Устанавливает список выбранных диалогов для фильтрации сообщений
+        """
+        pass
+        # if value:
+        #     self._selected_dialog_list = value
+        # else:
+        #     self._selected_dialog_list = None
+
+    def sort_field(self, value: str):
+        """
+        Устанавливает поле сортировки
+        """
+        self._sorting_field = self._sort_by_dialog_title if value == '0' else self._sort_by_date
+
+    def sort_order(self, value: str):
+        """
+        Устанавливает порядок сортировки сообщений по дате
+        """
+        self._sort_order = False if value == '0' else True
+
+    def date_from(self, value: str):
+        """
+        Устанавливает дату, с которой получать сообщения
+        """
+        self._date_from = date_decode(value)
+
+    def date_to(self, value: str):
+        """
+        Устанавливает дату, до которой получать сообщения
+        """
+        self._date_to = date_decode(value)
+
+    def message_query(self, value: str):
+        """
+        Устанавливает фильтр по названию диалогов
+        """
+        self._message_query = value if value else None
+
+    # def sort_message_group_list(self, message_group_list: List[TgMessageGroup]) -> List[TgMessageGroup]:
+    #     """
+    #     Сортировка списка групп сообщений по дате
+    #     """
+    #     result = sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
+    #     return result
 
 
 class DatabaseHandler:
@@ -140,6 +194,7 @@ class DatabaseHandler:
     Класс для представления операций с базой данных.
     """
     all_dialogues_list: List[DbDialog]
+    message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
 
     def upsert_record(self, model_class: Type[ModelType],
                       filter_fields: Dict[str, Any],

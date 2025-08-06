@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes
+from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes, date_decode
 
 # Создаем и сохраняем цикл событий
 loop = new_event_loop()
@@ -293,21 +293,6 @@ class TgMessageSortFilter:
         self._message_query = None
         self.date_from_default = self.date_from.strftime('%d/%m/%Y')
 
-    @staticmethod
-    def set_date(date_str: str) -> Optional[datetime]:
-        """
-        Декодирование даты из строки
-        """
-        if date_str:
-            date_split = re.split(r'[/.-]', date_str)
-            if len(date_split) == 3:
-                dd, mm, yyyy = date_split
-                try:
-                    return datetime(int(yyyy), int(mm), int(dd))
-                except ValueError:
-                    return None
-        return None
-
     @property
     def sort_order(self) -> bool:
         """
@@ -334,7 +319,7 @@ class TgMessageSortFilter:
         """
         Устанавливает дату, с которой получать сообщения
         """
-        self._date_from = self.set_date(value)
+        self._date_from = date_decode(value)
 
     @property
     def date_to(self) -> Optional[datetime]:
@@ -348,7 +333,7 @@ class TgMessageSortFilter:
         """
         Устанавливает дату, до которой получать сообщения
         """
-        self._date_to = self.set_date(value)
+        self._date_to = date_decode(value)
 
     @property
     def message_query(self) -> Optional[str]:

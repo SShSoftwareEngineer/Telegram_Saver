@@ -1,13 +1,19 @@
+from datetime import datetime
 from enum import Enum
 import re
 from pathlib import Path
+from typing import Optional
 
 # Set the profile for the project
 PROFILE = 'dev_1'
 
-
 # PROFILE = 'dev_2'
 # PROFILE = 'prod'
+
+""" 
+Classes.
+Классы. 
+"""
 
 
 class ProjectDirs:
@@ -99,6 +105,27 @@ class TableNames:
     file_types = 'file_types'
     tags = 'tags'
     message_group_tag_links = 'message_group_tag_links'
+
+
+""" 
+Functions.
+Функции. 
+"""
+
+
+def date_decode(date_str: str) -> Optional[datetime]:
+    """
+    Декодирование даты из строки
+    """
+    if date_str:
+        date_split = re.split(r'[/.-]', date_str)
+        if len(date_split) == 3:
+            dd, mm, yyyy = date_split
+            try:
+                return datetime(int(yyyy), int(mm), int(dd))
+            except ValueError:
+                return None
+    return None
 
 
 if __name__ == '__main__':

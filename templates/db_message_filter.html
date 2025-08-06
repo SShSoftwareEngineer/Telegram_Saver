@@ -95,7 +95,9 @@
 <!-- Apply database message filters button -->
 <button class="apply-filters-buttons"
         hx-post="/db_message_apply_filters"
-        hx-include="input[name='db_sort_order']:checked,
+        hx-include="input[name='db_dialog_select'],
+                    input[name='sort_db_mess_field']:checked,
+                    input[name='db_sort_order']:checked,
                     input[name='db_date_from'],
                     input[name='db_date_to'],
                     input[name='db_message_query']"

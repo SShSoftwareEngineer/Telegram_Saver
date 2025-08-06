@@ -287,6 +287,31 @@ def sync_local_files_with_db():
     tg_handler.download_message_file_from_list(downloaded_file_list)
     return ''
 
+@tg_saver.route('/db_message_apply_filters', methods=['POST'])
+def db_message_apply_filters():
+    """
+    Получение списка сообщений из базы данных с применением фильтров
+    """
+    pass
+    mess_filter = db_handler.message_sort_filter
+    form = request.form
+
+    # hx - include = "input[name='db_dialog_select'],
+    # input[name = 'sort_db_mess_field']:checked,
+    # input[name = 'db_sort_order']:checked,
+    # input[name = 'db_date_from'],
+    # input[name = 'db_date_to'],
+    # input[name = 'db_message_query']"
+
+    mess_filter.sort_order = form.getlist('tg_sort_order')
+    mess_filter.date_from = form.get('tg_date_from')
+    mess_filter.date_to = form.get('tg_date_to')
+    mess_filter.message_query = form.get('tg_message_query')
+    # Получение списка сообщений с применением фильтров
+    tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
+        tg_handler.current_state.selected_dialog_id)
+    return render_template("tg_messages.html")
+
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
