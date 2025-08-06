@@ -4,7 +4,7 @@
 <html lang="en">
 
 <head>
-    <title>Telegram Viewer</title>
+    <title>Telegram Saver</title>
     <meta charset="UTF-8">
     {# Для мобильных устройств #}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -96,20 +96,20 @@
         <div class="grid db-filters">
             {% include "db_message_filter.html" %}
         </div>
-{#        <div class="scroll db-messages">#}
-{#            <div class="grid content" id="tg_messages">#}
-{#                {% if tg_messages %}#}
-{#                    {% set context = tg_messages %}#}
-{#                    {% include "db_messages.html" with context %}#}
-{#                {% endif %}#}
-{#            </div>#}
-{#        </div>#}
-
-        <div class="grid scroll db-message_list">
-            {% include "db_messages.html" %}
+        <div class="db-messages">
+            <div class="grid content" id="db_messages">
+                {% if db_messages %}
+                    {% set context = db_messages %}
+                    {% include "db_messages.html" with context %}
+                {% endif %}
+            </div>
         </div>
-
-        <div class="grid scroll db-details">Details</div>
+        <div class="scroll db-details">
+            <div class="grid content" id="db_details">
+                {% set context = db_details %}
+                {% include "db_details.html" with context %}
+            </div>
+        </div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>
         <div class="grid db-footer3">Footer 3</div>
