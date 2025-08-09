@@ -30,7 +30,7 @@
 <div id="tab1" class="tab-content" style="display: block;">
     {# Страница сообщений Телеграм #}
 
-    <div class="tg-container">
+    <div class="tg-container-tab_1">
         <div class="header tg-filter_h">Filters</div>
         <div class="header tg-chat_h">
             Chats (<span id="tg-chats-count">{{ tg_dialogs|length }}</span>)
@@ -85,10 +85,13 @@
 <div id="tab2" class="tab-content">
     {# Страница сообщений Database #}
 
-    <div class="db-container">
+    <div class="db-container-tab_2">
         <div class="header db-filters_h">Filters</div>
         <div class="header db-messages_h">
-            Messages (<span id="db-messages-count">{{ db_messages|length }}</span>)
+            Messages
+            {% if db_messages|length > 0 %}
+                (<span id="db-messages-count">{{ db_messages|length }}</span>)
+            {% endif %}
         </div>
         <div class="header db-details_h">
             Message details
@@ -96,7 +99,7 @@
         <div class="grid db-filters">
             {% include "db_message_filter.html" %}
         </div>
-        <div class="db-messages">
+        <div class="scroll db-messages">
             <div class="grid content" id="db_messages">
                 {% if db_messages %}
                     {% set context = db_messages %}
@@ -110,6 +113,7 @@
                 {% include "db_details.html" with context %}
             </div>
         </div>
+        <div class="grid db-marks">Tags, ratings</div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>
         <div class="grid db-footer3">Footer 3</div>

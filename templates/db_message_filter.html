@@ -7,7 +7,7 @@
     </label>
     <div class="control-X-button">
         <select id="db_dialog_select" name="db_dialog_select" size="6" multiple>
-            {% for db_dialog in db_dialog_list %}
+            {% for db_dialog in db_all_dialog_list %}
                 <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
             {% endfor %}
         </select>
@@ -34,11 +34,11 @@
 <!-- Database messages sort order radiobuttons -->
 <p class="group-label">Messages sort order</p>
 <div>
-    <input type="radio" id="db_mess_reverse_0" name="db_sort_order" value="0">
+    <input type="radio" id="db_mess_reverse_0" name="db_sort_order" value="0" checked>
     <label for="db_mess_reverse_0">Ascending</label>
 </div>
 <div>
-    <input type="radio" id="db_mess_reverse_1" name="db_sort_order" value="1" checked>
+    <input type="radio" id="db_mess_reverse_1" name="db_sort_order" value="1">
     <label for="db_mess_reverse_1">Descending</label>
 </div>
 
@@ -95,7 +95,7 @@
 <!-- Apply database message filters button -->
 <button class="apply-filters-buttons"
         hx-post="/db_message_apply_filters"
-        hx-include="input[name='db_dialog_select'],
+        hx-include="select[name='db_dialog_select'],
                     input[name='sort_db_mess_field']:checked,
                     input[name='db_sort_order']:checked,
                     input[name='db_date_from'],

@@ -25,7 +25,8 @@ def inject_field_names():
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
         'tg_details': tg_handler.current_state.message_details,
-        'db_dialog_list': db_handler.all_dialogues_list,
+        'db_all_dialog_list': db_handler.all_dialogues_list,
+        'db_messages': db_handler.current_state.message_group_list,
     }
 
 
@@ -63,7 +64,7 @@ def get_tg_dialogs():
     """
     Получение списка диалогов Telegram
     """
-    tg_handler.current_state.dialog_list = tg_handler.get_tg_dialog_list()
+    tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html")
 
 
@@ -111,7 +112,7 @@ def tg_dialog_apply_filters():
     dial_filter.dialog_type(form.get('tg_dialog_type'))
     dial_filter.title_query(form.get('tg_title_query'))
     # Получение списка диалогов с применением фильтров
-    tg_handler.current_state.dialog_list = tg_handler.get_tg_dialog_list()
+    tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
     return render_template("tg_dialogs.html")
 
 
@@ -287,30 +288,33 @@ def sync_local_files_with_db():
     tg_handler.download_message_file_from_list(downloaded_file_list)
     return ''
 
+
 @tg_saver.route('/db_message_apply_filters', methods=['POST'])
 def db_message_apply_filters():
     """
     Получение списка сообщений из базы данных с применением фильтров
     """
-    pass
     mess_filter = db_handler.message_sort_filter
     form = request.form
-
-    # hx - include = "input[name='db_dialog_select'],
-    # input[name = 'sort_db_mess_field']:checked,
-    # input[name = 'db_sort_order']:checked,
-    # input[name = 'db_date_from'],
-    # input[name = 'db_date_to'],
-    # input[name = 'db_message_query']"
-
-    mess_filter.sort_order = form.getlist('tg_sort_order')
-    mess_filter.date_from = form.get('tg_date_from')
-    mess_filter.date_to = form.get('tg_date_to')
-    mess_filter.message_query = form.get('tg_message_query')
+    mess_filter.selected_dialog_list = form.getlist('db_dialog_select')
+    mess_filter.sorting_field = form.get('sort_db_mess_field')
+    mess_filter.sort_order = form.get('db_sort_order')
+    mess_filter.date_from = form.get('db_date_from')
+    mess_filter.date_to = form.get('db_date_to')
+    mess_filter.message_query = form.get('db_message_query')
     # Получение списка сообщений с применением фильтров
-    tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
-        tg_handler.current_state.selected_dialog_id)
-    return render_template("tg_messages.html")
+    db_handler.current_state.message_group_list = db_handler.get_message_group_list()
+    return render_template("db_messages.html")
+
+
+@tg_saver.route('/db_details/<string:dialog_id>/<string:message_group_id>')
+def get_db_details(dialog_id: str, message_group_id: str):
+    """
+    Получение детальной информации о сообщении из базы данных
+    """
+    db_handler.current_state.message_group = db_handler.get_message_detail(int(dialog_id),
+                                                                             message_group_id) if message_group_id else None
+    return render_template("db_details.html")
 
 
 if __name__ == '__main__':

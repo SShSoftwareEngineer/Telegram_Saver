@@ -353,8 +353,7 @@ class TgMessageSortFilter:
         """
         Сортировка списка групп сообщений по дате
         """
-        result = sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
-        return result
+        return sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
 
 
 @dataclass
@@ -422,7 +421,7 @@ class TelegramHandler:
                                      self._connection_settings['API_HASH'], loop=loop)
         self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
         # Получаем список всех диалогов аккаунта Telegram
-        self.all_dialogues_list = self.get_tg_dialog_list()
+        self.all_dialogues_list = self.get_dialog_list()
         # Устанавливаем текущее состояние клиента Telegram
         self.current_state.dialog_list = list(self.all_dialogues_list)
         if self.current_state.dialog_list:
@@ -453,7 +452,7 @@ class TelegramHandler:
         found_tg_message_group = next((x for x in message_group_list if x.grouped_id == grouped_id), None)
         return found_tg_message_group
 
-    def get_tg_dialog_list(self) -> List[TgDialog]:
+    def get_dialog_list(self) -> List[TgDialog]:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
@@ -563,14 +562,6 @@ class TelegramHandler:
                 if tg_file.file_type != MessageFileTypes.VIDEO:
                     print(f'Downloading file {tg_file.file_path}...')
                     self.download_message_file(tg_file)
-
-                # print(f'Downloading file {tg_file.file_path}...')
-                # downloading_result = tg_handler.download_message_file(tg_file)
-                # if downloading_result:
-                #     print(f'File {tg_file.file_path} downloaded successfully')
-                # else:
-                #     print(f'Failed to download file {tg_file.file_path}')
-
         tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
         print('Message details loaded')
         return tg_details
