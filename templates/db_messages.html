@@ -4,38 +4,38 @@
 <span id="db-messages-count" hx-swap-oob="true">{{ tg_messages|length }}</span>
 
 <ul class="dialogs-messages-list">
-    {% for tg_message in tg_messages %}
+    {% for db_message in db_messages %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
-        <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+tg_message.grouped_id }}"
-               value="{{ tg_message.grouped_id }}">
+        <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+db_message.grouped_id }}"
+               value="{{ db_message.grouped_id }}">
         {# Стиль чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             {# Формирование даты и времени сообщения как ссылки #}
-            {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
+            {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
             {# Ссылка на детали сообщения с использованием htmx для загрузки #}
-            <a href="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
-               hx-get="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
-               hx-target="#tg_details">{{ message_date }}</a>
+            <a href="/db_details/{{ db_message.dialog_id }}/{{ db_message.grouped_id }}"
+               hx-get="/db_details/{{ db_message.dialog_id }}/{{ db_message.grouped_id }}"
+               hx-target="#db_details">{{ message_date }}</a>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-            {% if tg_message.saved_to_db %}
+            {% if db_message.saved_to_db %}
                 <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
                 <span class="message-checkbox">
                     {# Создание чекбокса для отметки на сохранение в БД #}
-                    {% set checkbox_name = constants.select_to_save+'_mess = '+tg_message.grouped_id %}
+                    {% set checkbox_name = constants.select_to_save+'_mess = '+db_message.grouped_id %}
                     <input type="checkbox" name="{{ checkbox_name }}"
                            hx-post="/select_messages_to_save"
                            hx-trigger="change"
-                           hx-include="input[name='{{ constants.mess_group_id+'_mess = '+tg_message.grouped_id }}'],
+                           hx-include="input[name='{{ constants.mess_group_id+'_mess = '+db_message.grouped_id }}'],
                                        input[name='{{ checkbox_name }}'],">
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}
             {# Вывод обрезанного текста и строки информации о файлах в группе сообщений #}
-            <br>{{ tg_message.truncated_text|replace('\n', '<br>')|safe }}
-            {% if tg_message.files_report %}
+            <br>{{ db_message.truncated_text|replace('\n', '<br>')|safe }}
+            {% if db_message.files_report %}
                 <br>
-                <b>{{ tg_message.files_report }}</b>
+                <b>{{ db_message.files_report }}</b>
             {% endif %}
             <br>
         </li>

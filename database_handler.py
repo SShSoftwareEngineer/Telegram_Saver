@@ -30,7 +30,7 @@ class DbMessageGroup(Base):
     __tablename__ = TableNames.message_groups
     # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
-    date_time: Mapped[datetime]
+    date: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
@@ -134,49 +134,96 @@ class DbMessageSortFilter:
 
     @staticmethod
     def _sort_by_dialog_title(x):
-        return x.title
+        return x.dialog.title
 
     @staticmethod
     def _sort_by_date(x):
         return x.date
 
+    @property
+    def selected_dialog_list(self) -> Optional[List[int]]:
+        """
+        Возвращает список выбранных диалогов для фильтрации сообщений
+        """
+        return self._selected_dialog_list
+
+    @selected_dialog_list.setter
     def selected_dialog_list(self, value: List[int]):
         """
-        Устанавливает список выбранных диалогов для фильтрации сообщений
+        Возвращает список выбранных диалогов ID для фильтрации сообщений
         """
-        pass
-        # if value:
-        #     self._selected_dialog_list = value
-        # else:
-        #     self._selected_dialog_list = None
+        if value:
+            self._selected_dialog_list = value
+        else:
+            self._selected_dialog_list = None
 
-    def sort_field(self, value: str):
+    @property
+    def sorting_field(self):
+        """
+        Возвращает поле, по которому сортируются сообщения
+        """
+        return self._sorting_field
+
+    @sorting_field.setter
+    def sorting_field(self, value: str):
         """
         Устанавливает поле сортировки
         """
         self._sorting_field = self._sort_by_dialog_title if value == '0' else self._sort_by_date
 
+    @property
+    def sort_order(self) -> bool:
+        """
+        Возвращает порядок сортировки сообщений по заданному полю
+        """
+        return self._sort_order
+
+    @sort_order.setter
     def sort_order(self, value: str):
         """
-        Устанавливает порядок сортировки сообщений по дате
+        Устанавливает порядок сортировки сообщений по заданному полю
         """
         self._sort_order = False if value == '0' else True
 
+    @property
+    def date_from(self) -> Optional[datetime]:
+        """
+        Возвращает дату, с которой получать сообщения
+        """
+        return self._date_from
+
+    @date_from.setter
     def date_from(self, value: str):
         """
         Устанавливает дату, с которой получать сообщения
         """
         self._date_from = date_decode(value)
 
+    @property
+    def date_to(self) -> Optional[datetime]:
+        """
+        Возвращает дату, до которой получать сообщения
+        """
+        return self._date_to
+
+    @date_to.setter
     def date_to(self, value: str):
         """
         Устанавливает дату, до которой получать сообщения
         """
         self._date_to = date_decode(value)
 
+    @property
+    def message_query(self) -> Optional[str]:
+        """
+        Возвращает фильтр по тексту сообщений
+        """
+        return self._message_query
+
+    @message_query.setter
     def message_query(self, value: str):
         """
-        Устанавливает фильтр по названию диалогов
+        Устанавливает фильтр по тексту сообщений
         """
         self._message_query = value if value else None
 
@@ -188,13 +235,26 @@ class DbMessageSortFilter:
     #     return result
 
 
+class DbCurrentState:
+    """
+    Текущее состояние клиента базы данных.
+    """
+    dialog_list: List[DbDialog] = None
+    selected_dialog_id: int = None
+    message_group_list: List[DbMessageGroup] = None
+    selected_message_group: DbMessageGroup = None
+    message_group_files: Dict[str, Dict[str, Any]] = None
+
+
 class DatabaseHandler:
     """
     A class to represent handle database operations.
     Класс для представления операций с базой данных.
     """
-    all_dialogues_list: List[DbDialog]
+
+    all_dialogues_list: List[DbDialog] = None
     message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
+    current_state: DbCurrentState = DbCurrentState()
 
     def upsert_record(self, model_class: Type[ModelType],
                       filter_fields: Dict[str, Any],
@@ -237,6 +297,10 @@ class DatabaseHandler:
         self.session.commit()
         # Получаем список диалогов из базы данных
         self.all_dialogues_list = self.get_db_dialog_list()
+        # Устанавливаем текущее состояние клиента базы данных
+        self.current_state.dialog_list = list(self.all_dialogues_list)
+        self.current_state.message_group_list = []
+
 
     def get_db_dialog_list(self) -> List[DbDialog]:
         """
@@ -248,6 +312,52 @@ class DatabaseHandler:
             dialog_list.append(db_dialog)
         print(f'{len(dialog_list)} chats loaded from the database')
         return sorted(dialog_list, key=lambda x: x.title)
+
+    def get_message_group_list(self) -> list[DbMessageGroup]:
+        """
+        Получение списка групп сообщений с учетом фильтров и сортировки
+        """
+        stmt = select(DbMessageGroup)
+        if self.message_sort_filter.selected_dialog_list:
+            stmt = stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
+        if self.message_sort_filter.date_from:
+            stmt = stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
+        if self.message_sort_filter.date_to:
+            stmt = stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
+        if self.message_sort_filter.message_query:
+            stmt = stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
+        query_result = self.session.execute(stmt).scalars().all()
+        print(f'{len(query_result)} messages loaded from the database')
+        return sorted(query_result, key=self.message_sort_filter.sorting_field,
+                      reverse=self.message_sort_filter.sort_order)
+
+    # def get_message_detail(self, dialog_id: int, message_group_id: str) -> DbDetails:
+    #     """
+    #     Получение сообщения по id диалога и id группы сообщений
+    #     """
+    #     # Получаем текущую группу сообщений по id
+    #     current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
+    #     message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
+    #     print(f'Message {message_date_str} details loading...')
+    #     tg_details = TgDetails(dialog_id=dialog_id,
+    #                            dialog_title=self.get_dialog_by_id(dialog_id).title,
+    #                            message_group_id=message_group_id,
+    #                            date=current_message_group.date,
+    #                            text=current_message_group.text if current_message_group.text else '',
+    #                            files=current_message_group.files,
+    #                            files_report=current_message_group.files_report if current_message_group.files_report else '',
+    #                            saved_to_db=current_message_group.saved_to_db)
+    #     # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+    #     tg_details.text = convert_text_hyperlinks(tg_details.text)
+    #     # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
+    #     for tg_file in tg_details.files:
+    #         if not tg_file.is_exists():
+    #             if tg_file.file_type != MessageFileTypes.VIDEO:
+    #                 print(f'Downloading file {tg_file.file_path}...')
+    #                 self.download_message_file(tg_file)
+    #     tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
+    #     print('Message details loaded')
+    #     return tg_details
 
 
 if __name__ == '__main__':

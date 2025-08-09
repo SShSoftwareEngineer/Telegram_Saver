@@ -121,6 +121,11 @@ def date_decode(date_str: str) -> Optional[datetime]:
         date_split = re.split(r'[/.-]', date_str)
         if len(date_split) == 3:
             dd, mm, yyyy = date_split
+            # Normalize the date components to ensure they are two digits
+            dd = dd.zfill(2)
+            mm = mm.zfill(2)
+            if len(yyyy) == 2:
+                yyyy = '20' + yyyy
             try:
                 return datetime(int(yyyy), int(mm), int(dd))
             except ValueError:

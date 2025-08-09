@@ -81,7 +81,7 @@ html, body {
 }
 
 /* Стили для CSS Grid контейнера и зон для вкладки Telegram */
-.tg-container {
+.tg-container-tab_1 {
     display: grid;
     grid-template-areas:
         "filter_h chat_h message_h detail_h"
@@ -115,11 +115,12 @@ html, body {
 }
 
 /* Стили для CSS Grid контейнера и зон для вкладки Database */
-.db-container {
+.db-container-tab_2 {
     display: grid;
     grid-template-areas:
         "filters_h messages_h details_h"
         "filters messages details"
+        "filters messages marks"
         "footer1 footer2 footer3";
     grid-template-columns: 15fr 40fr 45fr;
     grid-template-rows: auto 1fr auto;
@@ -134,6 +135,7 @@ html, body {
 .db-filters { grid-area: filters; }
 .db-messages { grid-area: messages; }
 .db-details { grid-area: details; }
+.db-marks { grid-area: marks; }
 .db-footer1 { grid-area: footer1; }
 .db-footer2 { grid-area: footer2; }
 .db-footer3 { grid-area: footer3; }
