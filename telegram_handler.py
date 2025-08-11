@@ -151,7 +151,6 @@ class TgFile:
     description: str
     alt_text: str
     size: int
-    exists: bool = False
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
     def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, file_path: str,
@@ -170,8 +169,7 @@ class TgFile:
         """
         Проверяет, был ли файл загружен в файловую систему
         """
-        self.exists = Path(self.file_path).exists() if self.file_path else False
-        return self.exists
+        return Path(self.file_path).exists() if self.file_path else False
 
 
 @dataclass
@@ -191,6 +189,9 @@ class TgMessageGroup:
     files_report: Optional[str] = ''
     saved_to_db: bool = False
     selected: bool = False
+
+    # dialog_title: str
+    # existing_files: List[TgFile]
 
     def __init__(self, grouped_id: str, dialog_id: int):
         self.grouped_id = grouped_id
@@ -357,34 +358,6 @@ class TgMessageSortFilter:
 
 
 @dataclass
-class TgDetails:
-    """
-    A class to represent details of a Telegram message.
-    """
-    dialog_id: int
-    dialog_title: str
-    message_group_id: str
-    date: datetime
-    text: str
-    files: List[TgFile]
-    existing_files: List[TgFile]
-    files_report: Optional[str]
-    saved_to_db: bool
-
-    def __init__(self, dialog_id: int, dialog_title: str, message_group_id: str, date: datetime, text: str,
-                 files: List[TgFile], files_report: Optional[str], saved_to_db: bool):
-        self.dialog_id = dialog_id
-        self.dialog_title = dialog_title
-        self.message_group_id = message_group_id
-        self.date = date
-        self.text = text
-        self.files = files
-        self.existing_files = [file for file in files if file.is_exists()]
-        self.files_report = files_report if files_report else ''
-        self.saved_to_db = saved_to_db
-
-
-@dataclass
 class TgCurrentState:
     """
     Текущее состояние клиента Telegram
@@ -392,9 +365,7 @@ class TgCurrentState:
     dialog_list: List[TgDialog] = None
     selected_dialog_id: int = None
     message_group_list: List[TgMessageGroup] = None
-    selected_message_group_id: str = None
     message_details: Dict[str, Any] = None
-    message_files: Dict[str, Dict[str, Any]] = None
 
 
 class TelegramHandler:
@@ -538,7 +509,7 @@ class TelegramHandler:
         print(f'{len(message_group_list)} message groups were formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
-    def get_message_detail(self, dialog_id: int, message_group_id: str) -> TgDetails:
+    def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
@@ -546,23 +517,23 @@ class TelegramHandler:
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
         message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
-        tg_details = TgDetails(dialog_id=dialog_id,
-                               dialog_title=self.get_dialog_by_id(dialog_id).title,
-                               message_group_id=message_group_id,
-                               date=current_message_group.date,
-                               text=current_message_group.text if current_message_group.text else '',
-                               files=current_message_group.files,
-                               files_report=current_message_group.files_report if current_message_group.files_report else '',
-                               saved_to_db=current_message_group.saved_to_db)
-        # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-        tg_details.text = convert_text_hyperlinks(tg_details.text)
-        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
-        for tg_file in tg_details.files:
+        tg_details = dict(dialog_id=dialog_id,
+                          dialog_title=self.get_dialog_by_id(dialog_id).title,
+                          message_group_id=message_group_id,
+                          date=current_message_group.date,
+                          # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+                          text=convert_text_hyperlinks(
+                              current_message_group.text) if current_message_group.text else '',
+                          files=current_message_group.files,
+                          files_report=current_message_group.files_report if current_message_group.files_report else '',
+                          saved_to_db=current_message_group.saved_to_db)
+        # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе, кроме видео
+        for tg_file in tg_details.get('files'):
             if not tg_file.is_exists():
                 if tg_file.file_type != MessageFileTypes.VIDEO:
                     print(f'Downloading file {tg_file.file_path}...')
                     self.download_message_file(tg_file)
-        tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
+        tg_details['existing_files'] = [tg_file for tg_file in tg_details.get('files') if tg_file.is_exists()]
         print('Message details loaded')
         return tg_details
 

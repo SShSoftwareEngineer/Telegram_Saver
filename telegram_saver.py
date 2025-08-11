@@ -27,6 +27,7 @@ def inject_field_names():
         'tg_details': tg_handler.current_state.message_details,
         'db_all_dialog_list': db_handler.all_dialogues_list,
         'db_messages': db_handler.current_state.message_group_list,
+        'db_details': db_handler.current_state.message_details,
     }
 
 
@@ -194,7 +195,7 @@ def save_selected_message_to_db():
                     dialog_type_id=tg_dialog.type.value).first()
             # Сохраняем группу сообщений
             db_message_group = db_handler.upsert_record(DbMessageGroup, dict(grouped_id=tg_message_group.grouped_id),
-                                                        dict(date_time=tg_message_group.date,
+                                                        dict(date=tg_message_group.date,
                                                              text=tg_message_group.text,
                                                              truncated_text=tg_message_group.truncated_text,
                                                              files_report=tg_message_group.files_report,
@@ -249,6 +250,9 @@ def save_selected_message_to_db():
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
             tg_message_group.selected = False
             tg_message_group.saved_to_db = True
+        # Обновляем список сохраненных диалогов в текущем состоянии
+        db_handler.current_state.dialog_list = db_handler.get_dialog_list()
+        db_handler.all_dialogues_list = db_handler.get_dialog_list()
     return ''
 
 
@@ -312,7 +316,7 @@ def get_db_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении из базы данных
     """
-    db_handler.current_state.message_group = db_handler.get_message_detail(int(dialog_id),
+    db_handler.current_state.message_details = db_handler.get_message_detail(int(dialog_id),
                                                                              message_group_id) if message_group_id else None
     return render_template("db_details.html")
 

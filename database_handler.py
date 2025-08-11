@@ -1,10 +1,11 @@
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode, ProjectConst
 
 
 class Base(DeclarativeBase):
@@ -102,6 +103,12 @@ class DbFile(Base):
     # Relationships to 'DbFileType' table
     file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.file_type_id'))
     file_type: Mapped['DbFileType'] = relationship(back_populates='files')
+
+    def is_exists(self) -> bool:
+        """
+        Проверяет, был ли файл загружен в файловую систему
+        """
+        return Path(self.file_path).exists() if self.file_path else False
 
 
 class DbFileType(Base):
@@ -240,10 +247,10 @@ class DbCurrentState:
     Текущее состояние клиента базы данных.
     """
     dialog_list: List[DbDialog] = None
-    selected_dialog_id: int = None
+    # selected_dialog_id: int = None
     message_group_list: List[DbMessageGroup] = None
-    selected_message_group: DbMessageGroup = None
-    message_group_files: Dict[str, Dict[str, Any]] = None
+    # selected_message_group: DbMessageGroup = None
+    message_details: Dict[str, Any] = None
 
 
 class DatabaseHandler:
@@ -296,13 +303,12 @@ class DatabaseHandler:
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
         # Получаем список диалогов из базы данных
-        self.all_dialogues_list = self.get_db_dialog_list()
+        self.all_dialogues_list = self.get_dialog_list()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
         self.current_state.message_group_list = []
 
-
-    def get_db_dialog_list(self) -> List[DbDialog]:
+    def get_dialog_list(self) -> List[DbDialog]:
         """
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
         """
@@ -331,33 +337,31 @@ class DatabaseHandler:
         return sorted(query_result, key=self.message_sort_filter.sorting_field,
                       reverse=self.message_sort_filter.sort_order)
 
-    # def get_message_detail(self, dialog_id: int, message_group_id: str) -> DbDetails:
-    #     """
-    #     Получение сообщения по id диалога и id группы сообщений
-    #     """
-    #     # Получаем текущую группу сообщений по id
-    #     current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
-    #     message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
-    #     print(f'Message {message_date_str} details loading...')
-    #     tg_details = TgDetails(dialog_id=dialog_id,
-    #                            dialog_title=self.get_dialog_by_id(dialog_id).title,
-    #                            message_group_id=message_group_id,
-    #                            date=current_message_group.date,
-    #                            text=current_message_group.text if current_message_group.text else '',
-    #                            files=current_message_group.files,
-    #                            files_report=current_message_group.files_report if current_message_group.files_report else '',
-    #                            saved_to_db=current_message_group.saved_to_db)
-    #     # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-    #     tg_details.text = convert_text_hyperlinks(tg_details.text)
-    #     # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе
-    #     for tg_file in tg_details.files:
-    #         if not tg_file.is_exists():
-    #             if tg_file.file_type != MessageFileTypes.VIDEO:
-    #                 print(f'Downloading file {tg_file.file_path}...')
-    #                 self.download_message_file(tg_file)
-    #     tg_details.existing_files = [tg_file for tg_file in tg_details.files if tg_file.is_exists()]
-    #     print('Message details loaded')
-    #     return tg_details
+    def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
+        """
+        Получение сообщения по id диалога и id группы сообщений
+        """
+        # Получаем текущую группу сообщений по id
+        current_message_group = self.session.query(DbMessageGroup).filter(
+            DbMessageGroup.grouped_id == message_group_id).one()
+        db_details = dict(dialog_id=current_message_group.dialog_id,
+                          dialog_title=current_message_group.dialog.title,
+                          message_group_id=message_group_id,
+                          date=current_message_group.date,
+                          text=current_message_group.text if current_message_group.text else '',
+                          files=current_message_group.files,
+                          files_report=current_message_group.files_report if current_message_group.files_report else '',
+                          tags='\n'.join([current_tag.name for current_tag in current_message_group.tags]), )
+        # db_details['existing_files'] = []
+        # for db_file in db_details.get('files'):
+        #     if db_file.is_exists():
+        db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
+        return db_details
+
+    # # Relationships to 'DbFile' table
+    # files: Mapped[List['DbFile']] = relationship(back_populates='message_group')
+    # # Relationships to 'DbTag' table
+    # tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
 
 if __name__ == '__main__':
