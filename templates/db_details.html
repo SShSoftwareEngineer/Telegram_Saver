@@ -1,15 +1,15 @@
 <!-- Шаблон детальной информации сообщения Telegram -->
 
 <span>
-    {% if tg_details %}
-        {% set message_date = tg_details.date.strftime(constants.message_datetime_format) %}
-        {% set group = tg_details.message_group_id %}
+    {% if db_details %}
+        {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
+        {% set group = db_details.message_group_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
-               value="{{ tg_details.message_group_id }}">
+               value="{{ db_details.message_group_id }}">
         <div style="text-align: center;"><b>{{ message_date }}</b>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-            {% if tg_details.saved_to_db %}
+            {% if db_details.saved_to_db %}
                 <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
                 <span class="message-checkbox">
@@ -25,24 +25,26 @@
             {% endif %}
             {# Вывод заголовка диалога #}
             <br>
-            {{ tg_details.dialog_title }}
+            {{ db_details.dialog_title }}
         </div>
         <br>
         {# Вывод текста сообщения #}
-        {{ tg_details.text|replace('\n', '<br>')|safe }}
+        {{ db_details.text|replace('\n', '<br>')|safe }}
         <br>
         {# Вывод графических, видео и других файлов #}
         <br>
         <div class="media-files-area">
-                {% for message_file in tg_details.existing_files %}
-                    <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
+                {% for message_file in db_details.existing_files %}
+                    {{ message_file.alt_text }}
+                    <div class="{% if db_details.existing_files|length > 1 %} media-files-two-column
+                                {% else %} media-files-one-column {% endif %}">
                     {# Вывод графических файлов #}
-                        {% if message_file.alt_text==file_types.IMAGE.alt_text %}
+                        {% if message_file.file_type.alt_text==file_types.IMAGE.alt_text %}
                             <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                                  alt="{{ message_file.alt_text }}" class="media-files-container">
                         {% endif %}
                         {# Вывод видео файлов #}
-                        {% if message_file.alt_text==file_types.VIDEO.alt_text %}
+                        {% if message_file.file_type.alt_text==file_types.VIDEO.alt_text %}
                             <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                                    controls preload="metadata" class="media-files-container">
                             Video is not supported by your browser

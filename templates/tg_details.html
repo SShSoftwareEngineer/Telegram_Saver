@@ -35,7 +35,8 @@
         <br>
         <div class="media-files-area">
                 {% for message_file in tg_details.existing_files %}
-                    <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
+                    <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
+                                {% else %} media-files-one-column {% endif %}">
                     {# Вывод графических файлов #}
                         {% if message_file.alt_text==file_types.IMAGE.alt_text %}
                             <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
