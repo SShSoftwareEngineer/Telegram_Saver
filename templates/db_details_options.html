@@ -1,12 +1,73 @@
 <!-- Шаблон с опциями детальной информации сообщений базы данных -->
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+<!-- Tag list -->
+<div hx-ext="class-tools">
+    <label for="tag_select">
+        <p class="group-label">Tag list</p>
+    </label>
+    <div class="control-X-button">
+        <select id="tag_select" name="tag_select" size="6"
+                hx-on:change="document.getElementById('cud_tag').value =
+                              event.target.options[event.target.selectedIndex].text">
+            {% for db_dialog in db_all_dialog_list %}
+                <option value="{{ db_dialog.title }}">{{ db_dialog.title }}</option>
+            {% endfor %}
+        </select>
+        <button type="button"
+                hx-on:click="document.getElementById('tag_select').value = '';
+                             document.getElementById('cud_tag').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
 
-</body>
-</html>
+<!-- Add a tag to a message -->
+<button class="apply-filters-buttons"
+        hx-post="/db_tag_add_to_message"
+        hx-include="select[name='tag_select']"
+        hx-target="this">
+    Add a tag to a message
+</button>
+
+<!-- Create, Update, Delete a tag -->
+<div hx-ext="class-tools">
+    <label class="group-label" for="cud_tag">
+        <p class="group-label">Add a tag</p>
+    </label>
+    <div class="control-X-button">
+        <input type="text"
+               id="cud_tag"
+               name="cud_tag"
+               placeholder="Filter by message text...">
+        <button type="button"
+                hx-on:click="document.getElementById('cud_tag').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
+
+<!-- Crate a new tag -->
+<button class="apply-filters-buttons"
+        hx-post="/db_tag_create"
+        hx-include="input[name='cud_tag']"
+        hx-target="this">
+    Create
+</button>
+
+<!-- Update tag -->
+<button class="apply-filters-buttons"
+        hx-post="/db_tag_update"
+        hx-include="input[name='cud_tag']"
+        hx-target="this">
+    Update
+</button>
+
+<!-- Delete tag -->
+<button class="apply-filters-buttons"
+        hx-post="/db_tag_delete"
+        hx-include="input[name='cud_tag']"
+        hx-target="this">
+    Delete
+</button>

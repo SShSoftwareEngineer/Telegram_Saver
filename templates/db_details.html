@@ -2,12 +2,12 @@
 
 <span>
     {% if db_details %}
-        {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
         {% set group = db_details.message_group_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
         <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
                value="{{ db_details.message_group_id }}">
-        <div style="text-align: center;"><b>{{ message_date }}</b>
+        {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
+        <div style="text-align: center;">
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             {% if db_details.saved_to_db %}
                 <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
@@ -23,6 +23,9 @@
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}
+            <br>
+            {# Вывод даты сообщения #}
+            <b>{{ message_date }}</b>
             {# Вывод заголовка диалога #}
             <br>
             {{ db_details.dialog_title }}

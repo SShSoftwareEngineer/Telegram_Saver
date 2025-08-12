@@ -78,7 +78,7 @@
                 {% include "tg_details.html" with context %}
             </div>
         </div>
-        <div class="grid tg-footer">footer (in development)</div>
+        <div class="grid tg-footer" id="tg-footer">footer (in development)</div>
     </div>
 </div>
 
@@ -113,7 +113,9 @@
                 {% include "db_details.html" with context %}
             </div>
         </div>
-        <div class="grid db-marks">Tags, ratings</div>
+        <div class="grid db-marks">
+            {% include "db_details_options.html" %}
+        </div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>
         <div class="grid db-footer3">Footer 3</div>
