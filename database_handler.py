@@ -5,7 +5,7 @@ from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode, ProjectConst
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
 
 
 class Base(DeclarativeBase):

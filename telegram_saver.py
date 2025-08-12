@@ -321,6 +321,15 @@ def get_db_details(dialog_id: str, message_group_id: str):
     return render_template("db_details.html")
 
 
+@tg_saver.route('/db_tag_add_to_message', methods=['POST'])
+def add_tag_to_message(tag: str):
+    """
+    Добавление тега к сообщению
+    """
+    pass
+    return render_template("db_details.html")
+
+
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
