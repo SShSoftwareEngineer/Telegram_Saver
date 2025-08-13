@@ -1,7 +1,7 @@
 <!-- Шаблон для фильтрации сообщений в выбранном диалоге Telegram -->
 
 <!-- Dialog messages sort order radiobuttons -->
-<p class="group-label" style="margin-top: 0;">Messages sort order</p>
+<p class="group-label no-margin-top">Messages sort order</p>
 <div>
     <input type="radio" id="tg_mess_reverse_0" name="tg_sort_order" value="0">
     <label for="tg_mess_reverse_0">Oldest first</label>
@@ -13,10 +13,10 @@
 
 <!-- Filtering by date -->
 <p class="group-label">Filter by message date</p>
-<div class="date-from-to-buttons">
+<div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
     <label for="tg_date_from">Date from:</label>
-    <input type="text" style="width: 80px;"
+    <input type="text" class="date-from-to-buttons"
            id="tg_date_from"
            name="tg_date_from"
            value="{{ date_from_default }}"
@@ -30,7 +30,7 @@
     </button>
     <!-- Filtering by date to -->
     <label for="tg_date_to">Date to:</label>
-    <input type="text" style="width: 80px;"
+    <input type="text" class="date-from-to-buttons"
            id="tg_date_to"
            name="tg_date_to"
            placeholder="DD/MM/YYYY"
@@ -46,7 +46,7 @@
 <!-- Filtering by message text -->
 <div hx-ext="class-tools">
     <label class="group-label" for="tg_message_query">
-        <p class="group-label">Filter by message text</p>
+        <span class="group-label">Filter by message text</span>
     </label>
     <div class="control-X-button">
         <input type="text"

@@ -118,11 +118,10 @@ html, body {
 .db-container-tab_2 {
     display: grid;
     grid-template-areas:
-        "filters_h messages_h details_h"
-        "filters messages details"
-        "filters messages marks"
-        "footer1 footer2 footer3";
-    grid-template-columns: 15fr 40fr 45fr;
+        "filters_h messages_h details_h tags_h"
+        "filters messages details tags"
+        "footer1 footer2 footer3 footer4";
+    grid-template-columns: 15fr 30fr 40fr 15fr;
     grid-template-rows: auto 1fr auto;
     height: 100%;
     gap: 5px;
@@ -132,13 +131,15 @@ html, body {
 .db-filters_h { grid-area: filters_h; }
 .db-messages_h { grid-area: messages_h; }
 .db-details_h { grid-area: details_h; }
+.db-tags_h { grid-area: tags_h; }
 .db-filters { grid-area: filters; }
 .db-messages { grid-area: messages; }
 .db-details { grid-area: details; }
-.db-marks { grid-area: marks; }
+.db-tags { grid-area: tags; }
 .db-footer1 { grid-area: footer1; }
 .db-footer2 { grid-area: footer2; }
 .db-footer3 { grid-area: footer3; }
+.db-footer4 { grid-area: footer4; }
 /* @formatter:on */
 
 /* Стили для CSS Grid контейнера и зон для вкладки Service */
@@ -175,6 +176,12 @@ html, body {
     font-weight: bold;
     margin-top: 10px;
     margin-bottom: 5px;
+    display: block;
+}
+
+/* Без отступа сверху */
+.no-margin-top {
+    margin-top: 0;
 }
 
 /* Кнопка очистки поля ввода или выбора */
@@ -198,12 +205,17 @@ html, body {
     height: max-content;
 }
 
-/* Кнопки выбора дат от и до */
-.date-from-to-buttons {
+/* Сетка разметки для кнопок выбора дат от и до */
+.date-from-to-buttons-grid {
     display: grid;
     grid-template-columns: auto max-content max-content;
     align-items: center;
     gap: 5px;
+}
+
+/* Кнопки выбора дат от и до */
+.date-from-to-buttons {
+    width: 80px;
 }
 
 /* Кнопки применения фильтров */

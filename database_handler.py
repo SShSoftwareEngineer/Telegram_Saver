@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
 
 from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
 
@@ -53,7 +53,9 @@ class DbTag(Base):
     """
     __tablename__ = TableNames.tags
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, default='', nullable=False)
+    usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped[List['DbMessageGroup']] = relationship(secondary=message_group_tag_links,
                                                                   back_populates='tags')
@@ -247,9 +249,7 @@ class DbCurrentState:
     Текущее состояние клиента базы данных.
     """
     dialog_list: List[DbDialog] = None
-    # selected_dialog_id: int = None
     message_group_list: List[DbMessageGroup] = None
-    # selected_message_group: DbMessageGroup = None
     message_details: Dict[str, Any] = None
 
 
@@ -304,6 +304,11 @@ class DatabaseHandler:
         self.session.commit()
         # Получаем список диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
+        # Обновляем частоту использования тегов
+        tags = self.session.query(DbTag).options(selectinload(DbTag.message_groups)).all()
+        for tag in tags:
+            tag.usage_count = tag.message_groups.count()
+        self.session.commit()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
         self.current_state.message_group_list = []

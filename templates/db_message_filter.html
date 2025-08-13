@@ -3,7 +3,7 @@
 <!-- Database dialog filter -->
 <div hx-ext="class-tools">
     <label for="db_dialog_select">
-        <p class="group-label">Filter by chat names</p>
+        <span class="group-label no-margin-top">Filter by chat names</span>
     </label>
     <div class="control-X-button">
         <select id="db_dialog_select" name="db_dialog_select" size="6" multiple>
@@ -44,10 +44,10 @@
 
 <!-- Filter database messages by date -->
 <p class="group-label">Filter by message date</p>
-<div class="date-from-to-buttons">
+<div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
     <label for="db_date_from">Date from:</label>
-    <input type="text" style="width: 80px;"
+    <input type="text" class="date-from-to-buttons"
            id="db_date_from"
            name="db_date_from"
            placeholder="DD/MM/YYYY"
@@ -60,7 +60,7 @@
     </button>
     <!-- Filtering by date to -->
     <label for="db_date_to">Date to:</label>
-    <input type="text" style="width: 80px;"
+    <input type="text" class="date-from-to-buttons"
            id="db_date_to"
            name="db_date_to"
            placeholder="DD/MM/YYYY"
@@ -77,7 +77,7 @@
 <!-- Filtering database messages by message text -->
 <div hx-ext="class-tools">
     <label class="group-label" for="db_message_query">
-        <p class="group-label">Filter by message text</p>
+        <span class="group-label">Filter by message text</span>
     </label>
     <div class="control-X-button">
         <input type="text"

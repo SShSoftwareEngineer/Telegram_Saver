@@ -1,0 +1,106 @@
+<!-- Шаблон с опциями детальной информации сообщений базы данных -->
+
+<style>
+    .vertical-spread {
+        margin-top: 15px;
+    }
+</style>
+
+<!-- Current message tag list -->
+<div hx-ext="class-tools">
+    <label for="this_message_tags">
+        <span class="group-label no-margin-top">Tags for this message</span>
+    </label>
+    <div class="control-X-button">
+        <select id="this_message_tags" name="this_message_tags" size="6"
+                hx-on:change="document.getElementById('edit_tag').value =
+                              event.target.options[event.target.selectedIndex].text">
+            {% for db_dialog in db_all_dialog_list %}
+                <option value="{{ db_dialog.title }}">{{ db_dialog.title }}</option>
+            {% endfor %}
+        </select>
+        <button type="button"
+                hx-on:click="document.getElementById('this_message_tags').value = '';
+                             document.getElementById('edit_tag').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
+
+
+<!-- Edit tag -->
+<div hx-ext="class-tools">
+    <label for="edit_tag">
+        <span class="group-label vertical-spread">Edit tag</span>
+    </label>
+    <div class="control-X-button">
+        <input type="text"
+               id="edit_tag"
+               name="edit_tag">
+        <button type="button"
+                hx-on:click="document.getElementById('edit_tag').value = ''"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
+
+
+<!-- Add a tag to a message -->
+<button class="apply-filters-buttons vertical-spread"
+        hx-post="/db_tag_add"
+        hx-include="input[name='edit_tag']"
+        hx-target="this">
+    Add a tag to a message
+</button>
+
+
+<!-- Remove tag -->
+<button class="apply-filters-buttons vertical-spread"
+        hx-post="/db_tag_remove"
+        hx-include="input[name='edit_tag']"
+        hx-target="this">
+    Remove tag
+</button>
+
+
+<!-- Update tag -->
+<button class="apply-filters-buttons vertical-spread"
+        hx-post="/db_tag_update"
+        hx-include="input[name='edit_tag']"
+        hx-target="this">
+    Update tag
+</button>
+
+
+<!-- Update all tags -->
+<button class="apply-filters-buttons vertical-spread"
+        hx-post="/db_tag_update_all_such"
+        hx-include="input[name='edit_tag']"
+        hx-target="this">
+    Update all such tags
+</button>
+
+
+<!-- All tags list -->
+<div hx-ext="class-tools">
+    <label for="all_tags_list" class="group-label vertical-spread">
+        <span>All tags list</span>
+    </label>
+    <div class="control-X-button">
+        <select id="all_tags_list" name="all_tags_list" size="6"
+                hx-on:change="document.getElementById('edit_tag').value =
+                              event.target.options[event.target.selectedIndex].text">
+            {% for db_dialog in db_all_dialog_list %}
+                <option value="{{ db_dialog.title }}">{{ db_dialog.title }}</option>
+            {% endfor %}
+        </select>
+        <button type="button"
+                hx-on:click="document.getElementById('all_tags_list').value = '';"
+                class="clear-button X-button">
+            ✖
+        </button>
+    </div>
+</div>
+
