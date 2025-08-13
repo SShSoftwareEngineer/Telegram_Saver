@@ -321,19 +321,42 @@ def get_db_details(dialog_id: str, message_group_id: str):
     return render_template("db_details.html")
 
 
-@tg_saver.route('/db_tag_add_to_message', methods=['POST'])
-def add_tag_to_message(tag: str):
+@tg_saver.route('/db_tag_add', methods=['POST'])
+def db_tag_add(tag: str):
     """
     Добавление тега к сообщению
     """
     pass
-    return render_template("db_details.html")
+    return ''
+
+@tg_saver.route('/db_tag_remove', methods=['POST'])
+def db_tag_remove(tag: str):
+    """
+    Добавление тега к сообщению
+    """
+    pass
+    return ''
+
+@tg_saver.route('/db_tag_update', methods=['POST'])
+def db_tag_update(tag: str):
+    """
+    Добавление тега к сообщению
+    """
+    pass
+    return ''
+
+@tg_saver.route('/db_tag_update_all_such', methods=['POST'])
+def db_tag_update_all_such(tag: str):
+    """
+    Добавление тега к сообщению
+    """
+    pass
+    return ''
 
 
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-# TODO: продумать, возможно сохранять текст сообщения в HTML файл с локальными ссылками на файлы
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: сделать поиск по тегам, поиск без тегов, поиск по дате, по диалогу, по тексту сообщения
