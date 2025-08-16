@@ -32,8 +32,10 @@
         </div>
         <br>
         {# Вывод текста сообщения #}
-        {{ tg_details.text|replace('\n', '<br>')|safe }}
-        <br>
+        {% if tg_details.text %}
+            <br>
+            {{ tg_details.text|replace('\n', '<br>')|safe }}
+        {% endif %}
         {# Вывод графических, видео и других файлов #}
         <br>
         <div class="media-files-area">
