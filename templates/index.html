@@ -12,6 +12,8 @@
     <script src="{{ url_for('static', filename='js/htmx.min.2.0.4.js') }}"></script>
     {# Подключение class-tools для htmx #}
     <script src="{{ url_for('static', filename='js/class-tools.js') }}"></script>
+    {# Подключение своих функций #}
+{#    <script src="{{ url_for('static', filename='js/my_scripts.js') }}"></script>#}
     {# Подключение стилей #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
@@ -113,7 +115,7 @@
             </div>
         </div>
         <div class="grid db-tags">
-            {% include "db_details_tags.html" %}
+            {% include "db_tags.html" %}
         </div>
         <div class="grid db-footer1">Footer 1</div>
         <div class="grid db-footer2">Footer 2</div>

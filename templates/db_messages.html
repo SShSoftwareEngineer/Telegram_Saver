@@ -31,8 +31,11 @@
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}
-            {# Вывод обрезанного текста и строки информации о файлах в группе сообщений #}
-            <br>{{ db_message.truncated_text|replace('\n', '<br>')|safe }}
+            {# Вывод обрезанного текста #}
+            {% if db_message.truncated_text %}
+                <br>{{ db_message.truncated_text|replace('\n', '<br>')|safe }}
+            {% endif %}
+            {# Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}
                 <br>
                 <b>{{ db_message.files_report }}</b>

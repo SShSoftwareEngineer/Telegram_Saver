@@ -6,10 +6,11 @@
     }
 </style>
 
+
 <!-- Current message tag list -->
 <div hx-ext="class-tools">
     <label for="this_message_tags">
-        <span class="group-label no-margin-top">Tags for this message</span>
+        <span class="group-label no-margin-top">Message Tags</span>
     </label>
     <div class="control-X-button">
         <select id="this_message_tags" name="this_message_tags" size="6"
@@ -32,7 +33,7 @@
 <!-- Edit tag -->
 <div hx-ext="class-tools">
     <label for="edit_tag">
-        <span class="group-label vertical-spread">Edit tag</span>
+        <span class="group-label vertical-spread">Edit Tag Name</span>
     </label>
     <div class="control-X-button">
         <input type="text"
@@ -52,7 +53,7 @@
         hx-post="/db_tag_add"
         hx-include="input[name='edit_tag']"
         hx-target="this">
-    Add a tag to a message
+    Add tag
 </button>
 
 
@@ -79,21 +80,38 @@
         hx-post="/db_tag_update_all_such"
         hx-include="input[name='edit_tag']"
         hx-target="this">
-    Update all such tags
+    Update tag everywhere
 </button>
+
+
+<!-- All tags sorting -->
+<label for="all_tags_list" class="group-label vertical-spread">
+    <span>All tags</span>
+</label>
+<form hx-post="/db_all_tag_sorting" hx-trigger="change" hx-swap="none">
+    <div>
+        <input type="radio" id="db_tag_sort_field_0" name="db_tag_sort_field" value="0" checked>
+        <label for="db_tag_sort_field_0">Sort by name</label>
+    </div>
+    <div>
+        <input type="radio" id="db_tag_sort_field_1" name="db_tag_sort_field" value="1">
+        <label for="db_tag_sort_field_1">Sort by usage count</label>
+    </div>
+    <div>
+        <input type="radio" id="db_tag_sort_field_2" name="db_tag_sort_field" value="2">
+        <label for="db_tag_sort_field_2">Sort by last update</label>
+    </div>
+</form>
 
 
 <!-- All tags list -->
 <div hx-ext="class-tools">
-    <label for="all_tags_list" class="group-label vertical-spread">
-        <span>All tags list</span>
-    </label>
-    <div class="control-X-button">
+    <div class="control-X-button vertical-spread">
         <select id="all_tags_list" name="all_tags_list" size="6"
                 hx-on:change="document.getElementById('edit_tag').value =
                               event.target.options[event.target.selectedIndex].text">
             {% for db_dialog in db_all_dialog_list %}
-                <option value="{{ db_dialog.title }}">{{ db_dialog.title }}</option>
+                <option value="{{ db_all_tags.id }}">{{ db_all_tags.name }}</option>
             {% endfor %}
         </select>
         <button type="button"
@@ -103,4 +121,3 @@
         </button>
     </div>
 </div>
-

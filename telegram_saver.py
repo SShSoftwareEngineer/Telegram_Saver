@@ -26,6 +26,7 @@ def inject_field_names():
         'tg_messages': tg_handler.current_state.message_group_list,
         'tg_details': tg_handler.current_state.message_details,
         'db_all_dialog_list': db_handler.all_dialogues_list,
+        'db_all_tags': db_handler.all_tags_list,
         'db_messages': db_handler.current_state.message_group_list,
         'db_details': db_handler.current_state.message_details,
     }
@@ -329,29 +330,56 @@ def db_tag_add(tag: str):
     pass
     return ''
 
+
 @tg_saver.route('/db_tag_remove', methods=['POST'])
 def db_tag_remove(tag: str):
     """
-    Добавление тега к сообщению
+    Удаление тега сообщения
     """
     pass
     return ''
+
 
 @tg_saver.route('/db_tag_update', methods=['POST'])
 def db_tag_update(tag: str):
     """
-    Добавление тега к сообщению
+    Изменение тега сообщения
     """
     pass
     return ''
 
+
 @tg_saver.route('/db_tag_update_all_such', methods=['POST'])
 def db_tag_update_all_such(tag: str):
     """
-    Добавление тега к сообщению
+    Изменение тега сообщения и такого же тега всех сообщений
     """
     pass
     return ''
+
+
+@tg_saver.route('/db_all_tag_sorting', methods=['POST'])
+def db_all_tag_sorting():
+    """
+    Сортировка всех тегов базы данных в поле выбора тегов
+    """
+    match request.form.get('db_tag_sort_field'):
+        case '1':
+            sorting_field = 'usage_count'
+        case '2':
+            sorting_field = 'updated_at'
+        case _:
+            sorting_field = 'name'
+    return ''
+
+    # dial_filter = tg_handler.dialog_sort_filter
+    # form = request.form
+    # dial_filter.sort_field(form.get('tg_sorting_field'))
+    # dial_filter.sort_order(form.get('tg_sort_order'))
+    # dial_filter.dialog_type(form.get('tg_dialog_type'))
+    # dial_filter.title_query(form.get('tg_title_query'))
+    # # Получение списка диалогов с применением фильтров
+    # tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
 
 
 if __name__ == '__main__':
