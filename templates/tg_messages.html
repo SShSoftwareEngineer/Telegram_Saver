@@ -3,6 +3,7 @@
 {# Вывод в заголовке формы количества загруженных из Telegram групп сообщений #}
 <span id="tg-messages-count" hx-swap-oob="true">{{ tg_messages|length }}</span>
 
+{# Вывод списка групп сообщений Telegram #}
 <ul class="dialogs-messages-list">
     {% for tg_message in tg_messages %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
@@ -44,7 +45,3 @@
         </li>
     {% endfor %}
 </ul>
-
-
-
-{#<div hx-swap-oob="innerHTML:#tg-footer">Новый статус</div>#}

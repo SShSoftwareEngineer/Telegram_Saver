@@ -13,8 +13,8 @@
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
             {# Ссылка на детали сообщения с использованием htmx для загрузки #}
-            <a href="/db_details/{{ db_message.dialog_id }}/{{ db_message.grouped_id }}"
-               hx-get="/db_details/{{ db_message.dialog_id }}/{{ db_message.grouped_id }}"
+            <a href="/db_details/{{ db_message.grouped_id }}"
+               hx-get="/db_details/{{ db_message.grouped_id }}"
                hx-target="#db_details">{{ message_date }}</a>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             {% if db_message.saved_to_db %}

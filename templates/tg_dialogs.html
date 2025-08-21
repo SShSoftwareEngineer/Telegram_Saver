@@ -3,10 +3,12 @@
 {# Вывод в заголовке формы количества загруженных диалогов #}
 <span id="tg-chats-count" hx-swap-oob="true">{{ tg_dialogs|length }}</span>
 
+{# Вывод списка диалогов Telegram #}
 <ul class="dialogs-messages-list">
     {% for tg_dialog in tg_dialogs %}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
-            <a href="/tg_messages/{{ tg_dialog.dialog_id }}" hx-get="/tg_messages/{{ tg_dialog.dialog_id }}"
+            <a href="/tg_messages/{{ tg_dialog.dialog_id }}"
+               hx-get="/tg_messages/{{ tg_dialog.dialog_id }}"
                hx-target="#tg_messages">
                 {{ tg_dialog.title }}</a>
         </li>

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, desc
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, desc, or_, update, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
 
 from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
@@ -18,8 +18,8 @@ ModelType = TypeVar('ModelType', bound=Base)
 # Relationships Many-to-Many to 'MessageGroup', 'DbTag' tables
 message_group_tag_links = Table(
     TableNames.message_group_tag_links, Base.metadata,
-    Column('message_group_id', ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
-    Column('tag_id', ForeignKey(f'{TableNames.tags}.id'), primary_key=True)
+    Column('message_group_id', String, ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey(f'{TableNames.tags}.id'), primary_key=True)
 )
 
 
@@ -252,6 +252,7 @@ class DbCurrentState:
     message_group_list: List[DbMessageGroup] = None
     message_details: Dict[str, Any] = None
     message_details_tags: Dict[int, str] = None
+    selected_message_group_id: str = None
 
 
 class DatabaseHandler:
@@ -307,11 +308,18 @@ class DatabaseHandler:
         # Получаем список диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
         # Получаем список тегов из базы данных
-        self.all_tags_list = self.get_tag_list(sorting_field='name')
+        self.all_tags_list = self.get_all_tag_list(sorting_field='name')
         # Обновляем частоту использования тегов
-        tags = self.session.query(DbTag).options(selectinload(DbTag.message_groups)).all()
-        for tag in tags:
-            tag.usage_count = tag.message_groups.count()
+        stmt = (update(DbTag).values(
+            usage_count=select(func.count())
+            .select_from(message_group_tag_links)
+            .where(message_group_tag_links.c.tag_id.in_(select(DbTag.id)))
+            .scalar_subquery())
+        )
+        self.session.execute(stmt)
+        # Удаляем теги, которые не используются
+        self.session.query(DbTag).filter(DbTag.usage_count == 0).delete()
+        # Сохраняем изменения в базе данных
         self.session.commit()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
@@ -329,24 +337,14 @@ class DatabaseHandler:
         print(f'{len(dialog_list)} chats loaded from the database')
         return sorted(dialog_list, key=lambda x: x.title)
 
-    def get_tag_list(self, sorting_field: str) -> List[DbTag]:
+    def get_all_tag_list(self, sorting_field: str) -> List[DbTag]:
         """
         Получение списка всех тегов, имеющихся в БД с учетом сортировки
         """
-        # TODO: добавить сортировку по полю
-
-        # sort_attr = getattr(DbTag, sorting_field)
-        # stmt = (
-        #     select(DbTag)
-        #     .group_by(DbTag.name)
-        #     .order_by(desc(sort_attr), DbTag.name)
-        # )
-
-        stmt = (select(DbTag)
-                .group_by(DbTag.name)
-                .order_by(desc(DbTag.usage_count), DbTag.name))
-        result = self.session.execute(stmt).scalars().all()
-        return result
+        sort_attr = getattr(DbTag, sorting_field)
+        stmt = select(DbTag).group_by(DbTag.name).order_by(desc(sort_attr), DbTag.name)
+        query_result = self.session.execute(stmt).scalars().all()
+        return list(query_result)
 
     def get_message_group_list(self) -> list[DbMessageGroup]:
         """
@@ -373,7 +371,7 @@ class DatabaseHandler:
         """
         return '\n'.join([f'<option value="{tag_id}">{tag_name}</option>' for tag_id, tag_name in tags.items()])
 
-    def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
+    def get_message_detail(self, message_group_id: str) -> dict:
         """
         Получение сообщения по id диалога и id группы сообщений
         """
@@ -393,10 +391,88 @@ class DatabaseHandler:
         db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
         return db_details
 
-    # # Relationships to 'DbFile' table
-    # files: Mapped[List['DbFile']] = relationship(back_populates='message_group')
-    # # Relationships to 'DbTag' table
-    # tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
+    def message_group_exists(self, grouped_id: str) -> bool:
+        """
+        Проверяет, существует ли группа сообщений с заданным grouped_id
+        """
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == grouped_id)
+        query_result = bool(self.session.execute(stmt).scalars().first())
+        return query_result
+
+    def get_file_list_by_extension(self, file_ext: list) -> list[str]:
+        """
+        Получает из базы данных список файлов с заданными расширениями
+        """
+        stmt = select(DbFile.file_path).filter(or_(*[DbFile.file_path.endswith(ext) for ext in file_ext]))
+        query_result = self.session.execute(stmt).scalars().all()
+        return list(query_result)
+
+    def get_file_by_local_path(self, local_path: str) -> Optional[DbFile]:
+        """
+        Получает из базы данных файл по локальному пути
+        """
+        stmt = select(DbFile).filter(DbFile.file_path == local_path)
+        query_result = self.session.execute(stmt).scalars().first()
+        db_file = None
+        if query_result:
+            db_file = dict(dialog_id=query_result.message_group.dialog_id,
+                           message_id=query_result.message_id,
+                           file_path=query_result.file_path,
+                           size=query_result.size,
+                           file_type_id=query_result.file_type_id, )
+
+        return db_file
+
+    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> None:
+        """
+        Добавляет тег к заданной группе сообщений
+        """
+        # Получаем тег и группу сообщений по их идентификаторам
+        stmt = select(DbTag).filter(DbTag.name == tag_name)
+        tag = self.session.execute(stmt).scalars().first()
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
+        message_group = self.session.execute(stmt).scalars().one()
+        # Проверяем наличие тега в базе данных и добавляем, если нет
+        if not tag:
+            tag = DbTag(name=tag_name)
+            self.session.add(tag)
+            self.session.flush()
+        # Проверяем наличие группы сообщений в базе данных и добавляем тег к ней
+        if message_group:
+            message_group.tags.append(tag)
+            tag.usage_count += 1
+        self.session.commit()
+
+    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str):
+        """
+        Удаляет тег из заданной группы сообщений
+        """
+        # Получаем тег и группу сообщений по их идентификаторам
+        stmt = select(DbTag).filter(DbTag.name == tag_name)
+        tag = self.session.execute(stmt).scalars().first()
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
+        message_group = self.session.execute(stmt).scalars().one()
+        # Проверяем наличие тега и группы сообщений в базе данных и удаляем тег из неё
+        if tag and message_group:
+            message_group.tags.remove(tag)
+            tag.usage_count -= 1
+        self.session.commit()
+
+    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str):
+        """
+        Изменяет заданный тег из заданной группы сообщений
+        """
+        self.remove_tag_from_message_group(old_tag_name, message_group_id)
+        self.add_tag_to_message_group(new_tag_name, message_group_id)
+        self.session.commit()
+
+    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str):
+        """
+        Обновляет тег во всех группах сообщений, где он используется
+        """
+        stmt = update(DbTag).where(DbTag.name == old_tag_name).values(name=new_tag_name)
+        self.session.execute(stmt)
+        self.session.commit()
 
 
 if __name__ == '__main__':

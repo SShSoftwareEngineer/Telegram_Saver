@@ -306,7 +306,7 @@ class TgMessageSortFilter:
         """
         Устанавливает порядок сортировки сообщений по дате
         """
-        self._sort_order = False if value == '0' else True
+        self._sort_order = True if value == '0' else False
 
     @property
     def date_from(self) -> Optional[datetime]:
