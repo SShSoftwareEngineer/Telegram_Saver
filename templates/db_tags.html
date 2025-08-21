@@ -14,7 +14,7 @@
     </label>
     <div class="control-X-button">
         <select id="this_message_tags" name="this_message_tags" size="6"
-                hx-on:change="document.getElementById('edit_tag').value =
+                hx-on:change="document.getElementById('edit_tag_name').value =
                               event.target.options[event.target.selectedIndex].text">
             {% for db_dialog in db_all_dialog_list %}
                 <option value="{{ db_dialog.title }}">{{ db_dialog.title }}</option>
@@ -22,7 +22,7 @@
         </select>
         <button type="button"
                 hx-on:click="document.getElementById('this_message_tags').value = '';
-                             document.getElementById('edit_tag').value = ''"
+                             document.getElementById('edit_tag_name').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
@@ -32,15 +32,15 @@
 
 <!-- Edit tag -->
 <div hx-ext="class-tools">
-    <label for="edit_tag">
+    <label for="edit_tag_name">
         <span class="group-label vertical-spread">Edit Tag Name</span>
     </label>
     <div class="control-X-button">
         <input type="text"
-               id="edit_tag"
-               name="edit_tag">
+               id="edit_tag_name"
+               name="edit_tag_name">
         <button type="button"
-                hx-on:click="document.getElementById('edit_tag').value = ''"
+                hx-on:click="document.getElementById('edit_tag_name').value = ''"
                 class="clear-button X-button">
             ✖
         </button>
@@ -51,8 +51,8 @@
 <!-- Add a tag to a message -->
 <button class="apply-filters-buttons vertical-spread"
         hx-post="/db_tag_add"
-        hx-include="input[name='edit_tag']"
-        hx-target="this">
+        hx-include="input[name='edit_tag_name']"
+        hx-swap="none">
     Add tag
 </button>
 
@@ -60,8 +60,8 @@
 <!-- Remove tag -->
 <button class="apply-filters-buttons vertical-spread"
         hx-post="/db_tag_remove"
-        hx-include="input[name='edit_tag']"
-        hx-target="this">
+        hx-include="input[name='edit_tag_name']"
+        hx-swap="none">
     Remove tag
 </button>
 
@@ -69,17 +69,17 @@
 <!-- Update tag -->
 <button class="apply-filters-buttons vertical-spread"
         hx-post="/db_tag_update"
-        hx-include="input[name='edit_tag']"
-        hx-target="this">
+        hx-include="input[name='edit_tag_name']"
+        hx-swap="none">
     Update tag
 </button>
 
 
 <!-- Update all tags -->
 <button class="apply-filters-buttons vertical-spread"
-        hx-post="/db_tag_update_all_such"
-        hx-include="input[name='edit_tag']"
-        hx-target="this">
+        hx-post="/db_tag_update_everywhere"
+        hx-include="input[name='edit_tag_name']"
+        hx-swap="none">
     Update tag everywhere
 </button>
 
@@ -108,7 +108,7 @@
 <div hx-ext="class-tools">
     <div class="control-X-button vertical-spread">
         <select id="all_tags_list" name="all_tags_list" size="6"
-                hx-on:change="document.getElementById('edit_tag').value =
+                hx-on:change="document.getElementById('edit_tag_name').value =
                               event.target.options[event.target.selectedIndex].text">
             {% for db_dialog in db_all_dialog_list %}
                 <option value="{{ db_all_tags.id }}">{{ db_all_tags.name }}</option>

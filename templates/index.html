@@ -12,8 +12,6 @@
     <script src="{{ url_for('static', filename='js/htmx.min.2.0.4.js') }}"></script>
     {# Подключение class-tools для htmx #}
     <script src="{{ url_for('static', filename='js/class-tools.js') }}"></script>
-    {# Подключение своих функций #}
-{#    <script src="{{ url_for('static', filename='js/my_scripts.js') }}"></script>#}
     {# Подключение стилей #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
@@ -61,23 +59,22 @@
             <div id="button_target"></div>
         </div>
         <div class="scroll tg-chats">
-            <div class="grid content" id="tg_dialogs">
-                {% set context = tg_dialogs %}
-                {% include "tg_dialogs.html" with context %}
+            <div class="grid content" id="tg_dialogs" hx-swap-oob="innerHTML">
+                {# Вывод списка диалогов Telegram #}
+                {% include "tg_dialogs.html" %}
             </div>
         </div>
         <div class="scroll tg-messages">
-            <div class="grid content" id="tg_messages">
+            <div class="grid content" id="tg_messages" hx-swap-oob="innerHTML">
+                {# Вывод списка групп сообщений Telegram #}
                 {% if tg_messages %}
-                    {% set context = tg_messages %}
-                    {% include "tg_messages.html" with context %}
+                    {% include "tg_messages.html" %}
                 {% endif %}
             </div>
         </div>
-        <div class="scroll tg-details">
+        <div class="scroll tg-details" hx-swap-oob="innerHTML">
             <div class="grid content" id="tg_details">
-                {% set context = tg_details %}
-                {% include "tg_details.html" with context %}
+                {% include "tg_details.html" %}
             </div>
         </div>
         <div class="grid tg-footer" id="tg-footer">footer (in development)</div>
@@ -143,24 +140,9 @@
 
 </div>
 
-<script>
-    function openTab(evt, tabName) {
-        // Скрываем все содержимое вкладок
-        var tabContents = document.getElementsByClassName("tab-content");
-        for (var i = 0; i < tabContents.length; i++) {
-            tabContents[i].style.display = "none";
-        }
+{# Подключение своих функций JavaScript #}
+<script src="{{ url_for('static', filename='js/my_scripts.js') }}"></script>
+<!-- Проверка успешной загрузки -->
 
-        // Убираем класс "active" со всех кнопок вкладок
-        var tabButtons = document.getElementsByClassName("tab-button");
-        for (var i = 0; i < tabButtons.length; i++) {
-            tabButtons[i].className = tabButtons[i].className.replace(" active", "");
-        }
-
-        // Показываем текущую вкладку и добавляем класс "active" к кнопке
-        document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
-    }
-</script>
 </body>
 </html>

@@ -1,8 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from flask import Flask, render_template, request, send_from_directory
-from sqlalchemy import or_
+from flask import Flask, render_template, request, send_from_directory, jsonify
 
 from configs.config import ProjectConst, MessageFileTypes, ProjectDirs
 from telegram_handler import TelegramHandler
@@ -77,14 +76,9 @@ def get_tg_messages(dialog_id):
     """
     # Получаем список групп сообщений для выбранного диалога
     tg_message_groups = tg_handler.get_message_group_list(int(dialog_id))
-    # Проверяем какие группы сообщений уже сохранены в базе данных
-    message_group_ids = [tg_message_group.grouped_id for tg_message_group in tg_message_groups]
-    saved_group_ids = set(db_handler.session.query(DbMessageGroup.grouped_id)
-                          .filter(DbMessageGroup.grouped_id.in_(message_group_ids)).all())
-    saved_group_ids = [x[0] for x in saved_group_ids]
     # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
     for tg_message_group in tg_message_groups:
-        tg_message_group.saved_to_db = tg_message_group.grouped_id in saved_group_ids
+        tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
     # Устанавливаем текущее состояние диалога и списка групп сообщений
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_message_groups
@@ -115,6 +109,9 @@ def tg_dialog_apply_filters():
     dial_filter.title_query(form.get('tg_title_query'))
     # Получение списка диалогов с применением фильтров
     tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
+    # Очистка списка сообщений и деталей сообщений
+    tg_handler.current_state.message_group_list = []
+    tg_handler.current_state.message_details = None
     return render_template("tg_dialogs.html")
 
 
@@ -132,6 +129,8 @@ def tg_message_apply_filters():
     # Получение списка сообщений с применением фильтров
     tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
         tg_handler.current_state.selected_dialog_id)
+    # Очистка деталей сообщений
+    tg_handler.current_state.message_details = None
     return render_template("tg_messages.html")
 
 
@@ -262,33 +261,26 @@ def sync_local_files_with_db():
     """
     Синхронизация локальных медиа файлов с базой данных
     """
-    ext_to_sync = ['.jpg', '.mp4']
     # Получаем из БД все файлы с указанными расширениями
-    database_files = db_handler.session.query(DbFile.file_path).filter(
-        or_(*[DbFile.file_path.endswith(ext) for ext in ext_to_sync])).all()
-    database_files = set([x[0] for x in database_files])
+    file_ext_to_sync = ['.jpg', '.mp4']
+    database_files = set(db_handler.get_file_list_by_extension(file_ext_to_sync))
     # Находим все локальные файлы с указанными расширениями рекурсивно
     local_files = []
-    for ext in ext_to_sync:
+    for ext in file_ext_to_sync:
         local_files.extend(Path(ProjectDirs.media_dir).rglob(f'**/*{ext}'))
     local_files = set([x.as_posix() for x in local_files])
     # Сравниваем списки и находим файлы, какие надо удалить и какие нужно докачать
     files_to_delete = local_files - database_files
     files_to_download = database_files - local_files
-    # Удаляем файлы, которые есть в локальной файловой системе, но отсутствуют в базе данных
+    # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
     deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     print(f'Deleted {deleted_count} files from local storage')
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
     downloaded_file_list = []
     for file_path in files_to_download:
         # Получаем информацию о файле из базы данных
-        db_file = db_handler.session.query(DbFile).filter_by(file_path=file_path).first()
-        if db_file:
-            downloaded_file = dict(dialog_id=db_file.message_group.dialog_id,
-                                   message_id=db_file.message_id,
-                                   file_path=db_file.file_path,
-                                   size=db_file.size,
-                                   file_type_id=db_file.file_type_id, )
+        downloaded_file = db_handler.get_file_by_local_path(file_path)
+        if downloaded_file:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
     return ''
@@ -312,49 +304,61 @@ def db_message_apply_filters():
     return render_template("db_messages.html")
 
 
-@tg_saver.route('/db_details/<string:dialog_id>/<string:message_group_id>')
-def get_db_details(dialog_id: str, message_group_id: str):
+@tg_saver.route('/db_details/<string:message_group_id>')
+def get_db_details(message_group_id: str):
     """
     Получение детальной информации о сообщении из базы данных
     """
-    db_handler.current_state.message_details = db_handler.get_message_detail(int(dialog_id),
-                                                                             message_group_id) if message_group_id else None
+    db_handler.current_state.message_details = db_handler.get_message_detail(
+        message_group_id) if message_group_id else None
+    db_handler.current_state.selected_message_group_id = message_group_id
     return render_template("db_details.html")
 
 
 @tg_saver.route('/db_tag_add', methods=['POST'])
-def db_tag_add(tag: str):
+def db_tag_add():
     """
     Добавление тега к сообщению
     """
-    pass
+    tag_name = request.form.get('edit_tag_name')
+    if tag_name:
+        db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id)
     return ''
 
 
 @tg_saver.route('/db_tag_remove', methods=['POST'])
-def db_tag_remove(tag: str):
+def db_tag_remove():
     """
     Удаление тега сообщения
     """
-    pass
+    tag_name = request.form.get('edit_tag_name')
+    if tag_name:
+        db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id)
     return ''
 
 
 @tg_saver.route('/db_tag_update', methods=['POST'])
-def db_tag_update(tag: str):
+def db_tag_update():
     """
     Изменение тега сообщения
     """
-    pass
+    old_tag_name = request.form.get('this_message_tags')
+    new_tag_name = request.form.get('edit_tag_name')
+    if old_tag_name and new_tag_name:
+        db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
+                                                 db_handler.current_state.selected_message_group_id)
     return ''
 
 
-@tg_saver.route('/db_tag_update_all_such', methods=['POST'])
-def db_tag_update_all_such(tag: str):
+@tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
+def db_tag_update_all_such():
     """
     Изменение тега сообщения и такого же тега всех сообщений
     """
-    pass
+    old_tag_name = request.form.get('this_message_tags')
+    new_tag_name = request.form.get('edit_tag_name')
+    if old_tag_name and new_tag_name:
+        db_handler.update_tag_everywhere(old_tag_name, new_tag_name)
     return ''
 
 
@@ -370,16 +374,9 @@ def db_all_tag_sorting():
             sorting_field = 'updated_at'
         case _:
             sorting_field = 'name'
+    # # Получение списка тегов с сортировкой
+    db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting_field=sorting_field)
     return ''
-
-    # dial_filter = tg_handler.dialog_sort_filter
-    # form = request.form
-    # dial_filter.sort_field(form.get('tg_sorting_field'))
-    # dial_filter.sort_order(form.get('tg_sort_order'))
-    # dial_filter.dialog_type(form.get('tg_dialog_type'))
-    # dial_filter.title_query(form.get('tg_title_query'))
-    # # Получение списка диалогов с применением фильтров
-    # tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
 
 
 if __name__ == '__main__':
