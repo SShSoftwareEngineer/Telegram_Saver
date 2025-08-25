@@ -20,11 +20,11 @@
         <div class="media-files-area">
             {% for message_file in files %}
                 <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-                    {% if message_file.alt_text==file_types.IMAGE.alt_text %}
+                    {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                         <img class="media-files-container"
                              src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
                     {% endif %}
-                    {% if message_file.alt_text==file_types.VIDEO.alt_text %}
+                    {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                         <video class="media-files-container"
                                src="{{ message_file.file_name }}" controls preload="metadata">
                         Video is not supported by your browser

@@ -1,7 +1,4 @@
 telethon
-cryptg
-pillow
 SQLAlchemy
-hachoir
 Flask
-asgiref
+python-dateutil

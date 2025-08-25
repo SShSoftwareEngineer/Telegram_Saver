@@ -33,13 +33,12 @@
     <div class="tg-container-tab_1">
         <div class="header tg-filter_h">Filters</div>
         <div class="header tg-chat_h">
-            Chats (<span id="tg-chats-count">{{ tg_dialogs|length }}</span>)
+            Chats
+            <span id="tg-chats-count"> </span>
         </div>
         <div class="header tg-message_h">
             Messages
-            {% if tg_messages|length > 0 %}
-                (<span id="tg-messages-count">{{ tg_messages|length }}</span>)
-            {% endif %}
+            <span id="tg-messages-count"> </span>
         </div>
         <div class="header tg-detail_h">
             Message Details
@@ -88,9 +87,7 @@
         <div class="header db-filters_h">Filters</div>
         <div class="header db-messages_h">
             Messages
-            {% if db_messages|length > 0 %}
-                (<span id="db-messages-count">{{ db_messages|length }}</span>)
-            {% endif %}
+            <span id="db-messages-count"></span>
         </div>
         <div class="header db-details_h"> Message details</div>
         <div class="header db-tags_h"> Tags</div>

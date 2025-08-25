@@ -1,8 +1,7 @@
-from datetime import datetime
 from enum import Enum
 import re
 from pathlib import Path
-from typing import Optional
+from dateutil.parser import parse
 
 # Set the profile for the project
 PROFILE = 'dev_1'
@@ -79,6 +78,9 @@ class MessageFileTypes(Enum):
     UNKNOWN = (10, 'Unknown', '.unk', 'unk')
 
     def __init__(self, type_id: int, alt_text: str, default_ext: str, sign: str):
+        """
+        Initializes the MessageFileTypes enum.
+        """
         self.type_id = type_id
         self.alt_text = alt_text
         self.default_ext = default_ext
@@ -94,10 +96,16 @@ class MessageFileTypes(Enum):
                 return item
 
     def __repr__(self):
+        """
+        Returns a string representation of the MessageFileTypes enum.
+        """
         return f'{self.__class__.__name__}.{self.name}'
 
 
 class TableNames:
+    """
+    Constants for database table names.
+    """
     dialogs = 'dialogs'
     dialog_types = 'dialog_types'
     message_groups = 'message_groups'
@@ -107,30 +115,43 @@ class TableNames:
     message_group_tag_links = 'message_group_tag_links'
 
 
+class ButtonConfigs:
+    """
+    Constants for button configurations in the web interface.
+    """
+    tg_dialog_filter = {"radio": [{"id": "tg_sorting_field", "name": "tg_sorting_field"},
+                                  {"id": "tg_dial_sort_order", "name": "tg_dial_sort_order"},
+                                  {"id": "tg_dialog_type", "name": "tg_dialog_type"}],
+                        "input": [{"id": "tg_title_query", "name": "tg_title_query"}]}
+    tg_message_filter = {"radio": [{"id": "tg_mess_sort_order", "name": "tg_mess_sort_order"}, ],
+                         "input": [{"id": "tg_mess_date_from", "name": "tg_mess_date_from"},
+                                   {"id": "tg_mess_date_to", "name": "tg_mess_date_to"},
+                                   {"id": "tg_message_query", "name": "tg_message_query"}, ]}
+    db_message_filter = {"radio": [{"id": "db_mess_sort_field", "name": "db_mess_sort_field"},
+                                   {"id": "db_mess_sort_order", "name": "db_mess_sort_order"}, ],
+                         "input": [{"id": "db_mess_date_from", "name": "db_mess_date_from"},
+                                   {"id": "db_mess_date_to", "name": "db_mess_date_to"},
+                                   {"id": "db_message_query", "name": "db_message_query"}, ],
+                         "select": [{"id": "db_dialog_select", "name": "db_dialog_select"}, ],
+                         "checkbox": []}
+
+
 """ 
 Functions.
 Функции. 
 """
 
 
-def date_decode(date_str: str) -> Optional[datetime]:
+def parse_date_string(date_str: str):
     """
-    Декодирование даты из строки
+    Parses a date string and returns a datetime object.
     """
-    if date_str:
-        date_split = re.split(r'[/.-]', date_str)
-        if len(date_split) == 3:
-            dd, mm, yyyy = date_split
-            # Normalize the date components to ensure they are two digits
-            dd = dd.zfill(2)
-            mm = mm.zfill(2)
-            if len(yyyy) == 2:
-                yyyy = '20' + yyyy
-            try:
-                return datetime(int(yyyy), int(mm), int(dd))
-            except ValueError:
-                return None
-    return None
+    if not date_str:
+        return None
+    try:
+        return parse(date_str, dayfirst=True)
+    except (ValueError, OverflowError):
+        return None
 
 
 if __name__ == '__main__':
