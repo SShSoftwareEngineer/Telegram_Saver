@@ -1,19 +1,18 @@
 <!-- Шаблон детальной информации сообщения Telegram -->
 
-<span>
-    {% if tg_details %}
-        {% set group = tg_details.message_group_id %}
-        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
-        <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
-               value="{{ tg_details.message_group_id }}">
-        {% set message_date = tg_details.date.strftime(constants.message_datetime_format) %}
-        <div style="text-align: center;">
-            {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-            {% if tg_details.saved_to_db %}
-                <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
-            {% else %}
-                {# Создание чекбокса для отметки на сохранение в БД #}
-                <span class="message-checkbox">
+{% if tg_details %}
+    {% set group = tg_details.message_group_id %}
+    {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
+    <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
+           value="{{ tg_details.message_group_id }}">
+    {% set message_date = tg_details.date.strftime(constants.message_datetime_format) %}
+    <div style="text-align: center;">
+        {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
+        {% if tg_details.saved_to_db %}
+            <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
+        {% else %}
+            {# Создание чекбокса для отметки на сохранение в БД #}
+            <span class="message-checkbox">
                     {% set checkbox_name = constants.select_to_save+'_det = '+group %}
                     <input type="checkbox" name="{{ checkbox_name }}"
                            hx-post="/select_details_to_save"
@@ -22,43 +21,42 @@
                                        input[name='{{ checkbox_name }}'],">
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
-            {% endif %}
-            <br>
-            {# Вывод даты сообщения #}
-            <b>{{ message_date }}</b>
-            {# Вывод заголовка диалога #}
-            <br>
-            {{ tg_details.dialog_title }}
-        </div>
-        <br>
-        {# Вывод текста сообщения #}
-        {% if tg_details.text %}
-            <br>
-            {{ tg_details.text|replace('\n', '<br>')|safe }}
         {% endif %}
-        {# Вывод графических, видео и других файлов #}
         <br>
-        <div class="media-files-area">
-                {% for message_file in tg_details.existing_files %}
-                    <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
-                                {% else %} media-files-one-column {% endif %}">
-                        {# Вывод графических файлов #}
-                        {% if message_file.alt_text==file_types.IMAGE.alt_text %}
-                            <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
-                                 alt="{{ message_file.alt_text }}" class="media-files-container">
-                        {% endif %}
-                        {# Вывод видео файлов #}
-                        {% if message_file.alt_text==file_types.VIDEO.alt_text %}
-                            <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
-                                   controls preload="metadata" class="media-files-container">
-                            Video is not supported by your browser
-                        </video>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-        </div>
-
-    {% else %}
-
+        {# Вывод даты сообщения #}
+        <b>{{ message_date }}</b>
+        {# Вывод заголовка диалога #}
+        <br>
+        {{ tg_details.dialog_title }}
+    </div>
+    <br>
+    {# Вывод текста сообщения #}
+    {% if tg_details.text %}
+        <br>
+        {{ tg_details.text|replace('\n', '<br>')|safe }}
     {% endif %}
-</span>
+    {# Вывод графических, видео и других файлов #}
+    <br>
+    <div class="media-files-area">
+        {% for message_file in tg_details.existing_files %}
+            <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
+                                {% else %} media-files-one-column {% endif %}">
+                {# Вывод графических файлов #}
+                {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
+                    <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
+                         alt="{{ message_file.alt_text }}" class="media-files-container">
+                {% endif %}
+                {# Вывод видео файлов #}
+                {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
+                    <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
+                           controls preload="metadata" class="media-files-container">
+                        Video is not supported by your browser
+                    </video>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+{% else %}
+
+{% endif %}

@@ -53,12 +53,12 @@
                 <div class="{% if db_details.existing_files|length > 1 %} media-files-two-column
                                 {% else %} media-files-one-column {% endif %}">
                     {# Вывод графических файлов #}
-                    {% if message_file.file_type.alt_text==file_types.IMAGE.alt_text %}
+                    {% if message_file.file_type.alt_text==tg_file_types.IMAGE.alt_text %}
                         <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                              alt="{{ message_file.alt_text }}" class="media-files-container">
                     {% endif %}
                     {# Вывод видео файлов #}
-                    {% if message_file.file_type.alt_text==file_types.VIDEO.alt_text %}
+                    {% if message_file.file_type.alt_text==tg_file_types.VIDEO.alt_text %}
                         <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                                controls preload="metadata" class="media-files-container">
                             Video is not supported by your browser

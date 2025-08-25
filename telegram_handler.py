@@ -3,6 +3,7 @@ from asyncio import new_event_loop, set_event_loop
 from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
+
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive, MessageMediaWebPage
@@ -12,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes, date_decode
+from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes, parse_date_string
 
 # Создаем и сохраняем цикл событий
 loop = new_event_loop()
@@ -320,7 +321,7 @@ class TgMessageSortFilter:
         """
         Устанавливает дату, с которой получать сообщения
         """
-        self._date_from = date_decode(value)
+        self._date_from = parse_date_string(value)
 
     @property
     def date_to(self) -> Optional[datetime]:
@@ -334,7 +335,8 @@ class TgMessageSortFilter:
         """
         Устанавливает дату, до которой получать сообщения
         """
-        self._date_to = date_decode(value)
+        self._date_to = parse_date_string(value)
+
 
     @property
     def message_query(self) -> Optional[str]:

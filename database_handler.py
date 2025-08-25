@@ -2,10 +2,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, desc, or_, update, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session, selectinload
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, date_decode
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, desc, or_, update, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string
 
 
 class Base(DeclarativeBase):
@@ -15,7 +16,7 @@ class Base(DeclarativeBase):
 # TypeVar for model classes, bound to Base
 ModelType = TypeVar('ModelType', bound=Base)
 
-# Relationships Many-to-Many to 'MessageGroup', 'DbTag' tables
+# Relationships Many-to-Many to 'MessageGroup' and 'DbTag' tables
 message_group_tag_links = Table(
     TableNames.message_group_tag_links, Base.metadata,
     Column('message_group_id', String, ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
@@ -206,7 +207,7 @@ class DbMessageSortFilter:
         """
         Устанавливает дату, с которой получать сообщения
         """
-        self._date_from = date_decode(value)
+        self._date_from = parse_date_string(value)
 
     @property
     def date_to(self) -> Optional[datetime]:
@@ -220,7 +221,7 @@ class DbMessageSortFilter:
         """
         Устанавливает дату, до которой получать сообщения
         """
-        self._date_to = date_decode(value)
+        self._date_to = parse_date_string(value)
 
     @property
     def message_query(self) -> Optional[str]:

@@ -1,44 +1,35 @@
 <!-- Шаблон для фильтрации диалогов в базе данных -->
 
 <!-- Database dialog filter -->
-<div hx-ext="class-tools">
-    <label for="db_dialog_select">
-        <span class="group-label no-margin-top">Filter by chat names</span>
-    </label>
-    <div class="control-X-button">
-        <select id="db_dialog_select" name="db_dialog_select" size="6" multiple>
-            {% for db_dialog in db_all_dialog_list %}
-                <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
-            {% endfor %}
-        </select>
-        <button type="button"
-                hx-on:click="document.getElementById('db_dialog_select').value = ''"
-                class="clear-button X-button">
-            ✖
-        </button>
-    </div>
+<label for="db_dialog_select" class="group-label no-margin-top">Filter by chat names</label>
+<div class="control-X-button">
+    <select id="db_dialog_select" name="db_dialog_select" size="6" multiple>
+        {% for db_dialog in db_all_dialog_list %}
+            <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
+        {% endfor %}
+    </select>
+    <button type="button"
+            onclick="clearFormFields(['db_dialog_select'])"
+            class="clear-button X-button">
+        ✖
+    </button>
 </div>
 
 <!-- Database messages sort field radiobuttons -->
 <p class="group-label">Messages sorting field</p>
-<div>
-    <input type="radio" id="sort_db_mess_field_0" name="sort_db_mess_field" value="0" checked>
-    <label for="sort_db_mess_field_0">Sort by chat name</label>
+<div id="db_mess_sort_field">
+    <input type="radio" id="db_mess_sort_field_0" name="db_mess_sort_field" value="0" checked>
+    <label for="db_mess_sort_field_0">Sort by chat name</label><br>
+    <input type="radio" id="db_mess_sort_field_1" name="db_mess_sort_field" value="1">
+    <label for="db_mess_sort_field_1">Sort by date</label>
 </div>
-<div>
-    <input type="radio" id="sort_db_mess_field_1" name="sort_db_mess_field" value="1">
-    <label for="sort_db_mess_field_1">Sort by date</label>
-</div>
-
 
 <!-- Database messages sort order radiobuttons -->
 <p class="group-label">Messages sort order</p>
-<div>
-    <input type="radio" id="db_mess_reverse_0" name="db_sort_order" value="0" checked>
-    <label for="db_mess_reverse_0">Ascending</label>
-</div>
-<div>
-    <input type="radio" id="db_mess_reverse_1" name="db_sort_order" value="1">
+<div id="db_mess_sort_order">
+    <input type="radio" id="db_mess_reverse_0" name="db_mess_sort_order" value="0" checked>
+    <label for="db_mess_reverse_0">Ascending</label><br>
+    <input type="radio" id="db_mess_reverse_1" name="db_mess_sort_order" value="1">
     <label for="db_mess_reverse_1">Descending</label>
 </div>
 
@@ -46,61 +37,40 @@
 <p class="group-label">Filter by message date</p>
 <div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
-    <label for="db_date_from">Date from:</label>
+    <label for="db_mess_date_from">Date from:</label>
     <input type="text" class="date-from-to-buttons"
-           id="db_date_from"
-           name="db_date_from"
-           placeholder="DD/MM/YYYY"
-           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-           title="Enter date as DD/MM/YYYY">
+           id="db_mess_date_from" name="db_mess_date_from"
+           placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="document.getElementById('db_date_from').value = ''"
-            class="clear-button X-button">
-        ✖
+            onclick="clearFormFields(['db_mess_date_from'])"
+            class="clear-button X-button"> ✖
     </button>
     <!-- Filtering by date to -->
-    <label for="db_date_to">Date to:</label>
+    <label for="db_mess_date_to">Date to:</label>
     <input type="text" class="date-from-to-buttons"
-           id="db_date_to"
-           name="db_date_to"
-           placeholder="DD/MM/YYYY"
-           pattern="(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[012])/(19|20)\d\d"
-           title="Enter date as DD/MM/YYYY">
+           id="db_mess_date_to" name="db_mess_date_to"
+           placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="document.getElementById('db_date_to').value = ''"
+            onclick="clearFormFields(['db_mess_date_to'])"
             class="clear-button X-button">
         ✖
     </button>
 </div>
 
-
 <!-- Filtering database messages by message text -->
-<div hx-ext="class-tools">
-    <label class="group-label" for="db_message_query">
-        <span class="group-label">Filter by message text</span>
-    </label>
-    <div class="control-X-button">
-        <input type="text"
-               id="db_message_query"
-               name="db_message_query"
-               placeholder="Filter by message text...">
-        <button type="button"
-                hx-on:click="document.getElementById('db_message_query').value = ''"
-                class="clear-button X-button">
-            ✖
-        </button>
-    </div>
+<label for="db_message_query" class="group-label">Filter by message text</label>
+<div class="control-X-button">
+    <input type="text"
+           id="db_message_query" name="db_message_query"
+           placeholder="Message text fragment">
+    <button type="button"
+            onclick="clearFormFields(['db_message_query'])"
+            class="clear-button X-button"> ✖
+    </button>
 </div>
 
 <!-- Apply database message filters button -->
 <button class="apply-filters-buttons"
-        hx-post="/db_message_apply_filters"
-        hx-include="select[name='db_dialog_select'],
-                    input[name='sort_db_mess_field']:checked,
-                    input[name='db_sort_order']:checked,
-                    input[name='db_date_from'],
-                    input[name='db_date_to'],
-                    input[name='db_message_query']"
-        hx-target="#db_messages">
+        onclick="pressButton({{ btn_config.db_message_filter }}, '/db_message_apply_filters')">
     Apply message filters
 </button>

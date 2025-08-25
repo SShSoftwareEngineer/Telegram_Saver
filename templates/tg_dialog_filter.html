@@ -2,70 +2,49 @@
 
 <!-- Telegram dialogs sort field radiobuttons -->
 <p class="group-label no-margin-top">Chats sorting field</p>
-<div>
+<div id="tg_sorting_field">
     <input type="radio" id="tg_sort_field_0" name="tg_sorting_field" value="0" checked>
-    <label for="tg_sort_field_0">Sort by name</label>
-</div>
-<div>
+    <label for="tg_sort_field_0">Sort by name</label><br>
     <input type="radio" id="tg_sort_field_1" name="tg_sorting_field" value="1">
     <label for="tg_sort_field_1">Sort by update date</label>
 </div>
 
 <!-- Telegram dialogs sort order radiobuttons -->
 <p class="group-label">Chats sort order</p>
-<div>
-    <input type="radio" id="tg_sort_order_0" name="tg_sort_order" value="0" checked>
-    <label for="tg_sort_order_0">Ascending</label>
-</div>
-<div>
-    <input type="radio" id="tg_sort_order_1" name="tg_sort_order" value="1">
-    <label for="tg_sort_order_1">Descending</label>
+<div id="tg_dial_sort_order">
+    <input type="radio" id="tg_dial_sort_order_0" name="tg_dial_sort_order" value="0" checked>
+    <label for="tg_dial_sort_order_0">Ascending</label><br>
+    <input type="radio" id="tg_dial_sort_order_1" name="tg_dial_sort_order" value="1">
+    <label for="tg_dial_sort_order_1">Descending</label>
 </div>
 
 <!-- Dialog types selection radiobuttons -->
 <p class="group-label">Chat types filter</p>
-<div>
+<div id="tg_dialog_type">
     <input type="radio" id="tg_type_filter_0" name="tg_dialog_type" value="0" checked>
-    <label for="tg_type_filter_0">All chats</label>
-</div>
-<div>
+    <label for="tg_type_filter_0">All chats</label><br>
     <input type="radio" id="tg_type_filter_1" name="tg_dialog_type" value="1">
-    <label for="tg_type_filter_1">Channels</label>
-</div>
-<div>
+    <label for="tg_type_filter_1">Channels</label><br>
     <input type="radio" id="tg_type_filter_2" name="tg_dialog_type" value="2">
-    <label for="tg_type_filter_2">Groups</label>
-</div>
-<div>
+    <label for="tg_type_filter_2">Groups</label><br>
     <input type="radio" id="tg_type_filter_3" name="tg_dialog_type" value="3">
     <label for="tg_type_filter_3">Users</label>
 </div>
 
 <!-- Filtering by dialog title -->
-<div hx-ext="class-tools">
-    <label for="tg_title_query">
-        <span class="group-label">Filter by chat name</span>
-    </label>
-    <div class="control-X-button">
-        <input type="text"
-               id="tg_title_query"
-               name="tg_title_query"
-               placeholder="Filter by chat name...">
-        <button type="button"
-                hx-on:click="document.getElementById('tg_title_query').value = ''"
-                class="clear-button X-button">
-            ✖
-        </button>
-    </div>
+<label for="tg_title_query" class="group-label">Filter by chat name</label>
+<div class="control-X-button">
+    <input type="text"
+           id="tg_title_query" name="tg_title_query"
+           placeholder="Chat name fragment">
+    <button type="button"
+            onclick="clearFormFields(['tg_title_query'])"
+            class="clear-button X-button"> ✖
+    </button>
 </div>
 
 <!-- Apply dialog filters button -->
 <button class="apply-filters-buttons"
-        hx-post="/tg_dialog_apply_filters"
-        hx-include="input[name='tg_sorting_field']:checked,
-                    input[name='tg_sort_order']:checked,
-                    input[name='tg_dialog_type']:checked,
-                    input[name='tg_title_query']"
-        hx-target="#tg_dialogs">
+        onclick="pressButton({{ btn_config.tg_dialog_filter }}, '/tg_dialog_apply_filters')">
     Apply chat filters
 </button>
