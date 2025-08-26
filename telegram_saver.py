@@ -118,8 +118,7 @@ def tg_dialog_apply_filters():
     tg_handler.current_state.message_details = None
     return jsonify({'tg_dialogs': render_template('tg_dialogs.html'),
                     'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
-                    'tg_messages': '',
-                    'tg_details': '', })
+                    'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })
 
 
 @tg_saver.route('/tg_message_apply_filters', methods=['POST'])
@@ -153,10 +152,10 @@ def get_dict_value_by_partial_key(my_dict: dict, key_part: str) -> Optional[str]
     return None
 
 
-@tg_saver.route('/select_messages_to_save', methods=["POST"])
-def select_messages_to_save():
+@tg_saver.route('/tg_select_messages', methods=["POST"])
+def tg_select_messages():
     """
-    Обработка отметки сохранения сообщений в базе данных в списке сообщений
+    Обработка отметки сохранения сообщений Telegram в списке сообщений
     """
     # Получаем id группы сообщений
     selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
@@ -166,11 +165,11 @@ def select_messages_to_save():
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
                                            selected_message_group_id).selected = is_selected
-    return ''
+    return jsonify({'status': 'success'})
 
 
-@tg_saver.route('/select_details_to_save', methods=["POST"])
-def select_details_to_save():
+@tg_saver.route('/tg_select_details', methods=["POST"])
+def tg_select_details():
     """
     Обработка отметки сохранения сообщений в базе данных в деталях сообщения
     """
@@ -182,7 +181,7 @@ def select_details_to_save():
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
                                            selected_message_group_id).selected = is_selected
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/save_selected_message_to_db', methods=["POST"])
@@ -262,7 +261,7 @@ def save_selected_message_to_db():
         # Обновляем список сохраненных диалогов в текущем состоянии
         db_handler.current_state.dialog_list = db_handler.get_dialog_list()
         db_handler.all_dialogues_list = db_handler.get_dialog_list()
-    return ''
+    return jsonify({})
 
 
 @tg_saver.route('/sync_local_files_with_db', methods=["POST"])
@@ -292,7 +291,7 @@ def sync_local_files_with_db():
         if downloaded_file:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/db_message_apply_filters', methods=['POST'])
@@ -316,7 +315,6 @@ def db_message_apply_filters():
                     'db_details': '', })
 
 
-
 @tg_saver.route('/db_details/<string:message_group_id>')
 def get_db_details(message_group_id: str):
     """
@@ -327,6 +325,36 @@ def get_db_details(message_group_id: str):
     db_handler.current_state.selected_message_group_id = message_group_id
     return jsonify({'db_details': render_template('db_details.html')})
 
+@tg_saver.route('/db_select_messages', methods=["POST"])
+def db_select_messages():
+    """
+    Обработка отметки сообщений в базе данных в списке сообщений
+    """
+    # # Получаем id группы сообщений
+    # selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
+    # # Получаем значение признака сохранения (чекбокса) для группы сообщений
+    # is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
+    # # Устанавливаем признак сохранения для выбранной группы сообщений
+    # if selected_message_group_id:
+    #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
+    #                                        selected_message_group_id).selected = is_selected
+    return jsonify({'status': 'success'})
+
+@tg_saver.route('/db_select_details', methods=["POST"])
+def db_select_details():
+    """
+    Обработка отметки для сообщений в базе данных в деталях сообщения
+    """
+    # # Получаем id группы сообщений
+    # selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
+    # # Получаем значение признака сохранения (чекбокса) для группы сообщений
+    # is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
+    # # Устанавливаем признак сохранения для выбранной группы сообщений
+    # if selected_message_group_id:
+    #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
+    #                                        selected_message_group_id).selected = is_selected
+    return jsonify({'status': 'success'})
+
 
 @tg_saver.route('/db_tag_add', methods=['POST'])
 def db_tag_add():
@@ -336,7 +364,7 @@ def db_tag_add():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/db_tag_remove', methods=['POST'])
@@ -347,7 +375,7 @@ def db_tag_remove():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/db_tag_update', methods=['POST'])
@@ -360,7 +388,7 @@ def db_tag_update():
     if old_tag_name and new_tag_name:
         db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
                                                  db_handler.current_state.selected_message_group_id)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
@@ -372,7 +400,7 @@ def db_tag_update_all_such():
     new_tag_name = request.form.get('edit_tag_name')
     if old_tag_name and new_tag_name:
         db_handler.update_tag_everywhere(old_tag_name, new_tag_name)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 @tg_saver.route('/db_all_tag_sorting', methods=['POST'])
@@ -389,7 +417,7 @@ def db_all_tag_sorting():
             sorting_field = 'name'
     # # Получение списка тегов с сортировкой
     db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting_field=sorting_field)
-    return ''
+    return jsonify({'status': 'success'})
 
 
 if __name__ == '__main__':
@@ -409,23 +437,3 @@ if __name__ == '__main__':
 # Оставлять архивные подписки в базе
 # Режимы: синхронизация чата и базы с условиями (продумать условия)
 # Установить отдельно предельные размеры для файлов и медиа разных типов
-
-# with tg_saver.test_request_context("/tg_dialogs"):
-#     result = get_tg_dialogs()
-
-# with tg_saver.test_request_context('/set_table_headers'):
-#     # Теперь доступен request как при настоящем запросе
-#     result = set_table_headers()
-#     # return f"Handler1 called Handler2 via HTTP context: {result}"
-
-# @tg_saver.route('/update_headers', methods=['POST'])
-# def set_table_headers():
-#     """
-#     Установка заголовков таблицы
-#     """
-#     response = make_response(render_template('table_headers.html'))
-#
-#     # Указываем, какое событие нужно вызвать
-#     # Это запустит обновление заголовка без необходимости JS
-#     response.headers["HX-Trigger"] = "update-header-now"
-#     return response

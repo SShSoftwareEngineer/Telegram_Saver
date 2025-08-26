@@ -36,6 +36,8 @@ class ProjectConst:
     file_datetime_format = '%Y-%m-%d %H_%M_%S'
     saved_to_db_label = '✔ Saved in the DB'
     save_to_db_label = 'Save to DB'
+    checked_in_db_label = '✔ Checked'
+    check_in_db_label = 'Check'
     mess_group_id = 'message_group_id'
     select_to_save = 'select_to_save_to_db'
 

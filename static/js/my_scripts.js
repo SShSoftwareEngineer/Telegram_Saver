@@ -96,8 +96,8 @@ function updateElementsFromResponse(data) {
     });
 }
 
-// Функция, реализующая нажатие кнопки с конфигурацией формы и URL обработчика
-function pressButton(config, url) {
+// Функция, реализующая нажатие кнопки с конфигурацией элементов формы и URL обработчика
+function pressFormButton(config, url) {
     submitFormData(config, url)
         .then(data => updateElementsFromResponse(data))
         .catch(err => {
@@ -106,7 +106,7 @@ function pressButton(config, url) {
         });
 }
 
-// Функция формиующая GET-запрос для загрузки данных с сервера с заданного URL и обновления элементов
+// Функция формирующая GET-запрос для загрузки данных с сервера с заданного URL и обновления элементов
 function loadURL(url) {
     fetch(url, {
         method: 'GET',
@@ -129,6 +129,23 @@ function loadURL(url) {
             alert('Ошибка загрузки сообщений: ' + err.message);
         });
 }
+
+// Функция, вызывающая обработчик и обновляющая элементы по ID в соответствии с ответом обработчика
+function callHandler(url) {
+    fetch(url, {
+        method: 'POST'
+    })
+    .then(r => r.json())
+    .then(data => {
+        updateElementsFromResponse(data);
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        // Можно показать общую ошибку или не показывать вообще
+    });
+}
+
+// Установка значения элементов по ID
 
 // Установка значения радиокнопки по ID контейнера
 function setRadioValue(containerId, value) {
@@ -177,6 +194,32 @@ function clearFormFields(ids) {
         }
     });
 }
+
+// Функция обработки Checkbox
+function handleCheckbox(checkbox, groupInputName, url) {
+    const formData = new FormData();
+    // Добавляем данные checkbox
+    if (checkbox.checked) {
+        formData.append(checkbox.name, 'on');
+    }
+    // Добавляем данные связанного input
+    const groupInput = document.querySelector(`input[name="${groupInputName}"]`);
+    if (groupInput) {
+        formData.append(groupInputName, groupInput.value);
+    }
+    // Отправляем данные в обработчик
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+        .then(r => r.json())
+        .then(data => console.log('Success checkbox handle:', data))
+        .catch(err => {
+            console.error('Error checkbox handle:', err);
+            checkbox.checked = !checkbox.checked; // Откат при ошибке
+        });
+}
+
 
 // Функции для работы с уведомлениями
 

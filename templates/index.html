@@ -50,12 +50,9 @@
             {% include "tg_message_filter.html" %}
         </div>
         <div class="grid tg-save_to_db save_to_db_area_format">
-            <button class="button-in-cell"
-                    hx-post="/save_selected_message_to_db"
-                    hx-target="#button_target">
+            <button class="button-in-cell" onclick="callHandler('/save_selected_message_to_db')">
                 Save selected to the DB
             </button>
-            <div id="button_target"></div>
         </div>
         <div class="scroll tg-chats">
             <div class="grid content" id="tg_dialogs" hx-swap-oob="innerHTML">
