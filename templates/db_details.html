@@ -2,25 +2,22 @@
 
 {% if db_details %}
     {% set group = db_details.message_group_id %}
-    {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
-    <input type="hidden" name="{{ constants.mess_group_id+'_det = '+group }}"
-           value="{{ db_details.message_group_id }}">
     {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
+    {% set message_grouped_id = constants.mess_group_id+'_det = '+group %}
+    {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
+    <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_details.message_group_id }}">
     <div style="text-align: center;">
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
-            <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
+            <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
         {% else %}
+            {# Создание чекбокса для отметки на сохранение в БД #}
             <span class="message-checkbox">
-                    {# Создание чекбокса для отметки на сохранение в БД #}
-                    {% set checkbox_name = constants.select_to_save+'_det = '+group %}
-                    <input type="checkbox" name="{{ checkbox_name }}"
-                           hx-post="/select_details_to_save"
-                           hx-trigger="change"
-                           hx-include="input[name='{{ constants.mess_group_id+'_det = '+group }}'],
-                                       input[name='{{ checkbox_name }}'],">
-                    <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
-                </span>
+                {% set checkbox_name = constants.select_to_save+'_det = '+group %}
+                <input type="checkbox" id="{{ checkbox_name }}" name="{{ checkbox_name }}"
+                       onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/db_select_details')">
+                <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
+            </span>
         {% endif %}
         <br>
         {# Вывод даты сообщения #}
@@ -29,16 +26,6 @@
         <br>
         {{ db_details.dialog_title }}
     </div>
-    {# Вывод тегов сообщения #}
-    {% if db_details.tags %}
-        <div class="tags-area">
-            <span class="tags-label">Tags:</span>
-            {% for tag in db_details.tags %}
-                <span class="tags-label">tag.name</span>
-                <br>
-            {% endfor %}
-        </div>
-    {% endif %}
     {# Вывод текста сообщения #}
     {% if db_details.text %}
         <br>
@@ -68,10 +55,6 @@
             {% endfor %}
         </div>
     {% endif %}
-    {# Вывод тегов сообщения в соответствующее поле четвертой колонки #}
-    <div hx-swap-oob="innerHTML:#this_message_tags">
-        {{ db_details.tags_string }}
-    </div>
 
 {% else %}
 

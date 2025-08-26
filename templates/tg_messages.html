@@ -3,30 +3,27 @@
 {# Вывод списка групп сообщений Telegram #}
 <ul class="dialogs-messages-list">
     {% for tg_message in tg_messages %}
+        {% set message_grouped_id = constants.mess_group_id+'_mess = '+tg_message.grouped_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
-        <input type="hidden" name="{{ constants.mess_group_id+'_mess = '+tg_message.grouped_id }}"
-               value="{{ tg_message.grouped_id }}">
+        <input type="hidden" name="{{ message_grouped_id }}" value="{{ tg_message.grouped_id }}">
         {# Стиль чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
             {# Ссылка на детали сообщения для загрузки #}
             <a href="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
-               onclick="loadURL('{{ url_for('get_tg_details', dialog_id=tg_message.dialog_id,
-                message_group_id=tg_message.grouped_id) }}'); return false;">
+               onclick="loadURL('{{ url_for('get_tg_details', dialog_id=tg_message.dialog_id, message_group_id=tg_message.grouped_id) }}'); return false;">
                 {{ message_date }}</a>
             {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
             {% if tg_message.saved_to_db %}
                 <span class="saved-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
+                {# Создание чекбокса для отметки на сохранение в БД #}
                 <span class="message-checkbox">
-                    {# Создание чекбокса для отметки на сохранение в БД #}
                     {% set checkbox_name = constants.select_to_save+'_mess = '+tg_message.grouped_id %}
-                    <input type="checkbox" name="{{ checkbox_name }}"
-                           hx-post="/select_messages_to_save"
-                           hx-trigger="change"
-                           hx-include="input[name='{{ constants.mess_group_id+'_mess = '+tg_message.grouped_id }}'],
-                                       input[name='{{ checkbox_name }}'],">
+                    <input type="checkbox"
+                           id="{{ checkbox_name }}" name="{{ checkbox_name }}"
+                           onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/tg_select_messages')">
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}
