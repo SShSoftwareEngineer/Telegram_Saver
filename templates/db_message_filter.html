@@ -1,35 +1,37 @@
 <!-- Шаблон для фильтрации диалогов в базе данных -->
 
+{# Конфигурация элементов управления формы #}
+{% set form_cfg = form_btn_cfg.db_message_filter %}
+
 <!-- Database dialog filter -->
-<label for="db_dialog_select" class="group-label no-margin-top">Filter by chat names</label>
+<label for="{{ form_cfg.dialog_select }}" class="group-label no-margin-top">Filter by chat names</label>
 <div class="control-X-button">
-    <select id="db_dialog_select" name="db_dialog_select" size="6" multiple>
+    <select id="{{ form_cfg.dialog_select }}" name="{{ form_cfg.dialog_select }}" size="6" multiple>
         {% for db_dialog in db_all_dialog_list %}
             <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
         {% endfor %}
     </select>
     <button type="button"
-            onclick="clearFormFields(['db_dialog_select'])"
-            class="clear-button X-button">
-        ✖
+            onclick="clearFormFields(['{{ form_cfg.dialog_select }}'])"
+            class="clear-button X-button"> ✖
     </button>
 </div>
 
 <!-- Database messages sort field radiobuttons -->
 <p class="group-label">Messages sorting field</p>
-<div id="db_mess_sort_field">
-    <input type="radio" id="db_mess_sort_field_0" name="db_mess_sort_field" value="0" checked>
-    <label for="db_mess_sort_field_0">Sort by chat name</label><br>
-    <input type="radio" id="db_mess_sort_field_1" name="db_mess_sort_field" value="1">
-    <label for="db_mess_sort_field_1">Sort by date</label>
+<div id="{{ form_cfg.sorting_field }}">
+    <input type="radio" id="db_mess_sort_field_0" name="{{ form_cfg.sorting_field }}" value="0" checked>
+    <label for="db_mess_sort_field_0">Sort by date</label><br>
+    <input type="radio" id="db_mess_sort_field_1" name="{{ form_cfg.sorting_field }}" value="1">
+    <label for="db_mess_sort_field_1">Sort by chat name</label>
 </div>
 
 <!-- Database messages sort order radiobuttons -->
 <p class="group-label">Messages sort order</p>
-<div id="db_mess_sort_order">
-    <input type="radio" id="db_mess_reverse_0" name="db_mess_sort_order" value="0" checked>
+<div id="{{ form_cfg.sorting_order }}">
+    <input type="radio" id="db_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0" checked>
     <label for="db_mess_reverse_0">Ascending</label><br>
-    <input type="radio" id="db_mess_reverse_1" name="db_mess_sort_order" value="1">
+    <input type="radio" id="db_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1">
     <label for="db_mess_reverse_1">Descending</label>
 </div>
 
@@ -37,40 +39,42 @@
 <p class="group-label">Filter by message date</p>
 <div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
-    <label for="db_mess_date_from">Date from:</label>
+    <label for="{{ form_cfg.date_from }}">Date from:</label>
     <input type="text" class="date-from-to-buttons"
-           id="db_mess_date_from" name="db_mess_date_from"
+           id="{{ form_cfg.date_from }}"
+           name="{{ form_cfg.date_from }}"
            placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="clearFormFields(['db_mess_date_from'])"
+            onclick="clearFormFields(['{{ form_cfg.date_from }}'])"
             class="clear-button X-button"> ✖
     </button>
     <!-- Filtering by date to -->
-    <label for="db_mess_date_to">Date to:</label>
+    <label for="{{ form_cfg.date_to }}">Date to:</label>
     <input type="text" class="date-from-to-buttons"
-           id="db_mess_date_to" name="db_mess_date_to"
+           id="{{ form_cfg.date_to }}"
+           name="{{ form_cfg.date_to }}"
            placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="clearFormFields(['db_mess_date_to'])"
-            class="clear-button X-button">
-        ✖
+            onclick="clearFormFields(['{{ form_cfg.date_to }}'])"
+            class="clear-button X-button"> ✖
     </button>
 </div>
 
 <!-- Filtering database messages by message text -->
-<label for="db_message_query" class="group-label">Filter by message text</label>
+<label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
     <input type="text"
-           id="db_message_query" name="db_message_query"
+           id="{{ form_cfg.message_query }}"
+           name="{{ form_cfg.message_query }}"
            placeholder="Message text fragment">
     <button type="button"
-            onclick="clearFormFields(['db_message_query'])"
+            onclick="clearFormFields(['{{ form_cfg.message_query }}'])"
             class="clear-button X-button"> ✖
     </button>
 </div>
 
 <!-- Apply database message filters button -->
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ btn_config.db_message_filter }}, '/db_message_apply_filters')">
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_message_apply_filters')">
     Apply message filters
 </button>

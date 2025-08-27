@@ -117,25 +117,40 @@ class TableNames:
     message_group_tag_links = 'message_group_tag_links'
 
 
-class ButtonConfigs:
+class FormButtonCfg:
     """
     Constants for button configurations in the web interface.
     """
-    tg_dialog_filter = {"radio": [{"id": "tg_sorting_field", "name": "tg_sorting_field"},
-                                  {"id": "tg_dial_sort_order", "name": "tg_dial_sort_order"},
-                                  {"id": "tg_dialog_type", "name": "tg_dialog_type"}],
-                        "input": [{"id": "tg_title_query", "name": "tg_title_query"}]}
-    tg_message_filter = {"radio": [{"id": "tg_mess_sort_order", "name": "tg_mess_sort_order"}, ],
-                         "input": [{"id": "tg_mess_date_from", "name": "tg_mess_date_from"},
-                                   {"id": "tg_mess_date_to", "name": "tg_mess_date_to"},
-                                   {"id": "tg_message_query", "name": "tg_message_query"}, ]}
-    db_message_filter = {"radio": [{"id": "db_mess_sort_field", "name": "db_mess_sort_field"},
-                                   {"id": "db_mess_sort_order", "name": "db_mess_sort_order"}, ],
-                         "input": [{"id": "db_mess_date_from", "name": "db_mess_date_from"},
-                                   {"id": "db_mess_date_to", "name": "db_mess_date_to"},
-                                   {"id": "db_message_query", "name": "db_message_query"}, ],
-                         "select": [{"id": "db_dialog_select", "name": "db_dialog_select"}, ],
-                         "checkbox": []}
+    tg_dialog_filter = {'sorting_field': 'tg_sorting_field', 'sorting_order': 'tg_dial_sort_order',
+                        'dialog_type': 'tg_dialog_type', 'dialog_title_query': 'tg_title_query',
+                        'radio': ['sorting_field', 'sorting_order', 'dialog_type'],
+                        'input': ['dialog_title_query'],
+                        'select': [], 'checkbox': []}
+    tg_message_filter = {'sorting_order': 'tg_mess_sort_order', 'date_from': 'tg_mess_date_from',
+                         'date_to': 'tg_mess_date_to', 'message_query': 'tg_message_query',
+                         'radio': ['sorting_order'],
+                         'input': ['date_from', 'date_to', 'message_query'],
+                         'select': [], 'checkbox': []}
+    db_message_filter = {'sorting_field': 'db_mess_sort_field', 'sorting_order': 'db_mess_sort_order',
+                         'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
+                         'message_query': 'db_message_query', 'dialog_select': 'db_dialog_select',
+                         'radio': ['sorting_field', 'sorting_order'],
+                         'input': ['date_from', 'date_to', 'message_query'],
+                         'select': ['dialog_select'],
+                         'checkbox': []}
+    db_tag_buttons = {'edit_tag_name': 'db_edit_tag_name',
+                      'radio': [], 'input': ['edit_tag_name'], 'select': [], 'checkbox': []}
+
+    @staticmethod
+    def get_form_button_cfg(form_cfg: dict) -> dict:
+        """
+        Returns the button configuration for a given form.
+        """
+        result = {'radio': [], 'input': [], 'select': [], 'checkbox': []}  # Default structure, do not change key names
+        for key in result.keys():
+            for field_name in form_cfg[key]:
+                result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
+        return result
 
 
 """ 

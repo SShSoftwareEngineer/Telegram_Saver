@@ -141,14 +141,8 @@ class DbMessageSortFilter:
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
-
-    @staticmethod
-    def _sort_by_dialog_title(x):
-        return x.dialog.title
-
-    @staticmethod
-    def _sort_by_date(x):
-        return x.date
+    sort_by_date: str = 'by date'
+    sort_by_title: str = 'by title'
 
     @property
     def selected_dialog_list(self) -> Optional[List[int]]:
@@ -179,7 +173,7 @@ class DbMessageSortFilter:
         """
         Устанавливает поле сортировки
         """
-        self._sorting_field = self._sort_by_dialog_title if value == '0' else self._sort_by_date
+        self._sorting_field = self.sort_by_date if value == '0' else self.sort_by_title
 
     @property
     def sort_order(self) -> bool:
@@ -352,18 +346,29 @@ class DatabaseHandler:
         Получение списка групп сообщений с учетом фильтров и сортировки
         """
         stmt = select(DbMessageGroup)
+        # Фильтр по выбранным диалогам
         if self.message_sort_filter.selected_dialog_list:
             stmt = stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
+        # Фильтр по дате от и до
         if self.message_sort_filter.date_from:
             stmt = stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
         if self.message_sort_filter.date_to:
             stmt = stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
+        # Фильтр по тексту сообщения
         if self.message_sort_filter.message_query:
             stmt = stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
+        # Сортировка по диалогам
+        if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
+            stmt = stmt.join(DbDialog).order_by(
+                DbDialog.title.desc() if self.message_sort_filter.sort_order else DbDialog.title.asc(),
+                DbMessageGroup.date.desc())
+        # Сортировка по дате
+        if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_date:
+            stmt = stmt.order_by(
+                DbMessageGroup.date.desc() if self.message_sort_filter.sort_order else DbMessageGroup.date.asc())
         query_result = self.session.execute(stmt).scalars().all()
         print(f'{len(query_result)} messages loaded from the database')
-        return sorted(query_result, key=self.message_sort_filter.sorting_field,
-                      reverse=self.message_sort_filter.sort_order)
+        return list(query_result)
 
     @staticmethod
     def get_select_tags_string(tags: dict[int, str]) -> str:

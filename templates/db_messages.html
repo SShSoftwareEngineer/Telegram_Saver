@@ -3,8 +3,8 @@
 {# Вывод списка групп сообщений из базы данных #}
 <ul class="dialogs-messages-list">
     {% for db_message in db_messages %}
-        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+db_message.grouped_id %}
+        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_message.grouped_id }}">
         {# Стиль чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
@@ -18,8 +18,8 @@
             {% if db_message.saved_to_db %}
                 <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
             {% else %}
+                {# Создание чекбокса для отметки на сохранение в БД #}
                 <span class="message-checkbox">
-                    {# Создание чекбокса для отметки на сохранение в БД #}
                     {% set checkbox_name = constants.select_to_save+'_mess = '+db_message.grouped_id %}
                     <input type="checkbox"
                            id="{{ checkbox_name }}" name="{{ checkbox_name }}"
@@ -29,7 +29,8 @@
             {% endif %}
             {# Вывод обрезанного текста #}
             {% if db_message.truncated_text %}
-                <br>{{ db_message.truncated_text|replace('\n', '<br>')|safe }}
+                <br>
+                {{ db_message.truncated_text|replace('\n', '<br>')|safe }}
             {% endif %}
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}

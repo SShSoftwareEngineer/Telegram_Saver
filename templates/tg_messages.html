@@ -29,7 +29,8 @@
             {% endif %}
             {# Вывод обрезанного текста #}
             {% if tg_message.truncated_text %}
-                <br>{{ tg_message.truncated_text|replace('\n', '<br>')|safe }}
+                <br>
+                {{ tg_message.truncated_text|replace('\n', '<br>')|safe }}
             {% endif %}
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if tg_message.files_report %}

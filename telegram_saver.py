@@ -3,7 +3,7 @@ from typing import Optional
 
 from flask import Flask, render_template, request, send_from_directory, jsonify
 
-from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, ButtonConfigs
+from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, FormButtonCfg
 from telegram_handler import TelegramHandler
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -20,7 +20,7 @@ def inject_field_names():
     return {
         'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
         'constants': ProjectConst,
-        'btn_config': ButtonConfigs,
+        'form_btn_cfg': FormButtonCfg,
         'tg_file_types': MessageFileTypes,
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
@@ -104,13 +104,14 @@ def tg_dialog_apply_filters():
     """
     Получение списка диалогов Telegram с применением фильтров
     """
-    # Установка фильтров диалогов по значениям из формы
-    dial_filter = tg_handler.dialog_sort_filter
+    # Установка фильтров диалогов Telegram по значениям из формы
+    form_cfg= FormButtonCfg.tg_dialog_filter
     form = request.form
-    dial_filter.sort_field(form.get('tg_sorting_field'))
-    dial_filter.sort_order(form.get('tg_dial_sort_order'))
-    dial_filter.dialog_type(form.get('tg_dialog_type'))
-    dial_filter.title_query(form.get('tg_title_query'))
+    dial_filter = tg_handler.dialog_sort_filter
+    dial_filter.sort_field(form.get(form_cfg['sorting_field']))
+    dial_filter.sort_order(form.get(form_cfg['sorting_order']))
+    dial_filter.dialog_type(form.get(form_cfg['dialog_type']))
+    dial_filter.title_query(form.get(form_cfg['dialog_title_query']))
     # Получение списка диалогов с применением фильтров
     tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
     # Очистка списка сообщений и деталей сообщений
@@ -126,12 +127,14 @@ def tg_message_apply_filters():
     """
     Получение списка сообщений диалога Telegram с применением фильтров
     """
-    mess_filter = tg_handler.message_sort_filter
+    # Установка фильтров списка сообщений Telegram по значениям из формы
+    form_cfg = FormButtonCfg.tg_message_filter
     form = request.form
-    mess_filter.sort_order = form.get('tg_mess_sort_order')
-    mess_filter.date_from = form.get('tg_mess_date_from')
-    mess_filter.date_to = form.get('tg_mess_date_to')
-    mess_filter.message_query = form.get('tg_message_query')
+    mess_filter = tg_handler.message_sort_filter
+    mess_filter.sort_order = form.get(form_cfg['sorting_order'])
+    mess_filter.date_from = form.get(form_cfg['date_from'])
+    mess_filter.date_to = form.get(form_cfg['date_to'])
+    mess_filter.message_query = form.get(form_cfg['message_query'])
     # Получение списка сообщений с применением фильтров
     tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
         tg_handler.current_state.selected_dialog_id)
@@ -165,7 +168,7 @@ def tg_select_messages():
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
                                            selected_message_group_id).selected = is_selected
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/tg_select_details', methods=["POST"])
@@ -181,7 +184,7 @@ def tg_select_details():
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
                                            selected_message_group_id).selected = is_selected
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/save_selected_message_to_db', methods=["POST"])
@@ -281,8 +284,13 @@ def sync_local_files_with_db():
     files_to_delete = local_files - database_files
     files_to_download = database_files - local_files
     # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
-    deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
-    print(f'Deleted {deleted_count} files from local storage')
+    files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
+    print(f'Files deleted from local storage: {files_deleted_count}')
+    # Удаляем пустые директории
+    dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
+    dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
+                         not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
+    print(f'Empty directories deleted from local storage: {dir_deleted_count}')
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
     downloaded_file_list = []
     for file_path in files_to_download:
@@ -291,7 +299,7 @@ def sync_local_files_with_db():
         if downloaded_file:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_message_apply_filters', methods=['POST'])
@@ -299,14 +307,16 @@ def db_message_apply_filters():
     """
     Получение списка сообщений из базы данных с применением фильтров
     """
-    mess_filter = db_handler.message_sort_filter
+    # Установка фильтров списка сообщений из базы данных по значениям из формы
+    form_cfg = FormButtonCfg.db_message_filter
     form = request.form
-    mess_filter.selected_dialog_list = form.getlist('db_dialog_select')
-    mess_filter.sorting_field = form.get('db_mess_sort_field')
-    mess_filter.sort_order = form.get('db_mess_sort_order')
-    mess_filter.date_from = form.get('db_mess_date_from')
-    mess_filter.date_to = form.get('db_mess_date_to')
-    mess_filter.message_query = form.get('db_message_query')
+    mess_filter = db_handler.message_sort_filter
+    mess_filter.selected_dialog_list = form.getlist(form_cfg['dialog_select'])
+    mess_filter.sorting_field = form.get(form_cfg['sorting_field'])
+    mess_filter.sort_order = form.get(form_cfg['sorting_order'])
+    mess_filter.date_from = form.get(form_cfg['date_from'])
+    mess_filter.date_to = form.get(form_cfg['date_to'])
+    mess_filter.message_query = form.get(form_cfg['message_query'])
     # Получение списка сообщений с применением фильтров
     db_handler.current_state.message_group_list = db_handler.get_message_group_list()
     db_handler.current_state.message_details = None
@@ -325,6 +335,7 @@ def get_db_details(message_group_id: str):
     db_handler.current_state.selected_message_group_id = message_group_id
     return jsonify({'db_details': render_template('db_details.html')})
 
+
 @tg_saver.route('/db_select_messages', methods=["POST"])
 def db_select_messages():
     """
@@ -338,7 +349,8 @@ def db_select_messages():
     # if selected_message_group_id:
     #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
     #                                        selected_message_group_id).selected = is_selected
-    return jsonify({'status': 'success'})
+    return jsonify({})
+
 
 @tg_saver.route('/db_select_details', methods=["POST"])
 def db_select_details():
@@ -353,7 +365,7 @@ def db_select_details():
     # if selected_message_group_id:
     #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
     #                                        selected_message_group_id).selected = is_selected
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_tag_add', methods=['POST'])
@@ -364,7 +376,7 @@ def db_tag_add():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_tag_remove', methods=['POST'])
@@ -375,7 +387,7 @@ def db_tag_remove():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_tag_update', methods=['POST'])
@@ -388,7 +400,7 @@ def db_tag_update():
     if old_tag_name and new_tag_name:
         db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
                                                  db_handler.current_state.selected_message_group_id)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
@@ -400,7 +412,7 @@ def db_tag_update_all_such():
     new_tag_name = request.form.get('edit_tag_name')
     if old_tag_name and new_tag_name:
         db_handler.update_tag_everywhere(old_tag_name, new_tag_name)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 @tg_saver.route('/db_all_tag_sorting', methods=['POST'])
@@ -417,7 +429,7 @@ def db_all_tag_sorting():
             sorting_field = 'name'
     # # Получение списка тегов с сортировкой
     db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting_field=sorting_field)
-    return jsonify({'status': 'success'})
+    return jsonify({})
 
 
 if __name__ == '__main__':
