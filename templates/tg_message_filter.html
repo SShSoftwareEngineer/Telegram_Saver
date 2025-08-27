@@ -1,11 +1,14 @@
 <!-- Шаблон для фильтрации сообщений в выбранном диалоге Telegram -->
 
+{# Конфигурация элементов управления формы #}
+{% set form_cfg = form_btn_cfg.tg_message_filter %}
+
 <!-- Dialog messages sort order radiobuttons -->
 <p class="group-label no-margin-top">Messages sort order</p>
-<div id="tg_mess_sort_order">
-    <input type="radio" id="tg_mess_reverse_0" name="tg_mess_sort_order" value="0" checked>
+<div id="{{ form_cfg.sorting_order }}">
+    <input type="radio" id="tg_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0" checked>
     <label for="tg_mess_reverse_0">Newest first</label><br>
-    <input type="radio" id="tg_mess_reverse_1" name="tg_mess_sort_order" value="1">
+    <input type="radio" id="tg_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1">
     <label for="tg_mess_reverse_1">Oldest first</label>
 </div>
 
@@ -13,40 +16,43 @@
 <p class="group-label">Filter by message date</p>
 <div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
-    <label for="tg_mess_date_from">Date from:</label>
+    <label for="{{ form_cfg.date_from }}">Date from:</label>
     <input type="text" class="date-from-to-buttons"
-           id="tg_mess_date_from" name="tg_mess_date_from"
+           id="{{ form_cfg.date_from }}"
+           name="{{ form_cfg.date_from }}"
            value="{{ tg_mess_date_from_default }}"
            placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="clearFormFields(['tg_mess_date_from'])"
+            onclick="clearFormFields(['{{ form_cfg.date_from }}'])"
             class="clear-button X-button"> ✖
     </button>
     <!-- Filtering by date to -->
-    <label for="tg_mess_date_to">Date to:</label>
+    <label for="{{ form_cfg.date_to }}">Date to:</label>
     <input type="text" class="date-from-to-buttons"
-           id="tg_mess_date_to" name="tg_mess_date_to"
+           id="{{ form_cfg.date_to }}"
+           name="{{ form_cfg.date_to }}"
            placeholder="DD/MM/YYYY">
     <button type="button"
-            onclick="clearFormFields(['tg_mess_date_to'])"
+            onclick="clearFormFields(['{{ form_cfg.date_to }}'])"
             class="clear-button X-button"> ✖
     </button>
 </div>
 
 <!-- Filtering by Telegram message text -->
-<label for="tg_message_query" class="group-label">Filter by message text</label>
+<label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
     <input type="text"
-           id="tg_message_query" name="tg_message_query"
+           id="{{ form_cfg.message_query }}"
+           name="{{ form_cfg.message_query }}"
            placeholder="Message text fragment">
     <button type="button"
-            onclick="clearFormFields(['tg_message_query'])"
+            onclick="clearFormFields(['{{ form_cfg.message_query }}'])"
             class="clear-button X-button"> ✖
     </button>
 </div>
 
 <!-- Apply message filters button -->
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ btn_config.tg_message_filter }}, '/tg_message_apply_filters')">
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/tg_message_apply_filters')">
     Apply message filters
 </button>

@@ -32,11 +32,10 @@
         {{ tg_details.text|replace('\n', '<br>')|safe }}
     {% endif %}
     {# Вывод графических, видео и других файлов #}
-    {% if db_details.existing_files %}
+    {% if tg_details.existing_files %}
         <br>
         <div class="media-files-area">
             {% for message_file in tg_details.existing_files %}
-                {{ message_file.alt_text }}
                 <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
                                 {% else %} media-files-one-column {% endif %}">
                     {# Вывод графических файлов #}

@@ -35,7 +35,16 @@ function getInputValue(id) {
 // Получение значения select по ID
 function getSelectValue(id) {
     const select = document.getElementById(id);
-    return select ? select.value : '';
+    if (!select) return '';
+    // Если select с множественным выбором
+    if (select.hasAttribute('multiple')) {
+        // Возвращаем массив выбранных значений
+        const selectedValues = Array.from(select.selectedOptions).map(option => option.value);
+        return selectedValues.length > 0 ? selectedValues : '';
+    } else {
+        // Обычный select - возвращаем одно значение
+        return select.value;
+    }
 }
 
 // Получение значения множественного выбора checkbox группы по ID контейнера
@@ -48,7 +57,13 @@ function getCheckboxValues(id) {
 
 // Универсальная функция добавления данных формы в FormData с проверкой
 function appendIfExists(formData, name, value) {
-    if (value !== null && value !== undefined && value !== '') {
+    if (value === null || value === undefined || value === '') {
+        return;
+    }
+    // Если значение - массив (из multiple select)
+    if (Array.isArray(value)) {
+        value.forEach(item => formData.append(name, item));
+    } else {
         formData.append(name, value);
     }
 }
@@ -135,14 +150,14 @@ function callHandler(url) {
     fetch(url, {
         method: 'POST'
     })
-    .then(r => r.json())
-    .then(data => {
-        updateElementsFromResponse(data);
-    })
-    .catch(err => {
-        console.error('Error:', err);
-        // Можно показать общую ошибку или не показывать вообще
-    });
+        .then(r => r.json())
+        .then(data => {
+            updateElementsFromResponse(data);
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            // Можно показать общую ошибку или не показывать вообще
+        });
 }
 
 // Установка значения элементов по ID
@@ -190,7 +205,7 @@ function clearFormFields(ids) {
         }
         // Для select
         if (element.tagName === 'SELECT') {
-            element.selectedIndex = 0;
+            element.selectedIndex = -1; // Снимаем все выделения
         }
     });
 }

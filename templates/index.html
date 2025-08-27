@@ -55,22 +55,26 @@
             </button>
         </div>
         <div class="scroll tg-chats">
-            <div class="grid content" id="tg_dialogs" hx-swap-oob="innerHTML">
+            <div class="grid content" id="tg_dialogs">
                 {# Вывод списка диалогов Telegram #}
-                {% include "tg_dialogs.html" %}
+                {% if tg_dialogs %}
+                    {% include "tg_dialogs.html" %}
+                {% endif %}
             </div>
         </div>
         <div class="scroll tg-messages">
-            <div class="grid content" id="tg_messages" hx-swap-oob="innerHTML">
+            <div class="grid content" id="tg_messages">
                 {# Вывод списка групп сообщений Telegram #}
                 {% if tg_messages %}
                     {% include "tg_messages.html" %}
                 {% endif %}
             </div>
         </div>
-        <div class="scroll tg-details" hx-swap-oob="innerHTML">
+        <div class="scroll tg-details">
             <div class="grid content" id="tg_details">
-                {% include "tg_details.html" %}
+                {% if tg_details %}
+                    {% include "tg_details.html" %}
+                {% endif %}
             </div>
         </div>
         <div class="grid tg-footer" id="tg-footer">footer (in development)</div>
