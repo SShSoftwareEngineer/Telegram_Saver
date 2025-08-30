@@ -138,8 +138,10 @@ class FormButtonCfg:
                          'input': ['date_from', 'date_to', 'message_query'],
                          'select': ['dialog_select'],
                          'checkbox': []}
-    db_tag_buttons = {'edit_tag_name': 'db_edit_tag_name',
-                      'radio': [], 'input': ['edit_tag_name'], 'select': [], 'checkbox': []}
+    db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'curr_message_tags': 'db_current_message_tags',
+                      'all_detail_tags': 'db_all_detail_tags',
+                      'input': ['edit_tag_name'], 'select': ['curr_message_tags', 'all_detail_tags'],
+                      'radio': [], 'checkbox': []}
 
     @staticmethod
     def get_form_button_cfg(form_cfg: dict) -> dict:
@@ -151,6 +153,17 @@ class FormButtonCfg:
             for field_name in form_cfg[key]:
                 result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
         return result
+
+class TagsSorting:
+    """
+    Constants for tag sorting options.
+    """
+    name_asc = {'field': 'name', 'order': 'asc'}
+    name_desc = {'field': 'name', 'order': 'desc'}
+    usage_count_asc = {'field': 'usage_count', 'order': 'asc'}
+    usage_count_desc = {'field': 'usage_count', 'order': 'desc'}
+    updated_at_asc = {'field': 'name', 'order': 'asc'}
+    updated_at_desc = {'field': 'name', 'order': 'desc'}
 
 
 """ 

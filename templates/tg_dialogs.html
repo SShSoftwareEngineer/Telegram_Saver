@@ -5,7 +5,7 @@
     {% for tg_dialog in tg_dialogs %}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             <a href="/tg_messages/{{ tg_dialog.dialog_id }}"
-               onclick="loadURL('{{ url_for('get_tg_messages', dialog_id=tg_dialog.dialog_id) }}'); return false;">
+               onclick="loadURL('{{ url_for('tg_get_messages', dialog_id=tg_dialog.dialog_id) }}'); return false;">
                 {{ tg_dialog.title }}
             </a>
         </li>

@@ -170,7 +170,7 @@ class TgFile:
         """
         Проверяет, был ли файл загружен в файловую систему
         """
-        return Path(self.file_path).exists() if self.file_path else False
+        return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
 
 
 @dataclass
@@ -336,7 +336,6 @@ class TgMessageSortFilter:
         Устанавливает дату, до которой получать сообщения
         """
         self._date_to = parse_date_string(value)
-
 
     @property
     def message_query(self) -> Optional[str]:
@@ -613,8 +612,7 @@ class TelegramHandler:
         # Формирование пути к файлу в файловой системе
         message_time = message.date.astimezone().strftime('%H-%M-%S')
         file_name = f'{message_time}_{file_type.sign}_{message_group.grouped_id}_{message.id}{file_ext}'
-        file_path = Path(ProjectDirs.media_dir) / self.get_dialog_by_id(
-            dialog_id).get_self_dir() / message_group.get_self_dir() / file_name
+        file_path = Path(self.get_dialog_by_id(dialog_id).get_self_dir()) / message_group.get_self_dir() / file_name
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
                          message_grouped_id=message_group.grouped_id,
