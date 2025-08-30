@@ -3,7 +3,7 @@ from typing import Optional
 
 from flask import Flask, render_template, request, send_from_directory, jsonify
 
-from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, FormButtonCfg
+from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting
 from telegram_handler import TelegramHandler
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -18,10 +18,10 @@ def inject_field_names():
     Регистрация контекстного процессора с именами полей
     """
     return {
-        'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
         'constants': ProjectConst,
-        'form_btn_cfg': FormButtonCfg,
         'tg_file_types': MessageFileTypes,
+        'form_btn_cfg': FormButtonCfg,
+        'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
         'tg_details': tg_handler.current_state.message_details,
@@ -44,13 +44,13 @@ with tg_saver.app_context():
     initialize_data()
 
 
-@tg_saver.route(f'/media_dir/<path:filename>')
+@tg_saver.route(f'/{ProjectDirs.media_dir}/<path:filename>')
 def media_dir(filename):
     """
     Регистрация пути для хранения кэшированных изображений.
     Принимает полный путь включая ProjectDirs.media_dir
     """
-    return send_from_directory('.', filename)
+    return send_from_directory('', filename)
 
 
 @tg_saver.route("/")
@@ -62,7 +62,7 @@ def index():
 
 
 @tg_saver.route("/tg_dialogs")
-def get_tg_dialogs():
+def tg_get_dialogs():
     """
     Получение списка диалогов Telegram
     """
@@ -72,7 +72,7 @@ def get_tg_dialogs():
 
 
 @tg_saver.route("/tg_messages/<string:dialog_id>")
-def get_tg_messages(dialog_id):
+def tg_get_messages(dialog_id):
     """
     Получение списка сообщений при обновлении текущего диалога
     """
@@ -90,7 +90,7 @@ def get_tg_messages(dialog_id):
 
 
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
-def get_tg_details(dialog_id: str, message_group_id: str):
+def tg_get_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
@@ -105,7 +105,7 @@ def tg_dialog_apply_filters():
     Получение списка диалогов Telegram с применением фильтров
     """
     # Установка фильтров диалогов Telegram по значениям из формы
-    form_cfg= FormButtonCfg.tg_dialog_filter
+    form_cfg = FormButtonCfg.tg_dialog_filter
     form = request.form
     dial_filter = tg_handler.dialog_sort_filter
     dial_filter.sort_field(form.get(form_cfg['sorting_field']))
@@ -251,11 +251,13 @@ def save_selected_message_to_db():
                            'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
             }
             html_content = render_template('export_message.html', **message_group_export_data)
+
+            доразобраться с путями и, возможно, сделать функцию для этого
+
             message_group_time = tg_message_group.date.astimezone().strftime('%H-%M-%S')
             file_name = (f'{message_group_time}_{MessageFileTypes.CONTENT.sign}_'
                          f'{tg_message_group.grouped_id}{MessageFileTypes.CONTENT.default_ext}')
-            file_path = Path(
-                ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
+            file_path = Path(tg_dialog.get_self_dir()) / tg_message_group.get_self_dir() / file_name
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
@@ -289,7 +291,7 @@ def sync_local_files_with_db():
     # Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
-                         not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
+                             not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
     print(f'Empty directories deleted from local storage: {dir_deleted_count}')
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
     downloaded_file_list = []
@@ -326,14 +328,21 @@ def db_message_apply_filters():
 
 
 @tg_saver.route('/db_details/<string:message_group_id>')
-def get_db_details(message_group_id: str):
+def db_get_details(message_group_id: str):
     """
     Получение детальной информации о сообщении из базы данных
     """
-    db_handler.current_state.message_details = db_handler.get_message_detail(
-        message_group_id) if message_group_id else None
+    if message_group_id:
+        db_handler.current_state.message_details = db_handler.get_message_detail(message_group_id)
+        db_handler.current_state.details_tags_string = db_handler.get_select_tags_string(
+            db_handler.current_state.message_details.get('tags'))
+    else:
+        db_handler.current_state.message_details = None
+        db_handler.current_state.message_details_tags = ''
     db_handler.current_state.selected_message_group_id = message_group_id
-    return jsonify({'db_details': render_template('db_details.html')})
+    return jsonify({'db_details': render_template('db_details.html'),
+                    FormButtonCfg.db_detail_tags.get(
+                        'curr_message_tags'): db_handler.current_state.details_tags_string, })
 
 
 @tg_saver.route('/db_select_messages', methods=["POST"])
@@ -404,7 +413,7 @@ def db_tag_update():
 
 
 @tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
-def db_tag_update_all_such():
+def db_tag_update_everywhere():
     """
     Изменение тега сообщения и такого же тега всех сообщений
     """
@@ -422,14 +431,15 @@ def db_all_tag_sorting():
     """
     match request.form.get('db_tag_sort_field'):
         case '1':
-            sorting_field = 'usage_count'
+            sorting = TagsSorting.usage_count_desc
         case '2':
-            sorting_field = 'updated_at'
+            sorting = TagsSorting.updated_at_desc
         case _:
-            sorting_field = 'name'
+            sorting = TagsSorting.name_asc
     # # Получение списка тегов с сортировкой
-    db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting_field=sorting_field)
-    return jsonify({})
+    db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting=sorting)
+    return jsonify({FormButtonCfg.db_detail_tags.get('all_detail_tags'):
+                        db_handler.get_select_tags_string(db_handler.current_state.all_tags_list), })
 
 
 if __name__ == '__main__':

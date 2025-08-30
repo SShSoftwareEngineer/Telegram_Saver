@@ -3,10 +3,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, desc, or_, update, func
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, update, \
+    func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string
+from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string, TagsSorting
 
 
 class Base(DeclarativeBase):
@@ -111,7 +112,7 @@ class DbFile(Base):
         """
         Проверяет, был ли файл загружен в файловую систему
         """
-        return Path(self.file_path).exists() if self.file_path else False
+        return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
 
 
 class DbFileType(Base):
@@ -246,7 +247,7 @@ class DbCurrentState:
     dialog_list: List[DbDialog] = None
     message_group_list: List[DbMessageGroup] = None
     message_details: Dict[str, Any] = None
-    message_details_tags: Dict[int, str] = None
+    details_tags_string: str = None
     selected_message_group_id: str = None
 
 
@@ -302,8 +303,6 @@ class DatabaseHandler:
         self.session.commit()
         # Получаем список диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
-        # Получаем список тегов из базы данных
-        self.all_tags_list = self.get_all_tag_list(sorting_field='name')
         # Обновляем частоту использования тегов
         stmt = (update(DbTag).values(
             usage_count=select(func.count())
@@ -316,6 +315,8 @@ class DatabaseHandler:
         self.session.query(DbTag).filter(DbTag.usage_count == 0).delete()
         # Сохраняем изменения в базе данных
         self.session.commit()
+        # Получаем список всех тегов из базы данных
+        self.all_tags_list = self.get_all_tag_list(sorting=TagsSorting.name_asc)
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
         self.current_state.all_tags_list = list(self.all_tags_list)
@@ -332,14 +333,31 @@ class DatabaseHandler:
         print(f'{len(dialog_list)} chats loaded from the database')
         return sorted(dialog_list, key=lambda x: x.title)
 
-    def get_all_tag_list(self, sorting_field: str) -> List[DbTag]:
+    def get_all_tag_list(self, sorting: dict) -> List[DbTag]:
         """
         Получение списка всех тегов, имеющихся в БД с учетом сортировки
         """
-        sort_attr = getattr(DbTag, sorting_field)
-        stmt = select(DbTag).group_by(DbTag.name).order_by(desc(sort_attr), DbTag.name)
+        # Определяем поле для сортировки
+        sort_field = getattr(DbTag, sorting['field'])
+        # Определяем направление сортировки
+        if sorting['order'] == 'asc':
+            sort_expr = asc(sort_field)
+        else:
+            sort_expr = desc(sort_field)
+        stmt = (
+            select(DbTag)
+            .group_by(DbTag.name)
+            .order_by(sort_expr, DbTag.name)  # Вторичная сортировка по имени
+        )
         query_result = self.session.execute(stmt).scalars().all()
         return list(query_result)
+
+    @staticmethod
+    def get_tags_select_string(tags: List[DbTag]) -> str:
+        """
+        Получение содержимого <SELECT> для выбора тегов
+        """
+        return '/n'.join([f'<option value = "{tag.id}" > {tag.name}</option>' for tag in tags])
 
     def get_message_group_list(self) -> list[DbMessageGroup]:
         """
@@ -371,11 +389,14 @@ class DatabaseHandler:
         return list(query_result)
 
     @staticmethod
-    def get_select_tags_string(tags: dict[int, str]) -> str:
+    def get_select_tags_string(tags: Optional[List[DbTag]]) -> str:
         """
         Формирует строку для тега в HTML формате для использования в <select>
         """
-        return '\n'.join([f'<option value="{tag_id}">{tag_name}</option>' for tag_id, tag_name in tags.items()])
+        if not tags:
+            return ''
+        result = '\n'.join([f'<option value="{tag.id}" > {tag.name}</option>' for tag in tags])
+        return result
 
     def get_message_detail(self, message_group_id: str) -> dict:
         """
@@ -391,9 +412,7 @@ class DatabaseHandler:
                           text=current_message_group.text if current_message_group.text else '',
                           files=current_message_group.files,
                           files_report=current_message_group.files_report if current_message_group.files_report else '',
-                          tags=[{tag.id: tag.name} for tag in current_message_group.tags],
-                          tags_string=self.get_select_tags_string(
-                              {tag.id: tag.name for tag in current_message_group.tags}), )
+                          tags=current_message_group.tags if current_message_group.tags else None)
         db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
         return db_details
 

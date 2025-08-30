@@ -45,8 +45,14 @@
                              alt="{{ message_file.alt_text }}" class="media-files-container">
                     {% endif %}
                     {# Вывод видео файлов #}
+
+                    {% set ppp = url_for(constants.media_dir, filename=message_file.file_path) %}
+                    {{ message_file.file_path }}
+                    {{ ppp }}
+
                     {% if message_file.file_type.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
+                        <video src="{{ url_for(constants.media_dir, filename=message_file.file_path) }}"
+                                {#                        <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"#}
                                controls preload="metadata" class="media-files-container">
                             Video is not supported by your browser
                         </video>
