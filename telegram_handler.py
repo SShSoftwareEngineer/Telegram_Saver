@@ -148,22 +148,23 @@ class TgFile:
     message_grouped_id: str
     message: Message
     message_id: int
-    file_path: str
     description: str
+    file_name: str
     alt_text: str
     size: int
+    file_path: str = None
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
 
-    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message, file_path: str,
+    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message,
                  description: str, alt_text: str, size: int, file_type: MessageFileTypes):
         self.dialog_id = dialog_id
         self.message_grouped_id = message_grouped_id
         self.message = message
         self.message_id = message.id
-        self.file_path = file_path
-        self.size = size
         self.description = description
+        self.file_name = self.get_self_file_name(message.date, file_type, message_grouped_id, message.id)
         self.alt_text = alt_text
+        self.size = size
         self.file_type = file_type
 
     def is_exists(self) -> bool:
@@ -171,6 +172,16 @@ class TgFile:
         Проверяет, был ли файл загружен в файловую систему
         """
         return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
+
+    @staticmethod
+    def get_self_file_name(date: datetime, file_type: MessageFileTypes, message_grouped_id: str,
+                           message_id: int) -> str:
+        """
+        Возвращает имя файла
+        """
+        file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
+                     f'{file_type.sign}_{message_grouped_id}_{message_id}{file_type.default_ext}')
+        return file_name
 
 
 @dataclass
@@ -609,19 +620,18 @@ class TelegramHandler:
                 description = '\n\n'.join([description,
                                            shorten(message.media.webpage.description,
                                                    width=ProjectConst.truncated_text_length, placeholder='...')])
-        # Формирование пути к файлу в файловой системе
-        message_time = message.date.astimezone().strftime('%H-%M-%S')
-        file_name = f'{message_time}_{file_type.sign}_{message_group.grouped_id}_{message.id}{file_ext}'
-        file_path = Path(self.get_dialog_by_id(dialog_id).get_self_dir()) / message_group.get_self_dir() / file_name
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
                          message_grouped_id=message_group.grouped_id,
                          message=message,
-                         file_path=file_path.as_posix(),
                          description=description,
                          alt_text=file_type.alt_text,
                          size=file_size,
                          file_type=file_type)
+        # Формирование пути к файлу в файловой системе
+        file_path = Path(self.get_dialog_by_id(
+            dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
+        tg_file.file_path = file_path.as_posix()
         return tg_file
 
     def download_message_file(self, tg_file: TgFile) -> Optional[str]:
@@ -635,9 +645,9 @@ class TelegramHandler:
             # Проверка размера файла
             if 0 < tg_file.size <= ProjectConst.max_download_file_size:
                 # Если нужно, создаем соответствующие директории и загружаем файл
-                Path(tg_file.file_path).parent.mkdir(parents=True, exist_ok=True)
+                (Path(ProjectDirs.media_dir) / tg_file.file_path).parent.mkdir(parents=True, exist_ok=True)
                 downloading_param['message'] = tg_file.message
-                downloading_param['file'] = tg_file.file_path
+                downloading_param['file'] = Path(ProjectDirs.media_dir) / tg_file.file_path
                 if tg_file.file_type == MessageFileTypes.THUMBNAIL:
                     downloading_param['thumb'] = -1
                 result = loop.run_until_complete(self.client.download_media(**downloading_param))

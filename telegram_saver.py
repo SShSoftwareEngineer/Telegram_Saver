@@ -4,7 +4,7 @@ from typing import Optional
 from flask import Flask, render_template, request, send_from_directory, jsonify
 
 from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting
-from telegram_handler import TelegramHandler
+from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
 tg_saver = Flask(__name__)
@@ -247,17 +247,15 @@ def save_selected_message_to_db():
                 'files_report': tg_message_group.files_report,
                 'from_id': tg_message_group.from_id,
                 'reply_to': tg_message_group.reply_to,
-                'files': [{'file_path': Path(tg_file.file_path).name,
+                'files': [{'file_name': Path(tg_file.file_path).name,
                            'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
             }
+            # Формирование пути к файлу в файловой системе
+            file_name = TgFile.get_self_file_name(tg_message_group.date, MessageFileTypes.CONTENT,
+                                                  tg_message_group.grouped_id, 0)
+            file_path = Path(
+                ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
             html_content = render_template('export_message.html', **message_group_export_data)
-
-            доразобраться с путями и, возможно, сделать функцию для этого
-
-            message_group_time = tg_message_group.date.astimezone().strftime('%H-%M-%S')
-            file_name = (f'{message_group_time}_{MessageFileTypes.CONTENT.sign}_'
-                         f'{tg_message_group.grouped_id}{MessageFileTypes.CONTENT.default_ext}')
-            file_path = Path(tg_dialog.get_self_dir()) / tg_message_group.get_self_dir() / file_name
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"

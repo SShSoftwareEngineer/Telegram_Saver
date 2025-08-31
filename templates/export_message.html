@@ -7,37 +7,40 @@
     <title>{{ message_date }} {{ dialog_title }}</title>
 </head>
 <body>
-<span>
-        <div style="text-align: center;">
-            <b>{{ message_date }}</b><br>{{ dialog_title }}
-        </div>
-        <br>
-        {# Вывод текста сообщения #}
-        {{ text|replace('\n', '<br>')|safe }}
-        <br>
-        {# Вывод графических, видео и других файлов #}
-        <br>
-        <div class="media-files-area">
-            {% for message_file in files %}
-                <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-                    {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
-                        <img class="media-files-container"
-                             src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
-                    {% endif %}
-                    {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video class="media-files-container"
-                               src="{{ message_file.file_name }}" controls preload="metadata">
+<div style="text-align: center;">
+    <b>{{ message_date }}</b><br>{{ dialog_title }}
+</div>
+{# Вывод текста сообщения #}
+{% if text %}
+    <br>
+    {{ text|replace('\n', '<br>')|safe }}
+{% endif %}
+{# Вывод графических, видео и других файлов #}
+{% if files %}
+    <br>
+    <div class="media-files-area">
+        {% for message_file in files %}
+            <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
+                {# Вывод графических файлов #}
+                {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
+                    <img class="media-files-container"
+                         src="{{ message_file.file_name }}" alt="{{ message_file.alt_text }}">
+                {% endif %}
+                {# Вывод видео файлов #}
+                {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
+                    <video class="media-files-container"
+                           src="{{ message_file.file_name }}" controls preload="metadata">
                         Video is not supported by your browser
-                        </video>
-                    {% endif %}
-                    {# Вывод имени файла #}
-                    <div class="media-file-name">
-                        {{ message_file.file_name }}
-                    </div>
+                    </video>
+                {% endif %}
+                {# Вывод имени файла #}
+                <div class="media-file-name">
+                    {{ message_file.file_name }}
                 </div>
-            {% endfor %}
-        </div>
-</span>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
 
 </body>
 </html>
