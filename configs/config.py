@@ -154,6 +154,7 @@ class FormButtonCfg:
                 result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
         return result
 
+
 class TagsSorting:
     """
     Constants for tag sorting options.
