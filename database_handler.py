@@ -485,7 +485,7 @@ class DatabaseHandler:
 
     def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str):
         """
-        Изменяет заданный тег из заданной группы сообщений
+        Изменяет заданный тег из текущего группового сообщения
         """
         self.remove_tag_from_message_group(old_tag_name, message_group_id)
         self.add_tag_to_message_group(new_tag_name, message_group_id)

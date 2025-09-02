@@ -13,7 +13,7 @@
 <label for="{{ form_cfg.curr_message_tags }}" class="group-label no-margin-top">Message Tags</label>
 <div class="control-X-button">
     <select id="{{ form_cfg.curr_message_tags }}" name="{{ form_cfg.curr_message_tags }}" size="6"
-            onchange="document.getElementById({{ form_cfg.edit_tag_name }}).value = this.options[this.selectedIndex].text">
+            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text">
     </select>
     <button type="button"
             onclick="clearFormFields(['{{ form_cfg.curr_message_tags }}', '{{ form_cfg.edit_tag_name }}'])"
