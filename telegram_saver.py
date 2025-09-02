@@ -50,7 +50,7 @@ def media_dir(filename):
     Регистрация пути для хранения кэшированных изображений.
     Принимает полный путь включая ProjectDirs.media_dir
     """
-    return send_from_directory('', filename)
+    return send_from_directory(ProjectDirs.media_dir, filename)
 
 
 @tg_saver.route("/")
@@ -274,7 +274,8 @@ def sync_local_files_with_db():
     """
     # Получаем из БД все файлы с указанными расширениями
     file_ext_to_sync = ['.jpg', '.mp4']
-    database_files = set(db_handler.get_file_list_by_extension(file_ext_to_sync))
+    database_files = set([f'{ProjectDirs.media_dir}/{file}' for file in
+                          db_handler.get_file_list_by_extension(file_ext_to_sync)])
     # Находим все локальные файлы с указанными расширениями рекурсивно
     local_files = []
     for ext in file_ext_to_sync:
