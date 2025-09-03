@@ -341,7 +341,7 @@ def db_get_details(message_group_id: str):
     db_handler.current_state.selected_message_group_id = message_group_id
     return jsonify({'db_details': render_template('db_details.html'),
                     FormButtonCfg.db_detail_tags.get(
-                        'curr_message_tags'): db_handler.current_state.details_tags_string, })
+                        'curr_message_tags'): db_handler.current_state.details_tags_string})
 
 
 @tg_saver.route('/db_select_messages', methods=["POST"])
@@ -384,7 +384,10 @@ def db_tag_add():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return jsonify({})
+        db_handler.current_state.details_tags_string = db_handler.get_select_tags_string(
+            db_handler.current_state.message_details.get('tags'))
+    return jsonify({FormButtonCfg.db_detail_tags.get(
+        'curr_message_tags'): db_handler.current_state.details_tags_string})
 
 
 @tg_saver.route('/db_tag_remove', methods=['POST'])
@@ -395,7 +398,10 @@ def db_tag_remove():
     tag_name = request.form.get('edit_tag_name')
     if tag_name:
         db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id)
-    return jsonify({})
+        db_handler.current_state.details_tags_string = db_handler.get_select_tags_string(
+            db_handler.current_state.message_details.get('tags'))
+    return jsonify({FormButtonCfg.db_detail_tags.get(
+        'curr_message_tags'): db_handler.current_state.details_tags_string})
 
 
 @tg_saver.route('/db_tag_update', methods=['POST'])
@@ -408,7 +414,10 @@ def db_tag_update():
     if old_tag_name and new_tag_name:
         db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
                                                  db_handler.current_state.selected_message_group_id)
-    return jsonify({})
+        db_handler.current_state.details_tags_string = db_handler.get_select_tags_string(
+            db_handler.current_state.message_details.get('tags'))
+    return jsonify({FormButtonCfg.db_detail_tags.get(
+        'curr_message_tags'): db_handler.current_state.details_tags_string})
 
 
 @tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
@@ -420,7 +429,10 @@ def db_tag_update_everywhere():
     new_tag_name = request.form.get('edit_tag_name')
     if old_tag_name and new_tag_name:
         db_handler.update_tag_everywhere(old_tag_name, new_tag_name)
-    return jsonify({})
+        db_handler.current_state.details_tags_string = db_handler.get_select_tags_string(
+            db_handler.current_state.message_details.get('tags'))
+    return jsonify({FormButtonCfg.db_detail_tags.get(
+        'curr_message_tags'): db_handler.current_state.details_tags_string})
 
 
 @tg_saver.route('/db_all_tag_sorting', methods=['POST'])
@@ -436,9 +448,9 @@ def db_all_tag_sorting():
         case _:
             sorting = TagsSorting.name_asc
     # # Получение списка тегов с сортировкой
-    db_handler.current_state.all_tags_list = db_handler.get_all_tag_list(sorting=sorting)
+    db_handler.all_tags_list = db_handler.get_all_tag_list(sorting=sorting)
     return jsonify({FormButtonCfg.db_detail_tags.get('all_detail_tags'):
-                        db_handler.get_select_tags_string(db_handler.current_state.all_tags_list), })
+                        db_handler.get_select_tags_string(db_handler.all_tags_list)})
 
 
 if __name__ == '__main__':

@@ -56,7 +56,7 @@
 </button>
 
 <!-- All tags sorting -->
-<label for="{{ form_cfg.all_tags }}" class="group-label vertical-spread">All tags</label>
+<label for="{{ form_cfg.all_detail_tags }}" class="group-label vertical-spread">All tags</label>
 
 <form onchange="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_all_tag_sorting')">
     <div>
@@ -71,14 +71,14 @@
 
 <!-- All tags list -->
 <div class="control-X-button vertical-spread">
-    <select id="{{ form_cfg.all_tags }}" name="{{ form_cfg.all_tags }}" size="6"
+    <select id="{{ form_cfg.all_detail_tags }}" name="{{ form_cfg.all_detail_tags }}" size="6"
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text">
-        {% for db_dialog in db_all_dialog_list %}
-            <option value="{{ db_all_tags.id }}">{{ db_all_tags.name }}</option>
+        {% for db_tag in db_all_tags %}
+            <option value="{{ db_tag.id }}">{{ db_tag.name }}</option>
         {% endfor %}
     </select>
     <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.all_tags }}'])"
+            onclick="clearFormFields(['{{ form_cfg.all_detail_tags }}'])"
             class="clear-button X-button"> ✖
     </button>
 </div>

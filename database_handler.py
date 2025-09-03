@@ -395,7 +395,7 @@ class DatabaseHandler:
         """
         if not tags:
             return ''
-        result = '\n'.join([f'<option value="{tag.id}" > {tag.name}</option>' for tag in tags])
+        result = '\n'.join([f'<option value="{tag.id}" >{tag.name}</option>' for tag in tags])
         return result
 
     def get_message_detail(self, message_group_id: str) -> dict:
@@ -448,7 +448,7 @@ class DatabaseHandler:
 
         return db_file
 
-    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> None:
+    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> int:
         """
         Добавляет тег к заданной группе сообщений
         """
@@ -467,8 +467,9 @@ class DatabaseHandler:
             message_group.tags.append(tag)
             tag.usage_count += 1
         self.session.commit()
+        return tag.usage_count
 
-    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str):
+    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> int:
         """
         Удаляет тег из заданной группы сообщений
         """
@@ -482,12 +483,13 @@ class DatabaseHandler:
             message_group.tags.remove(tag)
             tag.usage_count -= 1
         self.session.commit()
+        return tag.usage_count
 
     def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str):
         """
         Изменяет заданный тег из текущего группового сообщения
         """
-        self.remove_tag_from_message_group(old_tag_name, message_group_id)
+        usage_count = self.remove_tag_from_message_group(old_tag_name, message_group_id)
         self.add_tag_to_message_group(new_tag_name, message_group_id)
         self.session.commit()
 
