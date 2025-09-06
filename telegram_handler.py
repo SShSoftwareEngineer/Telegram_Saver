@@ -162,7 +162,6 @@ class TgFile:
         self.message = message
         self.message_id = message.id
         self.description = description
-        self.file_name = self.get_self_file_name(message.date, file_type, message_grouped_id, message.id)
         self.alt_text = alt_text
         self.size = size
         self.file_type = file_type
@@ -175,12 +174,12 @@ class TgFile:
 
     @staticmethod
     def get_self_file_name(date: datetime, file_type: MessageFileTypes, message_grouped_id: str,
-                           message_id: int) -> str:
+                           message_id: int, file_ext:str) -> str:
         """
         Возвращает имя файла
         """
         file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
-                     f'{file_type.sign}_{message_grouped_id}_{message_id}{file_type.default_ext}')
+                     f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
         return file_name
 
 
@@ -629,6 +628,8 @@ class TelegramHandler:
                          size=file_size,
                          file_type=file_type)
         # Формирование пути к файлу в файловой системе
+        tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
+                                                     message_group.grouped_id, message.id, file_ext)
         file_path = Path(self.get_dialog_by_id(
             dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
@@ -675,11 +676,11 @@ class TelegramHandler:
                 tg_file = TgFile(dialog_id=downloaded_file['dialog_id'],
                                  message_grouped_id='message_grouped_id',
                                  message=message,
-                                 file_path=downloaded_file['file_path'],
                                  description='description',
                                  alt_text='alt_text',
                                  size=downloaded_file['size'],
                                  file_type=MessageFileTypes.get_file_type_by_type_id(downloaded_file['file_type_id']))
+                tg_file.file_path = downloaded_file['file_path']
                 # Загружаем файл сообщения
                 print(f'{progress}  Download: {tg_file.file_path}')
                 downloading_result = self.download_message_file(tg_file)

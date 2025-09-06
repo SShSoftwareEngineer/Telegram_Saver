@@ -9,11 +9,15 @@
 {# Конфигурация элементов управления формы #}
 {% set form_cfg = form_btn_cfg.db_detail_tags %}
 
+{# Скрытый элемент, сохраняющий значение тега, переданного из SELECT в поле для редактирования #}
+<input type="hidden" id="{{ form_cfg.old_tag_name }}" name="{{ form_cfg.old_tag_name }}" value="">
+
 <!-- Current message tag list -->
 <label for="{{ form_cfg.curr_message_tags }}" class="group-label no-margin-top">Message Tags</label>
 <div class="control-X-button">
     <select id="{{ form_cfg.curr_message_tags }}" name="{{ form_cfg.curr_message_tags }}" size="6"
-            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text">
+            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
+                    document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
     </select>
     <button type="button"
             onclick="clearFormFields(['{{ form_cfg.curr_message_tags }}', '{{ form_cfg.edit_tag_name }}'])"
@@ -59,12 +63,12 @@
 <label for="{{ form_cfg.all_detail_tags }}" class="group-label vertical-spread">All tags</label>
 
 <form onchange="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_all_tag_sorting')">
-    <div>
-        <input type="radio" id="db_tag_sort_field_0" name="db_tag_sort_field" value="0" checked>
+    <div id="{{ form_cfg.tag_sorting_field }}">
+        <input type="radio" id="db_tag_sort_field_0" name="{{ form_cfg.tag_sorting_field }}" value="0" checked>
         <label for="db_tag_sort_field_0">Sort by name</label><br>
-        <input type="radio" id="db_tag_sort_field_1" name="db_tag_sort_field" value="1">
+        <input type="radio" id="db_tag_sort_field_1" name="{{ form_cfg.tag_sorting_field }}" value="1">
         <label for="db_tag_sort_field_1">Sort by usage count</label><br>
-        <input type="radio" id="db_tag_sort_field_2" name="db_tag_sort_field" value="2">
+        <input type="radio" id="db_tag_sort_field_2" name="{{ form_cfg.tag_sorting_field }}" value="2">
         <label for="db_tag_sort_field_2">Sort by last update</label><br>
     </div>
 </form>
@@ -72,7 +76,8 @@
 <!-- All tags list -->
 <div class="control-X-button vertical-spread">
     <select id="{{ form_cfg.all_detail_tags }}" name="{{ form_cfg.all_detail_tags }}" size="6"
-            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text">
+            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
+                    document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
         {% for db_tag in db_all_tags %}
             <option value="{{ db_tag.id }}">{{ db_tag.name }}</option>
         {% endfor %}
