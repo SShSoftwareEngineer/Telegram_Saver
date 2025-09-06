@@ -138,10 +138,12 @@ class FormButtonCfg:
                          'input': ['date_from', 'date_to', 'message_query'],
                          'select': ['dialog_select'],
                          'checkbox': []}
-    db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'curr_message_tags': 'db_current_message_tags',
-                      'all_detail_tags': 'db_all_detail_tags',
-                      'input': ['edit_tag_name'], 'select': ['curr_message_tags', 'all_detail_tags'],
-                      'radio': [], 'checkbox': []}
+    db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
+                      'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',
+                      'tag_sorting_field': 'db_tag_sorting_field',
+                      'input': ['edit_tag_name', 'old_tag_name'],
+                      'select': ['curr_message_tags', 'all_detail_tags'],
+                      'radio': ['tag_sorting_field'], 'checkbox': []}
 
     @staticmethod
     def get_form_button_cfg(form_cfg: dict) -> dict:

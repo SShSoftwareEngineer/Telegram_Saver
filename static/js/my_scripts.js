@@ -93,6 +93,7 @@ function submitFormData(config, url) {
         .then(r => r.json())
         .catch(err => {
             console.error('Error:', err);
+            console.log('Данные формы:', body);
             throw err;
         });
 }

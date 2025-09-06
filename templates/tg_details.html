@@ -45,7 +45,7 @@
                     {% endif %}
                     {# Вывод видео файлов #}
                     {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video src="{{ url_for('media_dir', filename=message_file.file_path) }}"
+                        <video src="{{ url_for('media_dir', filename=message_file.file_path, _external=True) }}"
                                controls preload="metadata" class="media-files-container">
                             Video is not supported by your browser
                         </video>

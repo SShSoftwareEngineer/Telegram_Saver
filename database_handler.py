@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, update, \
-    func
+    text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string, TagsSorting
+from telegram_saver import db_handler
 
 
 class Base(DeclarativeBase):
@@ -57,7 +58,7 @@ class DbTag(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(Text, default='', nullable=False)
     usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(default=datetime.now)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped[List['DbMessageGroup']] = relationship(secondary=message_group_tag_links,
                                                                   back_populates='tags')
@@ -246,9 +247,9 @@ class DbCurrentState:
     """
     dialog_list: List[DbDialog] = None
     message_group_list: List[DbMessageGroup] = None
-    message_details: Dict[str, Any] = None
-    details_tags_string: str = None
     selected_message_group_id: str = None
+    message_details: Dict[str, Any] = None
+    all_tags_list_sorting: dict = TagsSorting.name_asc
 
 
 class DatabaseHandler:
@@ -301,22 +302,11 @@ class DatabaseHandler:
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         self.session.commit()
-        # Получаем список диалогов из базы данных
+        # Получаем список сохраненных диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
-        # Обновляем частоту использования тегов
-        stmt = (update(DbTag).values(
-            usage_count=select(func.count())
-            .select_from(message_group_tag_links)
-            .where(message_group_tag_links.c.tag_id.in_(select(DbTag.id)))
-            .scalar_subquery())
-        )
-        self.session.execute(stmt)
-        # Удаляем теги, которые не используются
-        self.session.query(DbTag).filter(DbTag.usage_count == 0).delete()
-        # Сохраняем изменения в базе данных
-        self.session.commit()
         # Получаем список всех тегов из базы данных
-        self.all_tags_list = self.get_all_tag_list(sorting=TagsSorting.name_asc)
+        db_handler.current_state.all_tags_list_sorting = TagsSorting.name_asc
+        self.all_tags_list = self.get_all_tag_list()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
         self.current_state.all_tags_list = list(self.all_tags_list)
@@ -326,21 +316,37 @@ class DatabaseHandler:
         """
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
         """
-        dialogs = self.session.execute(select(DbDialog)).scalars().all()
-        dialog_list = []
-        for db_dialog in dialogs:
-            dialog_list.append(db_dialog)
-        print(f'{len(dialog_list)} chats loaded from the database')
-        return sorted(dialog_list, key=lambda x: x.title)
+        stmt = (
+            select(DbDialog)
+            .order_by(asc(DbDialog.title))
+        )
+        query_result = self.session.execute(stmt).scalars().all()
+        print(f'{len(query_result)} chats loaded from the database')
+        return list(query_result)
 
-    def get_all_tag_list(self, sorting: dict) -> List[DbTag]:
+    def get_all_tag_list(self) -> List[DbTag]:
         """
         Получение списка всех тегов, имеющихся в БД с учетом сортировки
         """
+        # Обновляем частоту использования тегов
+        stmt = text("""
+                UPDATE tags 
+                SET usage_count = (
+                    SELECT COUNT(*) 
+                    FROM message_group_tag_links 
+                    WHERE message_group_tag_links.tag_id = tags.id
+                )
+            WHERE tags.id IS NOT NULL
+        """)
+        self.session.execute(stmt)
+        # Удаляем теги, которые не используются
+        self.session.query(DbTag).filter(DbTag.usage_count == 0).delete()
+        # Сохраняем изменения в базе данных
+        self.session.commit()
         # Определяем поле для сортировки
-        sort_field = getattr(DbTag, sorting['field'])
+        sort_field = getattr(DbTag, db_handler.current_state.all_tags_list_sorting['field'])
         # Определяем направление сортировки
-        if sorting['order'] == 'asc':
+        if db_handler.current_state.all_tags_list_sorting['order'] == 'asc':
             sort_expr = asc(sort_field)
         else:
             sort_expr = desc(sort_field)
@@ -351,13 +357,6 @@ class DatabaseHandler:
         )
         query_result = self.session.execute(stmt).scalars().all()
         return list(query_result)
-
-    @staticmethod
-    def get_tags_select_string(tags: List[DbTag]) -> str:
-        """
-        Получение содержимого <SELECT> для выбора тегов
-        """
-        return '/n'.join([f'<option value = "{tag.id}" > {tag.name}</option>' for tag in tags])
 
     def get_message_group_list(self) -> list[DbMessageGroup]:
         """
@@ -389,13 +388,15 @@ class DatabaseHandler:
         return list(query_result)
 
     @staticmethod
-    def get_select_tags_string(tags: Optional[List[DbTag]]) -> str:
+    def get_select_content_string(db_object_list: list, value: str, visible_text: str) -> str:
         """
-        Формирует строку для тега в HTML формате для использования в <select>
+        Формирует строку для тега в HTML формате для содержимого <select>
         """
-        if not tags:
+        if not db_object_list:
             return ''
-        result = '\n'.join([f'<option value="{tag.id}" >{tag.name}</option>' for tag in tags])
+        result = '\n'.join(
+            [f'<option value="{getattr(db_object, value)}" >{getattr(db_object, visible_text)}</option>'
+             for db_object in db_object_list])
         return result
 
     def get_message_detail(self, message_group_id: str) -> dict:
@@ -445,10 +446,9 @@ class DatabaseHandler:
                            file_path=query_result.file_path,
                            size=query_result.size,
                            file_type_id=query_result.file_type_id, )
-
         return db_file
 
-    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> int:
+    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
         """
         Добавляет тег к заданной группе сообщений
         """
@@ -467,9 +467,12 @@ class DatabaseHandler:
             message_group.tags.append(tag)
             tag.usage_count += 1
         self.session.commit()
-        return tag.usage_count
+        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        self.all_tags_list = self.get_all_tag_list()
+        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return current_tags_select, all_tags_select
 
-    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> int:
+    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
         """
         Удаляет тег из заданной группы сообщений
         """
@@ -482,24 +485,44 @@ class DatabaseHandler:
         if tag and message_group:
             message_group.tags.remove(tag)
             tag.usage_count -= 1
-        self.session.commit()
-        return tag.usage_count
+            self.session.commit()
+        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        self.all_tags_list = self.get_all_tag_list()
+        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return current_tags_select, all_tags_select
 
-    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str):
+    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[
+        str, str]:
         """
         Изменяет заданный тег из текущего группового сообщения
         """
-        usage_count = self.remove_tag_from_message_group(old_tag_name, message_group_id)
-        self.add_tag_to_message_group(new_tag_name, message_group_id)
-        self.session.commit()
+        # Получаем группу сообщений по идентификатору
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
+        message_group = self.session.execute(stmt).scalars().one()
+        # Проверяем наличие группы сообщений в базе данных
+        if message_group:
+            self.remove_tag_from_message_group(old_tag_name, message_group_id)
+            self.add_tag_to_message_group(new_tag_name, message_group_id)
+        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        self.all_tags_list = self.get_all_tag_list()
+        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return current_tags_select, all_tags_select
 
-    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str):
+    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[str, str]:
         """
         Обновляет тег во всех группах сообщений, где он используется
         """
+        # Получаем группу сообщений по идентификатору
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
+        message_group = self.session.execute(stmt).scalars().one()
+        # Переименовываем тег во всех группах сообщений
         stmt = update(DbTag).where(DbTag.name == old_tag_name).values(name=new_tag_name)
         self.session.execute(stmt)
         self.session.commit()
+        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        self.all_tags_list = self.get_all_tag_list()
+        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return current_tags_select, all_tags_select
 
 
 if __name__ == '__main__':
