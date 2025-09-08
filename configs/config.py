@@ -131,13 +131,13 @@ class FormButtonCfg:
                          'radio': ['sorting_order'],
                          'input': ['date_from', 'date_to', 'message_query'],
                          'select': [], 'checkbox': []}
-    db_message_filter = {'sorting_field': 'db_mess_sort_field', 'sorting_order': 'db_mess_sort_order',
+    db_message_filter = {'dialog_select': 'db_dialog_select', 'sorting_field': 'db_mess_sort_field',
+                         'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
-                         'message_query': 'db_message_query', 'dialog_select': 'db_dialog_select',
+                         'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
                          'radio': ['sorting_field', 'sorting_order'],
-                         'input': ['date_from', 'date_to', 'message_query'],
-                         'select': ['dialog_select'],
-                         'checkbox': []}
+                         'input': ['date_from', 'date_to', 'message_query', 'tag_query'],
+                         'select': ['dialog_select'], 'checkbox': []}
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',
                       'tag_sorting_field': 'db_tag_sorting_field',
@@ -165,8 +165,8 @@ class TagsSorting:
     name_desc = {'field': 'name', 'order': 'desc'}
     usage_count_asc = {'field': 'usage_count', 'order': 'asc'}
     usage_count_desc = {'field': 'usage_count', 'order': 'desc'}
-    updated_at_asc = {'field': 'name', 'order': 'asc'}
-    updated_at_desc = {'field': 'name', 'order': 'desc'}
+    updated_at_asc = {'field': 'updated_at', 'order': 'asc'}
+    updated_at_desc = {'field': 'updated_at', 'order': 'desc'}
 
 
 """ 
