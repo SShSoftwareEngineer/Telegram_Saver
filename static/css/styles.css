@@ -208,14 +208,14 @@ html, body {
 /* Сетка разметки для кнопок выбора дат от и до */
 .date-from-to-buttons-grid {
     display: grid;
-    grid-template-columns: auto max-content max-content;
+    grid-template-columns: auto max-content;
     align-items: center;
     gap: 5px;
 }
 
 /* Кнопки выбора дат от и до */
 .date-from-to-buttons {
-    width: 80px;
+    width: 100px;
 }
 
 /* Кнопки применения фильтров */

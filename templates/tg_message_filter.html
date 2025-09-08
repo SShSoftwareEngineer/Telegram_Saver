@@ -17,25 +17,27 @@
 <div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
     <label for="{{ form_cfg.date_from }}">Date from:</label>
-    <input type="text" class="date-from-to-buttons"
+    <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_from }}"
            name="{{ form_cfg.date_from }}"
-           value="{{ tg_mess_date_from_default }}"
-           placeholder="DD/MM/YYYY">
-    <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.date_from }}'])"
-            class="clear-button X-button"> ✖
-    </button>
+           min="2013-01-01"
+           value="{{ tg_mess_date_from_default }}">
+{#           placeholder="DD/MM/YYYY">#}
+{#    <button type="button"#}
+{#            onclick="clearFormFields(['{{ form_cfg.date_from }}'])"#}
+{#            class="clear-button X-button"> ✖#}
+{#    </button>#}
     <!-- Filtering by date to -->
     <label for="{{ form_cfg.date_to }}">Date to:</label>
-    <input type="text" class="date-from-to-buttons"
+    <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_to }}"
            name="{{ form_cfg.date_to }}"
+           min="2013-01-01"
            placeholder="DD/MM/YYYY">
-    <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.date_to }}'])"
-            class="clear-button X-button"> ✖
-    </button>
+{#    <button type="button"#}
+{#            onclick="clearFormFields(['{{ form_cfg.date_to }}'])"#}
+{#            class="clear-button X-button"> ✖#}
+{#    </button>#}
 </div>
 
 <!-- Filtering by Telegram message text -->

@@ -40,24 +40,18 @@
 <div class="date-from-to-buttons-grid">
     <!-- Filtering by date from -->
     <label for="{{ form_cfg.date_from }}">Date from:</label>
-    <input type="text" class="date-from-to-buttons"
+    <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_from }}"
            name="{{ form_cfg.date_from }}"
+           min="2013-01-01"
            placeholder="DD/MM/YYYY">
-    <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.date_from }}'])"
-            class="clear-button X-button"> ✖
-    </button>
     <!-- Filtering by date to -->
     <label for="{{ form_cfg.date_to }}">Date to:</label>
-    <input type="text" class="date-from-to-buttons"
-           id="{{ form_cfg.date_to }}"
+    <input type="date" class="date-from-to-buttons"
+           id="{{ form_cfg.date_to }}"#}
            name="{{ form_cfg.date_to }}"
+           min="2013-01-01"
            placeholder="DD/MM/YYYY">
-    <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.date_to }}'])"
-            class="clear-button X-button"> ✖
-    </button>
 </div>
 
 <!-- Filtering database messages by message text -->
@@ -69,6 +63,21 @@
            placeholder="Message text fragment">
     <button type="button"
             onclick="clearFormFields(['{{ form_cfg.message_query }}'])"
+            class="clear-button X-button"> ✖
+    </button>
+</div>
+
+<!-- Filtering database messages by tags -->
+<label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
+<div class="control-X-button">
+    <textarea rows="5"
+           id="{{ form_cfg.tag_query }}"
+           name="{{ form_cfg.tag_query }}"
+           placeholder="Message text fragment">
+        Placeholder text
+    </textarea>
+    <button type="button"
+            onclick="clearFormFields(['{{ form_cfg.tag_query }}'])"
             class="clear-button X-button"> ✖
     </button>
 </div>

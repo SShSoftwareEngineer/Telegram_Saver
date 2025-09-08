@@ -8,7 +8,6 @@ from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string, TagsSorting
-from telegram_saver import db_handler
 
 
 class Base(DeclarativeBase):
@@ -305,7 +304,7 @@ class DatabaseHandler:
         # Получаем список сохраненных диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
         # Получаем список всех тегов из базы данных
-        db_handler.current_state.all_tags_list_sorting = TagsSorting.name_asc
+        self.current_state.all_tags_list_sorting = TagsSorting.name_asc
         self.all_tags_list = self.get_all_tag_list()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
@@ -326,7 +325,7 @@ class DatabaseHandler:
 
     def get_all_tag_list(self) -> List[DbTag]:
         """
-        Получение списка всех тегов, имеющихся в БД с учетом сортировки
+        Получение списка всех тегов, имеющихся в БД с учетом сортировки, установленной в current_state.sorting_tags
         """
         # Обновляем частоту использования тегов
         stmt = text("""
@@ -344,9 +343,9 @@ class DatabaseHandler:
         # Сохраняем изменения в базе данных
         self.session.commit()
         # Определяем поле для сортировки
-        sort_field = getattr(DbTag, db_handler.current_state.all_tags_list_sorting['field'])
+        sort_field = getattr(DbTag, self.current_state.all_tags_list_sorting['field'])
         # Определяем направление сортировки
-        if db_handler.current_state.all_tags_list_sorting['order'] == 'asc':
+        if self.current_state.all_tags_list_sorting['order'] == 'asc':
             sort_expr = asc(sort_field)
         else:
             sort_expr = desc(sort_field)
@@ -435,7 +434,7 @@ class DatabaseHandler:
 
     def get_file_by_local_path(self, local_path: str) -> Optional[DbFile]:
         """
-        Получает из базы данных файл по локальному пути
+        Получает из базы данных объект файл по локальному пути
         """
         stmt = select(DbFile).filter(DbFile.file_path == local_path)
         query_result = self.session.execute(stmt).scalars().first()
@@ -453,8 +452,7 @@ class DatabaseHandler:
         Добавляет тег к заданной группе сообщений
         """
         # Получаем тег и группу сообщений по их идентификаторам
-        stmt = select(DbTag).filter(DbTag.name == tag_name)
-        tag = self.session.execute(stmt).scalars().first()
+        tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
         stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
         message_group = self.session.execute(stmt).scalars().one()
         # Проверяем наличие тега в базе данных и добавляем, если нет
@@ -462,14 +460,15 @@ class DatabaseHandler:
             tag = DbTag(name=tag_name)
             self.session.add(tag)
             self.session.flush()
-        # Проверяем наличие группы сообщений в базе данных и добавляем тег к ней
-        if message_group:
+        # Проверяем наличие группы сообщений в базе данных и отсутствие тега в ней и добавляем тег к ней
+        if message_group and tag not in message_group.tags:
             message_group.tags.append(tag)
             tag.usage_count += 1
         self.session.commit()
-        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
+        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
         self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
     def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
@@ -481,14 +480,15 @@ class DatabaseHandler:
         tag = self.session.execute(stmt).scalars().first()
         stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
         message_group = self.session.execute(stmt).scalars().one()
-        # Проверяем наличие тега и группы сообщений в базе данных и удаляем тег из неё
-        if tag and message_group:
+        # Проверяем наличие тега в группе сообщений в базе данных и удаляем тег из неё
+        if all([tag, message_group, tag in message_group.tags]):
             message_group.tags.remove(tag)
             tag.usage_count -= 1
             self.session.commit()
-        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
+        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
         self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
     def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[
@@ -496,32 +496,39 @@ class DatabaseHandler:
         """
         Изменяет заданный тег из текущего группового сообщения
         """
-        # Получаем группу сообщений по идентификатору
+        # Получаем старый тег и группу сообщений по их идентификаторам
+        tag = self.session.query(DbTag).filter(DbTag.name == old_tag_name).first()
         stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
         message_group = self.session.execute(stmt).scalars().one()
-        # Проверяем наличие группы сообщений в базе данных
-        if message_group:
+        # Проверяем наличие группы сообщений и тега в ней в базе данных
+        if all([tag, message_group, tag in message_group.tags]):
             self.remove_tag_from_message_group(old_tag_name, message_group_id)
             self.add_tag_to_message_group(new_tag_name, message_group_id)
-        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
+        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
         self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
     def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[str, str]:
         """
         Обновляет тег во всех группах сообщений, где он используется
         """
-        # Получаем группу сообщений по идентификатору
-        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
-        message_group = self.session.execute(stmt).scalars().one()
-        # Переименовываем тег во всех группах сообщений
-        stmt = update(DbTag).where(DbTag.name == old_tag_name).values(name=new_tag_name)
-        self.session.execute(stmt)
-        self.session.commit()
-        current_tags_select = db_handler.get_select_content_string(message_group.tags, 'id', 'name')
+        # Получаем старый тег по его идентификатору
+        old_tag = self.session.query(DbTag).filter(DbTag.name == old_tag_name).first()
+        current_tags_select = None
+        # Переименовываем тег во всех группах сообщений, где он используется
+        stmt = select(DbMessageGroup).filter(DbMessageGroup.tags.any(name=old_tag_name))
+        message_group_list = self.session.execute(stmt).scalars().all()
+        for message_group in message_group_list:
+            self.remove_tag_from_message_group(old_tag_name, message_group.grouped_id)
+            self.add_tag_to_message_group(new_tag_name, message_group.grouped_id)
+            if message_group.grouped_id == message_group_id:
+                # Получаем текущий список тегов для текущего сообщения
+                current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
+        # Получаем обновленный список всех тегов для SELECT
         self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = db_handler.get_select_content_string(self.all_tags_list, 'id', 'name')
+        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
 

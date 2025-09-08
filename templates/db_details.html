@@ -7,6 +7,10 @@
     {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
     <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_details.message_group_id }}">
     <div style="text-align: center;">
+        {# Вывод даты сообщения #}
+        <b>{{ message_date }}</b>
+        {# Вывод начала названия диалога #}
+        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|truncate(25) }}</span>
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
             <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
@@ -19,12 +23,6 @@
                 <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
             </span>
         {% endif %}
-        <br>
-        {# Вывод даты сообщения #}
-        <b>{{ message_date }}</b>
-        {# Вывод заголовка диалога #}
-        <br>
-        {{ db_details.dialog_title }}
     </div>
     {# Вывод текста сообщения #}
     {% if db_details.text %}

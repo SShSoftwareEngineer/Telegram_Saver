@@ -37,7 +37,7 @@
 
 <!-- Add a tag to a message -->
 <button class="apply-filters-buttons vertical-spread"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_add')">
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_add');">
     Add tag
 </button>
 
@@ -49,13 +49,15 @@
 
 <!-- Update tag -->
 <button class="apply-filters-buttons vertical-spread"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update')">
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update');
+                clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag
 </button>
 
 <!-- Update all tags -->
 <button class="apply-filters-buttons vertical-spread"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update_everywhere')">
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update_everywhere');
+                clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag everywhere
 </button>
 
@@ -87,3 +89,9 @@
             class="clear-button X-button"> ✖
     </button>
 </div>
+
+<!-- Adding a tag to the tag filter -->
+<button class="apply-filters-buttons vertical-spread"
+        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update_everywhere');">
+    <--  Add tag to filter by tags
+</button>

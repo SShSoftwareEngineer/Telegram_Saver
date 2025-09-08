@@ -174,7 +174,7 @@ class TgFile:
 
     @staticmethod
     def get_self_file_name(date: datetime, file_type: MessageFileTypes, message_grouped_id: str,
-                           message_id: int, file_ext:str) -> str:
+                           message_id: int, file_ext: str) -> str:
         """
         Возвращает имя файла
         """
@@ -293,7 +293,7 @@ class TgMessageSortFilter:
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
     date_from_default: Optional[str] = (datetime.now() - timedelta(
-        days=ProjectConst.last_days_by_default)).strftime('%d/%m/%Y')
+        days=ProjectConst.last_days_by_default)).strftime("%Y-%m-%d")
 
     def set_default_filters(self):
         """
@@ -303,7 +303,7 @@ class TgMessageSortFilter:
         self._date_from = datetime.now() - timedelta(days=ProjectConst.last_days_by_default)
         self._date_to = None
         self._message_query = None
-        self.date_from_default = self.date_from.strftime('%d/%m/%Y')
+        self.date_from_default = self.date_from.strftime("%Y-%m-%d")
 
     @property
     def sort_order(self) -> bool:
@@ -629,7 +629,7 @@ class TelegramHandler:
                          file_type=file_type)
         # Формирование пути к файлу в файловой системе
         tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
-                                                     message_group.grouped_id, message.id, file_ext)
+                                                      message_group.grouped_id, message.id, file_ext)
         file_path = Path(self.get_dialog_by_id(
             dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
