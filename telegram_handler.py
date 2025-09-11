@@ -706,7 +706,7 @@ class TelegramHandler:
 
 def clean_file_path(file_path: str | None) -> str | None:
     """
-    Очищает имя файла/директории от недопустимых символов
+    Очищает имя файла или директории от недопустимых символов
     """
     clean_filepath = None
     if file_path:

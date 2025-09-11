@@ -224,6 +224,21 @@ html, body {
     margin-top: 10px;
 }
 
+/* Многострочное поле для ввода тегов сообщений для поиска */
+.filter_tags-textarea {
+    width: 100%;
+    resize: none;
+    padding: 2px;
+    border-radius: 4px;
+}
+
+/* Элемент выбора  */
+.select-element {
+    padding: 2px;
+    border-radius: 4px;
+}
+
+
 /* Списки диалогов и сообщений */
 
 /* Общие параметры */

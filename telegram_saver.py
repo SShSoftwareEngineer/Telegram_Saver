@@ -321,6 +321,7 @@ def db_message_apply_filters():
     mess_filter.date_from = form.get(form_cfg['date_from'])
     mess_filter.date_to = form.get(form_cfg['date_to'])
     mess_filter.message_query = form.get(form_cfg['message_query'])
+    mess_filter.tag_query = form.get(form_cfg['tag_query'])
     # Получение списка сообщений с применением фильтров
     db_handler.current_state.message_group_list = db_handler.get_message_group_list()
     db_handler.current_state.message_details = None
@@ -453,6 +454,19 @@ def db_all_tag_sorting():
     db_handler.all_tags_list = db_handler.get_all_tag_list()
     return jsonify({form_cfg['all_detail_tags']:
                         db_handler.get_select_content_string(db_handler.all_tags_list, 'id', 'name')})
+
+
+@tg_saver.route('/db_add_tag_to_tag_filter', methods=['POST'])
+def db_add_tag_to_tag_filter():
+    """
+    Добавление тега из списка всех тегов в список фильтра по тегам
+    """
+    form_cfg = FormButtonCfg.db_message_filter
+    tag_name = request.form.get(form_cfg['all_detail_tags'])
+    # dfsd
+    # if tag_name and tag_name not in db_handler.message_sort_filter.tag_query:
+    #     db_handler.message_sort_filter.tag_query.append(tag_name)`
+    # return jsonify({form_cfg['tag_query']: ', '.join(db_handler.message_sort_filter.tag_query)})
 
 
 if __name__ == '__main__':

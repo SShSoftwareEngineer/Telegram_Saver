@@ -6,7 +6,11 @@
 <!-- Database dialog filter -->
 <label for="{{ form_cfg.dialog_select }}" class="group-label no-margin-top">Filter by chat names</label>
 <div class="control-X-button">
-    <select id="{{ form_cfg.dialog_select }}" name="{{ form_cfg.dialog_select }}" size="6" multiple>
+    <select class="select-element"
+            id="{{ form_cfg.dialog_select }}"
+            name="{{ form_cfg.dialog_select }}"
+            title="For multiple selections, hold down Ctrl/Cmd"
+            size="6" multiple>
         {% for db_dialog in db_all_dialog_list %}
             <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
         {% endfor %}
@@ -70,12 +74,12 @@
 <!-- Filtering database messages by tags -->
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
 <div class="control-X-button">
-    <textarea rows="5"
-           id="{{ form_cfg.tag_query }}"
-           name="{{ form_cfg.tag_query }}"
-           placeholder="Message text fragment">
-        Placeholder text
-    </textarea>
+    {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; flask; HTML" %}
+    <textarea class="filter_tags-textarea" rows="5"
+              id="{{ form_cfg.tag_query }}"
+              name="{{ form_cfg.tag_query }}"
+              placeholder="{{ placeholder_text|escape }}"
+              title="{{ placeholder_text|escape }}"></textarea>
     <button type="button"
             onclick="clearFormFields(['{{ form_cfg.tag_query }}'])"
             class="clear-button X-button"> ✖

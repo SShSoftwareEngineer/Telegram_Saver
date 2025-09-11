@@ -3,11 +3,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, update, \
-    text
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
+    text, and_
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, TableNames, DialogTypes, MessageFileTypes, parse_date_string, TagsSorting
+from configs.config import ProjectDirs, ProjectConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
+    TagsSorting
 
 
 class Base(DeclarativeBase):
@@ -142,6 +143,7 @@ class DbMessageSortFilter:
     _date_from: Optional[datetime] = None
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
+    _tag_query: Optional[List[str]] = None
     sort_by_date: str = 'by date'
     sort_by_title: str = 'by title'
 
@@ -232,12 +234,19 @@ class DbMessageSortFilter:
         """
         self._message_query = value if value else None
 
-    # def sort_message_group_list(self, message_group_list: List[TgMessageGroup]) -> List[TgMessageGroup]:
-    #     """
-    #     Сортировка списка групп сообщений по дате
-    #     """
-    #     result = sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
-    #     return result
+    @property
+    def tag_query(self) -> Optional[List[str]]:
+        """
+        Возвращает список фильтров по тегам сообщений
+        """
+        return self._tag_query
+
+    @tag_query.setter
+    def tag_query(self, value: str):
+        """
+        Устанавливает список фильтров по тегам сообщений
+        """
+        self._tag_query = [tag.strip() for tag in value.split(ProjectConst.tag_filter_separator)] if value else None
 
 
 class DbCurrentState:
@@ -370,9 +379,14 @@ class DatabaseHandler:
             stmt = stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
         if self.message_sort_filter.date_to:
             stmt = stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
-        # Фильтр по тексту сообщения
+        # Фильтр по текстам сообщений
         if self.message_sort_filter.message_query:
             stmt = stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
+        # Фильтр по тегам сообщений
+        if self.message_sort_filter.tag_query:
+            # Создаем список выражений с условиями для поиска ключевых фраз в тегах
+            tag_conditions = [DbTag.name.ilike(f'%{keyword}%') for keyword in self.message_sort_filter.tag_query]
+            stmt = stmt.where(DbMessageGroup.tags.any(or_(*tag_conditions)))
         # Сортировка по диалогам
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
             stmt = stmt.join(DbDialog).order_by(
@@ -514,8 +528,6 @@ class DatabaseHandler:
         """
         Обновляет тег во всех группах сообщений, где он используется
         """
-        # Получаем старый тег по его идентификатору
-        old_tag = self.session.query(DbTag).filter(DbTag.name == old_tag_name).first()
         current_tags_select = None
         # Переименовываем тег во всех группах сообщений, где он используется
         stmt = select(DbMessageGroup).filter(DbMessageGroup.tags.any(name=old_tag_name))
