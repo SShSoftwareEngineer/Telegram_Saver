@@ -26,13 +26,13 @@ function getRadioValue(identifier) {
     return checked ? checked.value : null;
 }
 
-// Получение значения текстового поля по ID
+// Получение значения текстового поля или textarea по ID
 function getInputValue(id) {
     const input = document.getElementById(id);
     return input ? input.value.trim() : '';
 }
 
-// Получение значения select по ID
+// Получение значения выбранного в select по ID
 function getSelectValue(id) {
     const select = document.getElementById(id);
     if (!select) return '';
@@ -45,6 +45,12 @@ function getSelectValue(id) {
         // Обычный select - возвращаем одно значение
         return select.value;
     }
+}
+
+// Получение текста выбранного в select по ID
+function getSelectText(id) {
+    const select = document.getElementById(id);
+    return select.options[select.selectedIndex].text || '';
 }
 
 // Получение значения множественного выбора checkbox группы по ID контейнера
@@ -204,6 +210,10 @@ function clearFormFields(ids) {
                 element.value = '';
             }
         }
+        // Для textarea
+        if (element.tagName === 'TEXTAREA') {
+            element.value = '';
+        }
         // Для select
         if (element.tagName === 'SELECT') {
             element.selectedIndex = -1; // Снимаем все выделения
@@ -237,6 +247,37 @@ function handleCheckbox(checkbox, groupInputName, url) {
 }
 
 
+// Функция добавления тега в список ключевых слов для фильтра по тегам
+function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLineSeparator = '\n') {
+    // Получаем выбранное значение из select и текущее значение из input
+    const selectedText = getSelectText(selectId);
+    const currentValue = getInputValue(textareaId); // работает и для textarea
+    if (!selectedText) {
+        console.warn('Ничего не выбрано в select');
+        return;
+    }
+    // Разделяем по обоим разделителям для проверки дубликатов
+    const existingValues = currentValue ?
+        currentValue.split(new RegExp(`[${separator}${newLineSeparator}]`))
+            .map(val => val.trim()).filter(val => val) :
+        [];
+    // Проверяем, есть ли уже такое значение
+    if (existingValues.includes(selectedText)) {
+        console.log('Значение уже есть в поле');
+        return;
+    }
+    // Добавляем значение с новой строки
+    const textareaElement = document.getElementById(textareaId);
+    if (textareaElement) {
+        if (currentValue.trim()) {
+            setInputValue(textareaId, currentValue + newLineSeparator + selectedText + separator);
+        } else {
+            setInputValue(textareaId, selectedText + separator)
+        }
+    }
+}
+
+
 // Функции для работы с уведомлениями
 
 // Простое уведомление
@@ -257,78 +298,3 @@ function showMessage(message, type = 'info') {
 function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 }
-
-
-// // Обработчик JSON-ответов от HTMX
-// // Этот скрипт предназначен для обработки JSON-ответов от HTMX и обновления DOM
-// document.addEventListener('DOMContentLoaded', function () {
-//
-//     // Безопасная проверка body
-//     if (document.body) {
-//
-//         // Перехватчик JSON-ответов от HTMX
-//         document.body.addEventListener("htmx:beforeSwap", function (event) {
-//
-//             // Получаем Content-Type
-//             let contentType = event.detail.xhr.getResponseHeader("Content-Type");
-//             console.log("Content-Type:", contentType);
-//
-//             // Проверяем, что ответ — JSON
-//             if (contentType && contentType.indexOf("application/json") !== -1) {
-//                 console.log("JSON response detected");
-//                 try {
-//                     let data = JSON.parse(event.detail.xhr.responseText);
-//                     console.log("Parsed JSON data:", data);
-//
-//                     // Проверяем, что это объект
-//                     if (typeof data !== 'object' || data === null) {
-//                         console.warn("JSON response is not an object");
-//                         return;
-//                     }
-//                     let updatedCount = 0;
-//
-//                     // Обновляем элементы по id
-//                     for (let id in data) {
-//                         if (data.hasOwnProperty(id)) {
-//                             let el = document.getElementById(id);
-//                             if (el) {
-//
-//                                 // Безопасное обновление содержимого
-//                                 if (typeof data[id] === 'string') {
-//                                     el.innerHTML = data[id];
-//                                 } else {
-//                                     el.textContent = String(data[id]);
-//                                 }
-//                                 updatedCount++;
-//                                 console.log(`✓ Updated element '${id}'`);
-//                             } else {
-//                                 console.warn(`✗ Element '${id}' not found in DOM`);
-//                             }
-//                         }
-//                     }
-//                     console.log(`Updated ${updatedCount} elements`);
-//
-//                     // Отменяем стандартный swap от HTMX
-//                     event.detail.shouldSwap = false;
-//                 } catch (error) {
-//                     console.error("Error processing JSON response:", error);
-//                     console.log("Raw response:", event.detail.xhr.responseText);
-//
-//                     // Позволяем HTMX обработать ответ стандартным способом
-//                 }
-//             }
-//         });
-//     } else {
-//         console.error("document.body is null!");
-//     }
-// });
-//
-//
-// // Дополнительно - логирование всех HTMX событий для отладки
-// document.body.addEventListener("htmx:afterRequest", function (event) {
-//     console.log("HTMX request completed:", {
-//         status: event.detail.xhr.status,
-//         url: event.detail.pathInfo.requestPath,
-//         contentType: event.detail.xhr.getResponseHeader("Content-Type")
-//     });
-// });

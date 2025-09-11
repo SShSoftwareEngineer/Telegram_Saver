@@ -15,7 +15,11 @@
 <!-- Current message tag list -->
 <label for="{{ form_cfg.curr_message_tags }}" class="group-label no-margin-top">Message Tags</label>
 <div class="control-X-button">
-    <select id="{{ form_cfg.curr_message_tags }}" name="{{ form_cfg.curr_message_tags }}" size="6"
+    <select class="select-element"
+            id="{{ form_cfg.curr_message_tags }}"
+            name="{{ form_cfg.curr_message_tags }}"
+            title="Select a tag for actions"
+            size="6"
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
                     document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
     </select>
@@ -77,7 +81,11 @@
 
 <!-- All tags list -->
 <div class="control-X-button vertical-spread">
-    <select id="{{ form_cfg.all_detail_tags }}" name="{{ form_cfg.all_detail_tags }}" size="6"
+    <select class="select-element"
+            id="{{ form_cfg.all_detail_tags }}"
+            name="{{ form_cfg.all_detail_tags }}"
+            title="Select a tag for actions"
+            size="6"
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
                     document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
         {% for db_tag in db_all_tags %}
@@ -92,6 +100,8 @@
 
 <!-- Adding a tag to the tag filter -->
 <button class="apply-filters-buttons vertical-spread"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_tag_update_everywhere');">
-    <--  Add tag to filter by tags
+        onclick="addTagToFilterFromAllTags('{{ form_cfg.all_detail_tags }}',
+                '{{ form_btn_cfg.db_message_filter.tag_query }}',
+                separator = '{{ constants.tag_filter_separator }}')">
+    ←&nbsp; Add tag to filter by tags
 </button>
