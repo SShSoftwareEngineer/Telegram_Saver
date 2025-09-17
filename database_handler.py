@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    text, and_
+    text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, ProjectConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
+from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
     TagsSorting
 
 
@@ -246,7 +246,7 @@ class DbMessageSortFilter:
         """
         Устанавливает список фильтров по тегам сообщений
         """
-        self._tag_query = [tag.strip() for tag in value.split(ProjectConst.tag_filter_separator)] if value else None
+        self._tag_query = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else None
 
 
 class DbCurrentState:

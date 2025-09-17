@@ -24,11 +24,11 @@ class ProjectDirs:
     data_base_file = Path('database') / f'telegram_archive_{PROFILE}.db'
 
 
-class ProjectConst:
+class GlobalConst:
     """
     A class to hold constant values for the project.
     """
-    max_download_file_size = 50 * 2 ** 10 * 2 ** 10  # 50 MB
+    max_download_file_size = 50 * 2 ** 20  # 50 MB
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     truncated_text_length = 150  # Maximum length of text to display in the web page
     last_days_by_default = 30  # Default number of last days for messages filter
@@ -41,6 +41,14 @@ class ProjectConst:
     mess_group_id = 'message_group_id'
     select_to_save = 'select_to_save_to_db'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
+
+
+class GlobalVars:
+    """
+    A class to hold variable values for the project.
+    """
+    status_messages: dict  # Status messages for the web interface
+
 
 
 class DialogTypes(Enum):

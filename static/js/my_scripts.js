@@ -167,6 +167,7 @@ function callHandler(url) {
         });
 }
 
+
 // Установка значения элементов по ID
 
 // Установка значения радиокнопки по ID контейнера
@@ -276,6 +277,19 @@ function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLin
         }
     }
 }
+
+// Функции для реализации функциональности строки статуса
+
+// Функция для обновления строки статуса. Проверяем статус каждые 500мс
+setInterval(() => {
+    fetch('/status_output')
+        .then(response => response.json())
+        .then(data => {
+            if (Object.keys(data).length > 0) {
+                updateElementsFromResponse(data);
+            }
+        });
+}, 500);
 
 
 // Функции для работы с уведомлениями

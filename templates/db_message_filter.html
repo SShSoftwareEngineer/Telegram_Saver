@@ -9,8 +9,9 @@
     <select class="select-element"
             id="{{ form_cfg.dialog_select }}"
             name="{{ form_cfg.dialog_select }}"
+            size="14"
             title="For multiple selections, hold down Ctrl/Cmd"
-            size="6" multiple>
+            multiple>
         {% for db_dialog in db_all_dialog_list %}
             <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
         {% endfor %}
@@ -75,9 +76,10 @@
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
 <div class="control-X-button">
     {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; flask; HTML" %}
-    <textarea class="filter_tags-textarea" rows="5"
+    <textarea class="filter_tags-textarea"
               id="{{ form_cfg.tag_query }}"
               name="{{ form_cfg.tag_query }}"
+              rows="5"
               placeholder="{{ placeholder_text|escape }}"
               title="{{ placeholder_text|escape }}"></textarea>
     <button type="button"
