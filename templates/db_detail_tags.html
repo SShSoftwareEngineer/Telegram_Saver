@@ -19,7 +19,7 @@
             id="{{ form_cfg.curr_message_tags }}"
             name="{{ form_cfg.curr_message_tags }}"
             title="Select a tag for actions"
-            size="6"
+            size="5"
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
                     document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
     </select>
@@ -85,7 +85,7 @@
             id="{{ form_cfg.all_detail_tags }}"
             name="{{ form_cfg.all_detail_tags }}"
             title="Select a tag for actions"
-            size="6"
+            size="14"
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
                     document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
         {% for db_tag in db_all_tags %}

@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, ProjectConst, MessageFileTypes, DialogTypes, parse_date_string
+from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string
 
 # Создаем и сохраняем цикл событий
 loop = new_event_loop()
@@ -257,10 +257,10 @@ class TgMessageGroup:
         if self.text:
             # Если текст сообщения не содержит гиперссылок обрезаем до заданной длины
             if any([self.text.find('<a href') == -1,
-                    self.text.find('<a href') > ProjectConst.truncated_text_length]):
-                self.truncated_text = shorten(self.text, width=ProjectConst.truncated_text_length, placeholder='...')
+                    self.text.find('<a href') > GlobalConst.truncated_text_length]):
+                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length, placeholder='...')
             else:
-                self.truncated_text = shorten(self.text, width=ProjectConst.truncated_text_length + 50,
+                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length + 50,
                                               placeholder='...')
             #     hyperlinks = re.findall(r'.*?(<a href.*?>)(.*?)(<\/a>).*?', self.text)
             #     if hyperlinks:
@@ -289,18 +289,18 @@ class TgMessageGroup:
 @dataclass
 class TgMessageSortFilter:
     _sort_order: bool = True
-    _date_from: Optional[datetime] = datetime.now() - timedelta(days=ProjectConst.last_days_by_default)
+    _date_from: Optional[datetime] = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
     _date_to: Optional[datetime] = None
     _message_query: Optional[str] = None
     date_from_default: Optional[str] = (datetime.now() - timedelta(
-        days=ProjectConst.last_days_by_default)).strftime("%Y-%m-%d")
+        days=GlobalConst.last_days_by_default)).strftime("%Y-%m-%d")
 
     def set_default_filters(self):
         """
         Устанавливает фильтры по умолчанию
         """
         self._sort_order = True
-        self._date_from = datetime.now() - timedelta(days=ProjectConst.last_days_by_default)
+        self._date_from = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
         self._date_to = None
         self._message_query = None
         self.date_from_default = self.date_from.strftime("%Y-%m-%d")
@@ -526,7 +526,7 @@ class TelegramHandler:
         """
         # Получаем текущую группу сообщений по id
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
-        message_date_str = current_message_group.date.strftime(ProjectConst.message_datetime_format)
+        message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
         print(f'Message {message_date_str} details loading...')
         tg_details = dict(dialog_id=dialog_id,
                           dialog_title=self.get_dialog_by_id(dialog_id).title,
@@ -618,7 +618,7 @@ class TelegramHandler:
             if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
                 description = '\n\n'.join([description,
                                            shorten(message.media.webpage.description,
-                                                   width=ProjectConst.truncated_text_length, placeholder='...')])
+                                                   width=GlobalConst.truncated_text_length, placeholder='...')])
         # Создаем объект TgFile с информацией о файле сообщения
         tg_file = TgFile(dialog_id=dialog_id,
                          message_grouped_id=message_group.grouped_id,
@@ -644,7 +644,7 @@ class TelegramHandler:
         # Проверка существования файла
         if not tg_file.is_exists():
             # Проверка размера файла
-            if 0 < tg_file.size <= ProjectConst.max_download_file_size:
+            if 0 < tg_file.size <= GlobalConst.max_download_file_size:
                 # Если нужно, создаем соответствующие директории и загружаем файл
                 (Path(ProjectDirs.media_dir) / tg_file.file_path).parent.mkdir(parents=True, exist_ok=True)
                 downloading_param['message'] = tg_file.message
@@ -722,7 +722,7 @@ def clean_file_path(file_path: str | None) -> str | None:
 def convert_text_hyperlinks(message_text: str) -> Optional[str]:
     # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
     if message_text:
-        matches = ProjectConst.text_with_url_pattern.findall(message_text)
+        matches = GlobalConst.text_with_url_pattern.findall(message_text)
         if matches:
             for match in matches:
                 message_text = message_text.replace(f'[{match[0]}]({match[1]})',

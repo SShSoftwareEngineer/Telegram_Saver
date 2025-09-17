@@ -19,6 +19,9 @@ html, body {
 /* ===== ПЕРЕМЕННЫЕ ===== */
 :root {
     --tab-height: 55px; /* Высота панели вкладок */
+    --status-bar-height: 30px; /* Высота строки статуса */
+    --status-bar-padding: 15px;
+    --status-height: calc(var(--status-bar-height) + var(--status-bar-padding));
 }
 
 /* ===== LAYOUT ===== */
@@ -53,8 +56,60 @@ html, body {
 .tab-content {
     display: none;
     padding: 0;
-    height: calc(100% - var(--tab-height)); /* Вычитаем высоту панели вкладок */
+    height: calc(100% - var(--tab-height) - var(--status-height)); /* Вычитаем высоту панели вкладок и строки статуса */
 }
+
+
+/* Общие стили для строки статуса */
+
+/* Стиль для строки статуса */
+/*.status-bar {*/
+/*    position: fixed;*/
+/*    bottom: 0;*/
+/*    left: 0;*/
+/*    right: 0;*/
+/*    height: var(--status-bar-height);*/
+/*    padding: 5px 15px;*/
+/*    background-color: #f0f0f0;*/
+/*    border-top: 1px solid #ddd;*/
+/*    font-size: 12px;*/
+/*    color: #666;*/
+/*    z-index: 1000;*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    justify-content: space-between;*/
+/*}*/
+
+/*.status-section {*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    gap: 5px;*/
+/*}*/
+
+/*!* Отступ снизу для основного контента *!*/
+/*body {*/
+/*    padding-bottom: var(--status-height);*/
+/*}*/
+
+
+/* Сетка для строки статуса */
+.status-bar-grid {
+    display: grid;
+    grid-template-areas:
+        "operation report";
+    grid-template-columns: 1fr 2fr;
+    height: 100%;
+    gap: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+
+/* @formatter:off */
+.sb-operation { grid-area: operation; }
+.sb-report { grid-area: report; }
+/* @formatter:on */
+
 
 /* Общие стили для CSS Grid всех вкладок */
 
@@ -80,6 +135,7 @@ html, body {
     overflow: auto;
 }
 
+
 /* Стили для CSS Grid контейнера и зон для вкладки Telegram */
 .tg-container-tab_1 {
     display: grid;
@@ -88,7 +144,7 @@ html, body {
         "dialog_filters chats messages details"
         "message_filters chats messages details"
         "save_to_db chats messages details"
-        "footer footer footer footer";
+        "operation operation report report";
     grid-template-columns: 10fr 25fr 30fr 35fr;
     grid-template-rows: auto 1fr 1fr 1fr auto;
     height: 100%;
@@ -106,7 +162,8 @@ html, body {
 .tg-chats { grid-area: chats; }
 .tg-messages { grid-area: messages; }
 .tg-details { grid-area: details; }
-.tg-footer { grid-area: footer; }
+.tg-operation { grid-area: operation; }
+.tg-report { grid-area: report; }
 /* @formatter:on */
 
 .save_to_db_area_format {
@@ -150,7 +207,7 @@ html, body {
         "cell_21 cell_22 cell_23"
         "cell_31 cell_32 cell_33";
     grid-template-columns: 300px 1fr 200px;
-    grid-template-rows: max-content max-content max-content;
+    grid-template-rows: max-content auto max-content;
     height: 100%;
     gap: 5px;
 }
@@ -165,6 +222,24 @@ html, body {
 .cell_31 { grid-area: cell_31; }
 .cell_32 { grid-area: cell_32; }
 .cell_33 { grid-area: cell_33; }
+/* @formatter:on */
+
+/* Стили для CSS Grid контейнера и зон для вкладки Service */
+.sub_container_tab_3 {
+    display: grid;
+    grid-template-areas:
+        "cell_1"
+        "cell_2"
+        "cell_3";
+    grid-template-rows: max-content auto max-content;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.cell_11 { grid-area: cell_11; }
+.cell_21 { grid-area: cell_21; }
+.cell_31 { grid-area: cell_31; }
 /* @formatter:on */
 
 

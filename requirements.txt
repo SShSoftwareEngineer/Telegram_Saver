@@ -2,3 +2,4 @@ telethon
 SQLAlchemy
 Flask
 python-dateutil
+Flask-SocketIO

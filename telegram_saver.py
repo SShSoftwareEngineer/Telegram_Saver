@@ -1,9 +1,10 @@
+import logging
 from pathlib import Path
 from typing import Optional
-
+from datetime import datetime
 from flask import Flask, render_template, request, send_from_directory, jsonify
 
-from configs.config import ProjectConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting
+from configs.config import GlobalConst, GlobalVars, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -18,7 +19,7 @@ def inject_field_names():
     Регистрация контекстного процессора с именами полей
     """
     return {
-        'constants': ProjectConst,
+        'constants': GlobalConst,
         'tg_file_types': MessageFileTypes,
         'form_btn_cfg': FormButtonCfg,
         'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
@@ -36,7 +37,8 @@ def initialize_data():
     """
     Инициализация данных при запуске
     """
-    pass
+    logging.getLogger('werkzeug').setLevel(logging.INFO)
+    GlobalVars.status_messages = {}
 
 
 # Инициализация после создания приложения
@@ -53,11 +55,22 @@ def media_dir(filename):
     return send_from_directory(ProjectDirs.media_dir, filename)
 
 
+def set_status_messages(data: dict, to_console: Optional[str] = None):
+    GlobalVars.status_messages.update(data)
+    print(f'{datetime.now().strftime(GlobalConst.message_datetime_format)}  {to_console}')
+
+
+@tg_saver.route('/status_output')
+def status_output():
+    return jsonify(GlobalVars.status_messages)
+
+
 @tg_saver.route("/")
 def index():
     """
     Главная страница приложения
     """
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
     chats_count = f'({len(tg_handler.current_state.dialog_list)})' if tg_handler.current_state.dialog_list else ''
     return render_template("index.html", chats_count=chats_count)
 
@@ -162,9 +175,9 @@ def tg_select_messages():
     Обработка отметки сохранения сообщений Telegram в списке сообщений
     """
     # Получаем id группы сообщений
-    selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
+    selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
     # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
+    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_to_save) is not None
     # Устанавливаем признак сохранения для выбранной группы сообщений
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
@@ -178,9 +191,9 @@ def tg_select_details():
     Обработка отметки сохранения сообщений в базе данных в деталях сообщения
     """
     # Получаем id группы сообщений
-    selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
+    selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
     # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
+    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_to_save) is not None
     # Устанавливаем признак сохранения для выбранной группы сообщений
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
@@ -201,7 +214,7 @@ def save_selected_message_to_db():
             db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
                                                  dict(title=tg_dialog.title,
                                                       dialog_type_id=tg_dialog.type.value))
-            # Устанавливаем relationship для диалога
+            # Устанавливаем relationship для диалога, если не установлен
             if db_dialog.dialog_type is None:
                 db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
                     dialog_type_id=tg_dialog.type.value).first()
@@ -214,7 +227,7 @@ def save_selected_message_to_db():
                                                              from_id=tg_message_group.from_id,
                                                              reply_to=tg_message_group.reply_to,
                                                              dialog_id=tg_dialog.dialog_id))
-            # Устанавливаем relationship для группы сообщений
+            # Устанавливаем relationship для группы сообщений, если не установлен
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
@@ -224,25 +237,24 @@ def save_selected_message_to_db():
                                                         size=tg_file.size,
                                                         grouped_id=tg_message_group.grouped_id,
                                                         file_type_id=tg_file.file_type.type_id))
-                # Устанавливаем relationships для файла
+                # Устанавливаем relationships для файла, если не установлены
                 if db_file.message_group is None:
                     db_file.message_group = db_message_group
                 if db_file.file_type is None:
                     db_file.file_type = db_handler.session.query(DbFileType).filter_by(
                         file_type_id=tg_file.file_type.type_id).first()
                 # Скачиваем файл, если его нет в заданной директории файловой системы и его размер меньше предельного
-                print(f'Downloading file {tg_file.file_path}...')
+                set_status_messages(dict(tg_operation='Downloading file', tg_report=tg_file.file_path),
+                                    f'Downloading file {tg_file.file_path}...')
                 downloading_result = tg_handler.download_message_file(tg_file)
-                if downloading_result:
-                    print(f'File {tg_file.file_path} downloaded successfully')
-                else:
-                    print(f'Failed to download file {tg_file.file_path}')
+                report_msg = f'File {tg_file.file_path} downloaded successfully' if downloading_result else f'Failed to download file {tg_file.file_path}'
+                set_status_messages(dict(tg_report=report_msg), report_msg)
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
             # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
             # Формирование набора данных с контентом группы сообщений для возможного сохранения в файловую систему
             message_group_export_data = {
-                'message_date': tg_message_group.date.strftime(ProjectConst.message_datetime_format),
+                'message_date': tg_message_group.date.strftime(GlobalConst.message_datetime_format),
                 'dialog_title': tg_dialog.title,
                 'text': tg_message_group.text,
                 'files_report': tg_message_group.files_report,
@@ -456,19 +468,6 @@ def db_all_tag_sorting():
                         db_handler.get_select_content_string(db_handler.all_tags_list, 'id', 'name')})
 
 
-@tg_saver.route('/db_add_tag_to_tag_filter', methods=['POST'])
-def db_add_tag_to_tag_filter():
-    """
-    Добавление тега из списка всех тегов в список фильтра по тегам
-    """
-    form_cfg = FormButtonCfg.db_message_filter
-    tag_name = request.form.get(form_cfg['all_detail_tags'])
-    # dfsd
-    # if tag_name and tag_name not in db_handler.message_sort_filter.tag_query:
-    #     db_handler.message_sort_filter.tag_query.append(tag_name)`
-    # return jsonify({form_cfg['tag_query']: ', '.join(db_handler.message_sort_filter.tag_query)})
-
-
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
@@ -482,6 +481,8 @@ if __name__ == '__main__':
 # TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
 # TODO: Проверить сортировку в базе данных
+# TODO: Добавить индексы в таблицы базы данных для ускорения выборок
+# TODO: Сделать Unit тесты
 
 # Оставлять архивные подписки в базе
 # Режимы: синхронизация чата и базы с условиями (продумать условия)
