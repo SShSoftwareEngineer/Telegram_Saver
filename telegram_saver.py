@@ -1,10 +1,9 @@
 import logging
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
 from flask import Flask, render_template, request, send_from_directory, jsonify
 
-from configs.config import GlobalConst, GlobalVars, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting
+from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -38,7 +37,6 @@ def initialize_data():
     Инициализация данных при запуске
     """
     logging.getLogger('werkzeug').setLevel(logging.INFO)
-    GlobalVars.status_messages = {}
 
 
 # Инициализация после создания приложения
@@ -55,14 +53,9 @@ def media_dir(filename):
     return send_from_directory(ProjectDirs.media_dir, filename)
 
 
-def set_status_messages(data: dict, to_console: Optional[str] = None):
-    GlobalVars.status_messages.update(data)
-    print(f'{datetime.now().strftime(GlobalConst.message_datetime_format)}  {to_console}')
-
-
 @tg_saver.route('/status_output')
 def status_output():
-    return jsonify(GlobalVars.status_messages)
+    return jsonify(status_messages.messages)
 
 
 @tg_saver.route("/")
@@ -231,6 +224,7 @@ def save_selected_message_to_db():
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+            status_messages.mess_update('Downloading files', '', new_list=True)
             for tg_file in tg_message_group.files:
                 db_file = db_handler.upsert_record(DbFile, dict(file_path=tg_file.file_path),
                                                    dict(message_id=tg_file.message_id,
@@ -244,11 +238,10 @@ def save_selected_message_to_db():
                     db_file.file_type = db_handler.session.query(DbFileType).filter_by(
                         file_type_id=tg_file.file_type.type_id).first()
                 # Скачиваем файл, если его нет в заданной директории файловой системы и его размер меньше предельного
-                set_status_messages(dict(tg_operation='Downloading file', tg_report=tg_file.file_path),
-                                    f'Downloading file {tg_file.file_path}...')
+                status_messages.mess_update('Downloading files', tg_file.file_path)
                 downloading_result = tg_handler.download_message_file(tg_file)
-                report_msg = f'File {tg_file.file_path} downloaded successfully' if downloading_result else f'Failed to download file {tg_file.file_path}'
-                set_status_messages(dict(tg_report=report_msg), report_msg)
+                report_msg = f'{tg_file.file_path} downloaded successfully' if downloading_result else f'Failed to download file {tg_file.file_path}'
+                status_messages.mess_update('Downloading files', report_msg)
             # Сохраняем изменения в базе данных
             db_handler.session.commit()
             # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
@@ -301,12 +294,14 @@ def sync_local_files_with_db():
     files_to_download = database_files - local_files
     # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
-    print(f'Files deleted from local storage: {files_deleted_count}')
+    status_messages.mess_update('Synchronizing the list of local files with the database',
+                                f'Files deleted from local storage: {files_deleted_count}',new_list=True)
     # Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
                              not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
-    print(f'Empty directories deleted from local storage: {dir_deleted_count}')
+    status_messages.mess_update('Synchronizing the list of local files with the database',
+                                f'Empty directories deleted from local storage: {dir_deleted_count}')
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
     downloaded_file_list = []
     for file_path in files_to_download:
@@ -473,15 +468,11 @@ if __name__ == '__main__':
 
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
-# TODO: сделать поиск по тегам, поиск без тегов, поиск по дате, по диалогу, по тексту сообщения
 # TODO: сделать возможность удаления сообщений из базы данных
-# TODO: добавлять к сообщениям теги, чтобы можно было искать по тегам
 # TODO: Режимы: автоматические отметки по условию (продумать условия)
 # TODO: Режимы: просмотр базы с возможностью удаления
 # TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
-# TODO: Проверить сортировку в базе данных
-# TODO: Добавить индексы в таблицы базы данных для ускорения выборок
 # TODO: Сделать Unit тесты
 
 # Оставлять архивные подписки в базе

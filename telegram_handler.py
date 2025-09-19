@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string
+from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string, status_messages
 
 # Создаем и сохраняем цикл событий
 loop = new_event_loop()
@@ -438,14 +438,14 @@ class TelegramHandler:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
-        print('Chats list loading...')
+        status_messages.mess_update('Loading chat list from Telegram', 'Please wait...', True)
         dialogs = loop.run_until_complete(self.client.get_dialogs())
         dialog_list = []
         for dialog in dialogs:
             tg_dialog = TgDialog(dialog)
             if self.dialog_sort_filter.check_filters(tg_dialog):
                 dialog_list.append(tg_dialog)
-        print(f'{len(dialog_list)} chats loaded')
+        status_messages.mess_update('Loading chat lists', f'{len(dialog_list)} chats loaded from Telegram')
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
 
     def get_message_list(self, dialog_id: int) -> List[Message]:
@@ -454,7 +454,8 @@ class TelegramHandler:
         """
         current_tg_dialog = self.get_dialog_by_id(dialog_id)
         if current_tg_dialog:
-            print(f'Loading messages for "{current_tg_dialog.title}" dialog...')
+            status_messages.mess_update(f'Loading messages for "{current_tg_dialog.title}" dialog', 'Please wait...',
+                                        True)
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
         # Формируем текущие данные фильтра сообщений
@@ -474,7 +475,7 @@ class TelegramHandler:
         message_filters['reverse'] = self.message_sort_filter.sort_order
         # Получение сообщений в соответствии с фильтрами
         message_list = loop.run_until_complete(self.client.get_messages(**message_filters))
-        print(f'{len(message_list)} messages loaded')
+        status_messages.mess_update('', f'{len(message_list)} messages loaded')
         return message_list
 
     def get_message_group_list(self, dialog_id: int) -> List[TgMessageGroup]:
@@ -517,7 +518,7 @@ class TelegramHandler:
             tg_message_group.set_files_report()
             # Ограничение длины текста сообщения для отображения в веб-интерфейсе списка сообщений
             tg_message_group.set_truncated_text()
-        print(f'{len(message_group_list)} message groups were formed')
+        status_messages.mess_update('', f'{len(message_group_list)} message groups have been formed')
         return self.message_sort_filter.sort_message_group_list(message_group_list)
 
     def get_message_detail(self, dialog_id: int, message_group_id: str) -> dict:
@@ -527,7 +528,8 @@ class TelegramHandler:
         # Получаем текущую группу сообщений по id
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
         message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
-        print(f'Message {message_date_str} details loading...')
+        status_messages.mess_update(
+            f'Loading details of message {message_date_str} in chat {self.get_dialog_by_id(dialog_id).title}', '', True)
         tg_details = dict(dialog_id=dialog_id,
                           dialog_title=self.get_dialog_by_id(dialog_id).title,
                           message_group_id=message_group_id,
@@ -542,10 +544,10 @@ class TelegramHandler:
         for tg_file in tg_details.get('files'):
             if not tg_file.is_exists():
                 if tg_file.file_type != MessageFileTypes.VIDEO:
-                    print(f'Downloading file {tg_file.file_path}...')
+                    status_messages.mess_update('', f'Downloading file {tg_file.file_path}')
                     self.download_message_file(tg_file)
         tg_details['existing_files'] = [tg_file for tg_file in tg_details.get('files') if tg_file.is_exists()]
-        print('Message details loaded')
+        status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
     def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup, message,
@@ -682,25 +684,26 @@ class TelegramHandler:
                                  file_type=MessageFileTypes.get_file_type_by_type_id(downloaded_file['file_type_id']))
                 tg_file.file_path = downloaded_file['file_path']
                 # Загружаем файл сообщения
-                print(f'{progress}  Download: {tg_file.file_path}')
+                status_messages.mess_update('Synchronizing the list of local files with the database',
+                                            f'{progress}  Download: {tg_file.file_path}')
                 downloading_result = self.download_message_file(tg_file)
                 # В зависимости от результата загрузки файла увеличиваем счетчики
                 if downloading_result:
-                    print(f'{progress}  Successfully!')
+                    status_messages.mess_update('', f'{progress}  Successfully!')
                     successfully_download += 1
                 else:
-                    print(f'{progress}  Download failed...')
+                    status_messages.mess_update('', f'{progress}  Download failed')
                     failed_to_download += 1
             else:
-                print(f'{counter} / {len(downloaded_file_list)} No messages found for dialog {dialog.title} '
-                      f'and message id {downloaded_file["message_id"]}')
+                status_messages.mess_update('', f'{counter} / {len(downloaded_file_list)} No messages found for '
+                                                f'dialog {dialog.title} and message id {downloaded_file["message_id"]}')
                 no_messages_found += 1
         # Формирование отчета по результатам загрузки файлов
         resulting_report = (f'Files to download: {len(downloaded_file_list)}\n'
                             f'Downloaded files: {successfully_download}\n'
                             f'Failed to download files: {failed_to_download}\n'
                             f'No messages found: {no_messages_found}')
-        print(resulting_report)
+        status_messages.mess_update('', resulting_report)
         return resulting_report
 
 

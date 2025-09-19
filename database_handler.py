@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, 
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
-    TagsSorting
+    TagsSorting, status_messages
 
 
 class Base(DeclarativeBase):
@@ -55,7 +55,7 @@ class DbTag(Base):
     Класс для представления тега, связанного с группой сообщений в базе данных.
     """
     __tablename__ = TableNames.tags
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     name: Mapped[str] = mapped_column(Text, default='', nullable=False)
     usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(default=datetime.now)
@@ -86,7 +86,7 @@ class DbDialogType(Base):
     Класс для представления типа диалога (чата) в базе данных.
     """
     __tablename__ = TableNames.dialog_types
-    dialog_type_id: Mapped[int] = mapped_column(primary_key=True)
+    dialog_type_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     # Relationships to 'DbDialog' table
     dialogs: Mapped['DbDialog'] = relationship(back_populates='dialog_type')
@@ -98,7 +98,7 @@ class DbFile(Base):
     Класс для представления файла, связанного с группой сообщений в базе данных.
     """
     __tablename__ = TableNames.files
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     message_id: Mapped[int] = mapped_column(Integer)
     file_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
@@ -122,7 +122,7 @@ class DbFileType(Base):
     Класс для представления типа файла, связанного с группой сообщений в базе данных.
     """
     __tablename__ = TableNames.file_types
-    file_type_id: Mapped[int] = mapped_column(primary_key=True)
+    file_type_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     alt_text: Mapped[str] = mapped_column(String)
     default_ext: Mapped[str] = mapped_column(String)
@@ -329,7 +329,8 @@ class DatabaseHandler:
             .order_by(asc(DbDialog.title))
         )
         query_result = self.session.execute(stmt).scalars().all()
-        print(f'{len(query_result)} chats loaded from the database')
+        status_messages.mess_update('Loading chat lists',
+                                    f'{len(query_result)} chats loaded from the database')
         return list(query_result)
 
     def get_all_tag_list(self) -> List[DbTag]:
@@ -397,7 +398,8 @@ class DatabaseHandler:
             stmt = stmt.order_by(
                 DbMessageGroup.date.desc() if self.message_sort_filter.sort_order else DbMessageGroup.date.asc())
         query_result = self.session.execute(stmt).scalars().all()
-        print(f'{len(query_result)} messages loaded from the database')
+        status_messages.mess_update('Loading chats from the database',
+                                    f'{len(query_result)} chats loaded from the database', True)
         return list(query_result)
 
     @staticmethod
@@ -428,6 +430,10 @@ class DatabaseHandler:
                           files_report=current_message_group.files_report if current_message_group.files_report else '',
                           tags=current_message_group.tags if current_message_group.tags else None)
         db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
+        message_date_str = db_details.get('date').strftime(GlobalConst.message_datetime_format)
+        status_messages.mess_update(
+            f'Loading details of message {message_date_str} in chat {db_details.get('dialog_title')}',
+            'Message details loaded', True)
         return db_details
 
     def message_group_exists(self, grouped_id: str) -> bool:

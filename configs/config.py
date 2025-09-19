@@ -1,6 +1,9 @@
+from datetime import datetime
 from enum import Enum
 import re
 from pathlib import Path
+from typing import List, Optional
+
 from dateutil.parser import parse
 
 # Set the profile for the project
@@ -43,12 +46,35 @@ class GlobalConst:
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
 
 
-class GlobalVars:
+class StatusMessages:
     """
-    A class to hold variable values for the project.
+    A class to hold status messages for the web interface.
     """
-    status_messages: dict  # Status messages for the web interface
+    operation: str = ''  # Current operation
+    report_list: Optional[List[str]] = None  # Report messages
+    messages: dict = {}  # Messages for the web interface
 
+    def mess_update(self, operation: str, report: str, new_list: bool = False):
+        """
+        Sets the current status messages for the web interface.
+        """
+        if operation:
+            self.operation = operation
+        current_time = datetime.now().strftime('%H:%M:%S.%f')[:-3]  # Current time with milliseconds
+        if new_list or self.report_list is None:
+            self.report_list = []
+        if report:
+            report_string = f'{current_time} - {report}'
+            self.report_list.append(report_string)
+        # Формируем строку для тега в HTML формате для содержимого <select>
+        select_string = ''
+        if self.report_list:
+            select_string = '\n'.join([f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
+        self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
+        print(f'{current_time}  {self.operation} - {report}')  # Print the report message to the console
+
+
+status_messages = StatusMessages()
 
 
 class DialogTypes(Enum):
