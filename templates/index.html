@@ -14,161 +14,153 @@
 
 <body>
 
-<!-- Кнопки вкладок -->
-<div class="tabs">
-    <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
-    <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
-    <button class="tab-button" onclick="openTab(event, 'tab3')">Service</button>
-</div>
-
-<!-- Содержимое вкладок -->
-
-<div id="tab1" class="tab-content" style="display: block;">
-    {# Страница сообщений Телеграм #}
-
-    <div class="tg-container-tab_1">
-        <div class="header tg-filter_h">Filters</div>
-        <div class="header tg-chat_h">
-            Chats
-            <span id="tg-chats-count">{{ chats_count }} </span>
-        </div>
-        <div class="header tg-message_h">
-            Messages
-            <span id="tg-messages-count"> </span>
-        </div>
-        <div class="header tg-detail_h">
-            Message Details
-        </div>
-        <div class="grid tg-dialog_filters">
-            {% include "tg_dialog_filter.html" %}
-        </div>
-        <div class="grid tg-message_filters">
-            {% include "tg_message_filter.html" %}
-        </div>
-        <div class="grid tg-save_to_db save_to_db_area_format">
-            <button class="button-in-cell" onclick="callHandler('/save_selected_message_to_db')">
-                Save selected to the DB
-            </button>
-        </div>
-        <div class="scroll tg-chats">
-            <div class="grid content" id="tg_dialogs">
-                {# Вывод списка диалогов Telegram #}
-                {% if tg_dialogs %}
-                    {% include "tg_dialogs.html" %}
-                {% endif %}
-            </div>
-        </div>
-        <div class="scroll tg-messages">
-            <div class="grid content" id="tg_messages">
-                {# Вывод списка групп сообщений Telegram #}
-                {% if tg_messages %}
-                    {% include "tg_messages.html" %}
-                {% endif %}
-            </div>
-        </div>
-        <div class="scroll tg-details">
-            <div class="grid content" id="tg_details">
-                {% if tg_details %}
-                    {% include "tg_details.html" %}
-                {% endif %}
-            </div>
-        </div>
-        <div class="grid tg-operation" id="tg_operation">
-            Operation
-        </div>
-        <div class="grid tg-report" id="tg_report">
-            Report
-        </div>
+<div class="main-container">
+    {# Панель вкладок #}
+    <div class="tabs">
+        <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
+        <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
+        <button class="tab-button" onclick="openTab(event, 'tab3')">Service</button>
     </div>
-</div>
 
-<div id="tab2" class="tab-content">
-    {# Страница сообщений Database #}
+    {# Область контента - просто контейнер #}
+    <div class="content-area">
 
-    <div class="db-container-tab_2">
-        <div class="header db-filters_h">Filters</div>
-        <div class="header db-messages_h">
-            Messages
-            <span id="db-messages-count"></span>
-        </div>
-        <div class="header db-details_h"> Message details</div>
-        <div class="header db-tags_h"> Tags</div>
-        <div class="grid db-filters">
-            {% include "db_message_filter.html" %}
-        </div>
-        <div class="scroll db-messages">
-            <div class="grid content" id="db_messages">
-                {% if db_messages %}
-                    {% set context = db_messages %}
-                    {% include "db_messages.html" with context %}
-                {% endif %}
-            </div>
-        </div>
-        <div class="scroll db-details">
-            <div class="grid content" id="db_details">
-                {% set context = db_details %}
-                {% include "db_details.html" with context %}
-            </div>
-        </div>
-        <div class="grid db-tags">
-            {% include "db_detail_tags.html" %}
-        </div>
-        <div class="grid db-footer1">Footer 1</div>
-        <div class="grid db-footer2">Footer 2</div>
-        <div class="grid db-footer3">Footer 3</div>
-        <div class="grid db-footer4">Footer 4</div>
-    </div>
-</div>
+        {# Содержимое вкладок #}
 
-<div id="tab3" class="tab-content">
-    {# Страница сервисных функций #}
+        <div id="tab1" class="tab-content" style="display: block;">
+            {# Страница сообщений Телеграм #}
 
-    <div class="container_tab_3">
-        <div class="grid cell_11" id="synchronize_files">
-            {% include "synchronize_files.html" %}
-        </div>
-        <div class="grid cell_12">cell_12</div>
-        <div class="grid cell_13">cell_13</div>
-        <div class="grid cell_21">
-            <div class="sub_container_tab_3">
-                <div class="cell_1" style="border: #dddddd 1px solid;">
-                    cell_1
+            <div class="tg-container-tab_1">
+                <div class="header tg-filter_h">Filters</div>
+                <div class="header tg-chat_h">Chats<span id="tg-chats-count">{{ chats_count }}</span></div>
+                <div class="header tg-message_h">Messages<span id="tg-messages-count"> </span></div>
+                <div class="header tg-detail_h">Message Details</div>
+                <div class="grid tg-dialog_filters">
+                    {% include "tg_dialog_filter.html" %}
                 </div>
-                <div class="cell_2" style="border: #dddddd 1px solid;">
-                    <select style="width: 100%; height: 100%;" size="auto">
-                        <option value="1">Option 1</option>
-                        <option value="2">Option 2</option>
-                        <option value="3">Option 3</option>
-                    </select>
+                <div class="grid tg-message_filters">
+                    {% include "tg_message_filter.html" %}
                 </div>
-                <div class="cell_3" style="border: #dddddd 1px solid;">
-                    cell_3
+                <div class="grid tg-save_to_db save_to_db_area_format">
+                    <button class="button-in-cell" onclick="callHandler('/save_selected_message_to_db')">
+                        Save selected to the DB
+                    </button>
+                </div>
+                <div class="tg-chats">
+                    <div class="grid scroll" id="tg_dialogs">
+                        {# Вывод списка диалогов Telegram #}
+                        {% if tg_dialogs %}
+                            {% include "tg_dialogs.html" %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tg-messages">
+                    <div class="grid scroll" id="tg_messages">
+                        {# Вывод списка групп сообщений Telegram #}
+                        {% if tg_messages %}
+                            {% include "tg_messages.html" %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="tg-details">
+                    <div class="grid scroll" id="tg_details">
+                        {% if tg_details %}
+                            {% include "tg_details.html" %}
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="grid cell_22">cell_22</div>
-        <div class="grid cell_23">cell_23</div>
-        <div class="grid cell_31">
-            <div class="cell_2" style="border: #dddddd 1px solid;">
-                <select style="width: 100%; height: 100%;" size="auto">
-                    <option value="1">Option 1</option>
-                    <option value="2">Option 2</option>
-                    <option value="3">Option 3</option>
-                </select>
+
+        <div id="tab2" class="tab-content">
+            {# Страница сообщений Database #}
+
+            <div class="db-container-tab_2">
+                <div class="header db-filters_h"> Filters</div>
+                <div class="header db-messages_h">Messages<span id="db-messages-count"></span></div>
+                <div class="header db-details_h">Message details</div>
+                <div class="header db-tags_h">Tags</div>
+                <div class="grid db-filters">
+                    {% include "db_message_filter.html" %}
+                </div>
+                <div class="db-messages">
+                    <div class="grid scroll" id="db_messages">
+                        {# Вывод списка групп сообщений из базы данных #}
+                        {% if db_messages %}
+                            {% set context = db_messages %}
+                            {% include "db_messages.html" with context %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="db-details">
+                    <div class="grid scroll" id="db_details">
+                        {% if db_details %}
+                            {% set context = db_details %}
+                            {% include "db_details.html" with context %}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid db-tags">
+                    {% include "db_detail_tags.html" %}
+                </div>
             </div>
         </div>
-        <div class="grid cell_32">cell_32</div>
-        <div class="grid cell_33">cell_33</div>
-    </div>
-</div>
 
-{# Статус бар #}
-<div class="status-bar-grid">
-    <div class="grid sb-operation">
-        Operation
+        <div id="tab3" class="tab-content">
+            {# Страница сервисных функций #}
+
+            <div class="container_tab_3">
+                <div class="grid cell_11" id="synchronize_files">
+                    {% include "synchronize_files.html" %}
+                </div>
+                <div class="grid cell_12">cell_12</div>
+                <div class="grid cell_13">cell_13</div>
+                <div class="grid cell_21">
+                    <div class="sub_container_tab_3">
+                        <div class="cell_1" style="border: #dddddd 1px solid;">
+                            cell_1
+                        </div>
+                        <div class="cell_2" style="border: #dddddd 1px solid;">
+                            <select style="width: 100%; height: 100%;" size="auto">
+                                <option value="1">Option 1</option>
+                                <option value="2">Option 2</option>
+                                <option value="3">Option 3</option>
+                            </select>
+                        </div>
+                        <div class="cell_3" style="border: #dddddd 1px solid;">
+                            cell_3
+                        </div>
+                    </div>
+                </div>
+                <div class="grid cell_22">cell_22</div>
+                <div class="grid cell_23">cell_23</div>
+                <div class="grid cell_31">
+                    <div class="cell_2" style="border: #dddddd 1px solid;">
+                        <select style="width: 100%; height: 100%;" size="auto">
+                            <option value="1">Option 1</option>
+                            <option value="2">Option 2</option>
+                            <option value="3">Option 3</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid cell_32">cell_32</div>
+                <div class="grid cell_33">cell_33</div>
+            </div>
+        </div>
+
     </div>
-    <div class="grid sb-report">
-        Report
+
+    {# Независимая строка статуса с собственным Grid #}
+
+    <div class="status-bar-grid">
+        <div id="sb_operation" class="status-section">
+            <strong>Operation: </strong>
+        </div>
+        <div class="status-section">
+            <strong>Report:</strong>
+            <select id="sb_report" style="width: 100%;">
+            </select>
+        </div>
     </div>
 </div>
 
