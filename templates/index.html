@@ -19,7 +19,7 @@
     <div class="tabs">
         <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
         <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
-        <button class="tab-button" onclick="openTab(event, 'tab3')">Service</button>
+{#        <button class="tab-button" onclick="openTab(event, 'tab3')">Test tab</button>#}
     </div>
 
     {# Область контента - просто контейнер #}
@@ -44,6 +44,13 @@
                 <div class="grid tg-save_to_db save_to_db_area_format">
                     <button class="button-in-cell" onclick="callHandler('/save_selected_message_to_db')">
                         Save selected to the DB
+                    </button>
+                </div>
+                <div class="grid tg-sync_files save_to_db_area_format">
+                    {# Apply to synchronize local files with database #}
+                    <button id="synchronize_files" class="button-in-cell"
+                            onclick="callHandler('/sync_local_files_with_db')">
+                        Synchronize local files with DB
                     </button>
                 </div>
                 <div class="tg-chats">
@@ -106,47 +113,21 @@
             </div>
         </div>
 
-        <div id="tab3" class="tab-content">
+{#        <div id="tab3" class="tab-content">#}
             {# Страница сервисных функций #}
-
-            <div class="container_tab_3">
-                <div class="grid cell_11" id="synchronize_files">
-                    {% include "synchronize_files.html" %}
-                </div>
-                <div class="grid cell_12">cell_12</div>
-                <div class="grid cell_13">cell_13</div>
-                <div class="grid cell_21">
-                    <div class="sub_container_tab_3">
-                        <div class="cell_1" style="border: #dddddd 1px solid;">
-                            cell_1
-                        </div>
-                        <div class="cell_2" style="border: #dddddd 1px solid;">
-                            <select style="width: 100%; height: 100%;" size="auto">
-                                <option value="1">Option 1</option>
-                                <option value="2">Option 2</option>
-                                <option value="3">Option 3</option>
-                            </select>
-                        </div>
-                        <div class="cell_3" style="border: #dddddd 1px solid;">
-                            cell_3
-                        </div>
-                    </div>
-                </div>
-                <div class="grid cell_22">cell_22</div>
-                <div class="grid cell_23">cell_23</div>
-                <div class="grid cell_31">
-                    <div class="cell_2" style="border: #dddddd 1px solid;">
-                        <select style="width: 100%; height: 100%;" size="auto">
-                            <option value="1">Option 1</option>
-                            <option value="2">Option 2</option>
-                            <option value="3">Option 3</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="grid cell_32">cell_32</div>
-                <div class="grid cell_33">cell_33</div>
-            </div>
-        </div>
+{##}
+{#            <div class="container_tab_3">#}
+{#                <div class="grid cell_11">cell_11</div>#}
+{#                <div class="grid cell_12">cell_12</div>#}
+{#                <div class="grid cell_13">cell_13</div>#}
+{#                <div class="grid cell_21">cell_21</div>#}
+{#                <div class="grid cell_22">cell_22</div>#}
+{#                <div class="grid cell_23">cell_23</div>#}
+{#                <div class="grid cell_31">cell_31</div>#}
+{#                <div class="grid cell_32">cell_32</div>#}
+{#                <div class="grid cell_33">cell_33</div>#}
+{#            </div>#}
+{#        </div>#}
 
     </div>
 
@@ -157,7 +138,7 @@
             <strong>Operation: </strong>
         </div>
         <div class="status-section">
-            <strong>Report:</strong>
+            <label for="sb_report"><strong>Report:</strong></label>
             <select id="sb_report" style="width: 100%;">
             </select>
         </div>

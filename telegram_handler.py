@@ -438,7 +438,7 @@ class TelegramHandler:
         """
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
         """
-        status_messages.mess_update('Loading chat list from Telegram', 'Please wait...', True)
+        status_messages.mess_update('Loading chat list from Telegram', '', True)
         dialogs = loop.run_until_complete(self.client.get_dialogs())
         dialog_list = []
         for dialog in dialogs:
@@ -454,8 +454,7 @@ class TelegramHandler:
         """
         current_tg_dialog = self.get_dialog_by_id(dialog_id)
         if current_tg_dialog:
-            status_messages.mess_update(f'Loading messages for "{current_tg_dialog.title}" dialog', 'Please wait...',
-                                        True)
+            status_messages.mess_update(f'Loading messages for "{current_tg_dialog.title}" dialog', '', True)
         # Получаем сущность диалога по id
         dialog = self.get_entity(dialog_id)
         # Формируем текущие данные фильтра сообщений
@@ -699,9 +698,9 @@ class TelegramHandler:
                                                 f'dialog {dialog.title} and message id {downloaded_file["message_id"]}')
                 no_messages_found += 1
         # Формирование отчета по результатам загрузки файлов
-        resulting_report = (f'Files to download: {len(downloaded_file_list)}\n'
-                            f'Downloaded files: {successfully_download}\n'
-                            f'Failed to download files: {failed_to_download}\n'
+        resulting_report = (f'Files to download: {len(downloaded_file_list)};\n '
+                            f'Downloaded files: {successfully_download};\n '
+                            f'Failed to download files: {failed_to_download};\n '
                             f'No messages found: {no_messages_found}')
         status_messages.mess_update('', resulting_report)
         return resulting_report
