@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    text
+    text, Boolean, update
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
@@ -40,6 +40,7 @@ class DbMessageGroup(Base):
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
     from_id: Mapped[int] = mapped_column(Integer, nullable=True)
     reply_to: Mapped[int] = mapped_column(Integer, nullable=True)
+    marked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
@@ -309,6 +310,10 @@ class DatabaseHandler:
             self.upsert_record(DbFileType, dict(file_type_id=file_type.type_id),
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))
+        # Сбрасываем флаг "отмечена" у всех групп сообщений при старте приложения
+        stmt = update(DbMessageGroup).values(marked=False)
+        self.session.execute(stmt)
+        # Сохраняем изменения в базе данных
         self.session.commit()
         # Получаем список сохраненных диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
@@ -432,7 +437,7 @@ class DatabaseHandler:
         db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
         message_date_str = db_details.get('date').strftime(GlobalConst.message_datetime_format)
         status_messages.mess_update(
-            f'Loading details of message {message_date_str} in chat {db_details.get('dialog_title')}',
+            f'Loading details of message "{message_date_str}" in chat "{db_details.get('dialog_title')}"',
             'Message details loaded', True)
         return db_details
 

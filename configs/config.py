@@ -39,8 +39,8 @@ class GlobalConst:
     file_datetime_format = '%Y-%m-%d %H_%M_%S'
     saved_to_db_label = '✔ Saved in the DB'  # Label to indicate that a message has been saved to the database
     save_to_db_label = 'Save to DB'  # Label for the checkbox to save a message to the database
-    checked_in_db_label = '✔ Checked'
-    check_in_db_label = 'Check'
+    checked_in_db_label = ''  # '✔ Checked'
+    check_in_db_label = ''  # 'Check'
     mess_group_id = 'message_group_id'
     select_to_save = 'select_to_save_to_db'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
@@ -69,11 +69,12 @@ class StatusMessages:
         # Формируем строку для тега в HTML формате для содержимого <select>
         select_string = ''
         if self.report_list:
-            select_string = '\n'.join([f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
+            select_string = '\n'.join(
+                [f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
         self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
         print(f'{current_time}  {self.operation} - {report}')  # Print the report message to the console
 
-
+# Global instance of StatusMessages
 status_messages = StatusMessages()
 
 

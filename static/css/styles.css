@@ -100,7 +100,6 @@ html, body {
 
 /* Области прокрутки */
 .scroll {
-    padding: 0;
     overflow: auto;
 }
 
@@ -112,9 +111,10 @@ html, body {
         "filter_h chat_h message_h detail_h"
         "dialog_filters chats messages details"
         "message_filters chats messages details"
-        "save_to_db chats messages details";
+        "save_to_db chats messages details"
+        "sync_files chats messages details";
     grid-template-columns: 10fr 25fr 30fr 35fr;
-    grid-template-rows: auto 1fr 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr 1fr 1fr;
     min-height: 0;
     height: 100%;
     gap: 5px;
@@ -128,6 +128,7 @@ html, body {
 .tg-dialog_filters { grid-area: dialog_filters; }
 .tg-message_filters { grid-area: message_filters; }
 .tg-save_to_db { grid-area: save_to_db; }
+.tg-sync_files { grid-area: sync_files; }
 .tg-chats { grid-area: chats; }
 .tg-messages { grid-area: messages; }
 .tg-details { grid-area: details; }
@@ -162,49 +163,49 @@ html, body {
 .db-tags { grid-area: tags; }
 /* @formatter:on */
 
-/* Стили для CSS Grid контейнера и зон для вкладки Service */
-.container_tab_3 {
-    display: grid;
-    grid-template-areas:
-        "cell_11 cell_12 cell_13"
-        "cell_21 cell_22 cell_23"
-        "cell_31 cell_32 cell_33";
-    grid-template-columns: 300px 1fr 200px;
-    grid-template-rows: max-content auto max-content;
-    min-height: 0;
-    height: 100%;
-    gap: 5px;
-}
+/*!* Стили для CSS Grid контейнера и зон для вкладки Test tab *!*/
+/*.container_tab_3 {*/
+/*    display: grid;*/
+/*    grid-template-areas:*/
+/*        "cell_11 cell_12 cell_13"*/
+/*        "cell_21 cell_22 cell_23"*/
+/*        "cell_31 cell_32 cell_33";*/
+/*    grid-template-columns: 300px 1fr 200px;*/
+/*    grid-template-rows: max-content auto max-content;*/
+/*    min-height: 0;*/
+/*    height: 100%;*/
+/*    gap: 5px;*/
+/*}*/
 
-/* @formatter:off */
-.cell_11 { grid-area: cell_11; }
-.cell_12 { grid-area: cell_12; }
-.cell_13 { grid-area: cell_13; }
-.cell_21 { grid-area: cell_21; }
-.cell_22 { grid-area: cell_22; }
-.cell_23 { grid-area: cell_23; }
-.cell_31 { grid-area: cell_31; }
-.cell_32 { grid-area: cell_32; }
-.cell_33 { grid-area: cell_33; }
-/* @formatter:on */
+/*!* @formatter:off *!*/
+/*.cell_11 { grid-area: cell_11; }*/
+/*.cell_12 { grid-area: cell_12; }*/
+/*.cell_13 { grid-area: cell_13; }*/
+/*.cell_21 { grid-area: cell_21; }*/
+/*.cell_22 { grid-area: cell_22; }*/
+/*.cell_23 { grid-area: cell_23; }*/
+/*.cell_31 { grid-area: cell_31; }*/
+/*.cell_32 { grid-area: cell_32; }*/
+/*.cell_33 { grid-area: cell_33; }*/
+/*!* @formatter:on *!*/
 
-/* Стили для CSS Grid контейнера и зон для вкладки Service */
-.sub_container_tab_3 {
-    display: grid;
-    grid-template-areas:
-        "cell_1"
-        "cell_2"
-        "cell_3";
-    grid-template-rows: max-content auto max-content;
-    height: 100%;
-    gap: 5px;
-}
+/*!* Стили для CSS Grid контейнера и зон для вкладки Service *!*/
+/*.sub_container_tab_3 {*/
+/*    display: grid;*/
+/*    grid-template-areas:*/
+/*        "cell_1"*/
+/*        "cell_2"*/
+/*        "cell_3";*/
+/*    grid-template-rows: max-content auto max-content;*/
+/*    height: 100%;*/
+/*    gap: 5px;*/
+/*}*/
 
-/* @formatter:off */
-.cell_11 { grid-area: cell_11; }
-.cell_21 { grid-area: cell_21; }
-.cell_31 { grid-area: cell_31; }
-/* @formatter:on */
+/*!* @formatter:off *!*/
+/*.cell_11 { grid-area: cell_11; }*/
+/*.cell_21 { grid-area: cell_21; }*/
+/*.cell_31 { grid-area: cell_31; }*/
+/*!* @formatter:on *!*/
 
 /* Стили для строки статуса */
 
