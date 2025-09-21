@@ -178,22 +178,6 @@ def tg_select_messages():
     return jsonify({})
 
 
-@tg_saver.route('/tg_select_details', methods=["POST"])
-def tg_select_details():
-    """
-    Обработка отметки сохранения сообщений в базе данных в деталях сообщения
-    """
-    # Получаем id группы сообщений
-    selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
-    # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_to_save) is not None
-    # Устанавливаем признак сохранения для выбранной группы сообщений
-    if selected_message_group_id:
-        tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
-                                           selected_message_group_id).selected = is_selected
-    return jsonify({})
-
-
 @tg_saver.route('/save_selected_message_to_db', methods=["POST"])
 def save_selected_message_to_db():
     """
@@ -295,7 +279,7 @@ def sync_local_files_with_db():
     # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     status_messages.mess_update('Synchronizing the list of local files with the database',
-                                f'Files deleted from local storage: {files_deleted_count}',new_list=True)
+                                f'Files deleted from local storage: {files_deleted_count}', new_list=True)
     # Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
@@ -354,22 +338,6 @@ def db_get_details(message_group_id: str):
 def db_select_messages():
     """
     Обработка отметки сообщений в базе данных в списке сообщений
-    """
-    # # Получаем id группы сообщений
-    # selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
-    # # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    # is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
-    # # Устанавливаем признак сохранения для выбранной группы сообщений
-    # if selected_message_group_id:
-    #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
-    #                                        selected_message_group_id).selected = is_selected
-    return jsonify({})
-
-
-@tg_saver.route('/db_select_details', methods=["POST"])
-def db_select_details():
-    """
-    Обработка отметки для сообщений в базе данных в деталях сообщения
     """
     # # Получаем id группы сообщений
     # selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
@@ -471,10 +439,12 @@ if __name__ == '__main__':
 # TODO: сделать возможность удаления сообщений из базы данных
 # TODO: Режимы: автоматические отметки по условию (продумать условия)
 # TODO: Режимы: просмотр базы с возможностью удаления
-# TODO: Сделать Избранное и на английском
+# TODO: Сделать Избранное (и на английском)
 # TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
-# TODO: В диалогах отличать свои и не свои сообщения
+# TODO: В диалогах различать свои и не свои сообщения
+# TODO: В сервисной кнопке сделать удаление неиспользуемых диалогов
+# TODO: В сервисной кнопке сделать резервное копирование базы данных
 # TODO: Сделать Unit тесты
 
 # Оставлять архивные подписки в базе

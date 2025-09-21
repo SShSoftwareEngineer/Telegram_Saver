@@ -109,12 +109,11 @@ html, body {
     display: grid;
     grid-template-areas:
         "filter_h chat_h message_h detail_h"
-        "dialog_filters chats messages details"
-        "message_filters chats messages details"
-        "save_to_db chats messages details"
-        "sync_files chats messages details";
+        "filters chats action_bar details"
+        "filters chats messages details"
+        "save_to_db chats messages details";
     grid-template-columns: 10fr 25fr 30fr 35fr;
-    grid-template-rows: auto 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto 1fr;
     min-height: 0;
     height: 100%;
     gap: 5px;
@@ -125,14 +124,21 @@ html, body {
 .tg-chat_h { grid-area: chat_h; }
 .tg-message_h { grid-area: message_h; }
 .tg-detail_h { grid-area: detail_h; }
-.tg-dialog_filters { grid-area: dialog_filters; }
-.tg-message_filters { grid-area: message_filters; }
+.tg-filters { grid-area: filters; }
 .tg-save_to_db { grid-area: save_to_db; }
-.tg-sync_files { grid-area: sync_files; }
 .tg-chats { grid-area: chats; }
+.tg-action_bar { grid-area: action_bar; }
 .tg-messages { grid-area: messages; }
 .tg-details { grid-area: details; }
 /* @formatter:on */
+
+.tg-filter-divider {
+    height: 1px;
+    background-color: #ddd;
+    margin-top: 15px;
+    margin-bottom: 7px;
+    flex-shrink: 0;
+}
 
 .save_to_db_area_format {
     display: flex;
@@ -144,9 +150,10 @@ html, body {
     display: grid;
     grid-template-areas:
         "filters_h messages_h details_h tags_h"
+        "filters action_bar details tags"
         "filters messages details tags";
     grid-template-columns: 15fr 30fr 40fr 15fr;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     min-height: 0;
     height: 100%;
     gap: 5px;
@@ -158,6 +165,7 @@ html, body {
 .db-details_h { grid-area: details_h; }
 .db-tags_h { grid-area: tags_h; }
 .db-filters { grid-area: filters; }
+.db-action_bar { grid-area: action_bar; }
 .db-messages { grid-area: messages; }
 .db-details { grid-area: details; }
 .db-tags { grid-area: tags; }
@@ -206,6 +214,61 @@ html, body {
 /*.cell_21 { grid-area: cell_21; }*/
 /*.cell_31 { grid-area: cell_31; }*/
 /*!* @formatter:on *!*/
+
+
+/* Панели действий для выбора сообщений из списка */
+
+/* Кнопка панели действий */
+.action-bar-button {
+    width: 100%;
+    margin: 2px 6px;
+}
+
+/* Расположение кнопки панели действий */
+.action-bar-button-area {
+    display: flex;
+    align-items: center;
+}
+
+/* Сетка разметки панели действий для выбора сообщений Telegram */
+.tg-action-bar-grid {
+    display: grid;
+    grid-template-areas:
+        "select deselect invertsel"
+        "save_db save_db save_db";
+    grid-template-columns: 1fr 1fr 1fr;
+    min-height: 0;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.tg-select { grid-area: select }
+.tg-deselect { grid-area: deselect }
+.tg-invert { grid-area: invertsel }
+.tg-save_db { grid-area: save_db }
+/* @formatter:on */
+
+/* Сетка разметки панели действий для выбора сообщений Telegram */
+.db-action-bar-grid {
+    display: grid;
+    grid-template-areas:
+        "select deselect deselect invertsel"
+        "export export delete delete";
+    grid-template-columns: 2fr 1fr 1fr 2fr;
+    min-height: 0;
+    height: 100%;
+    gap: 5px;
+}
+
+/* @formatter:off */
+.db-select { grid-area: select }
+.db-deselect { grid-area: deselect }
+.db-invert { grid-area: invertsel }
+.db-export { grid-area: export }
+.db-delete { grid-area: delete }
+/* @formatter:on */
+
 
 /* Стили для строки статуса */
 
@@ -304,7 +367,7 @@ html, body {
     border-radius: 4px;
 }
 
-/* Элемент выбора  */
+/* Элемент выбора Select */
 .select-element {
     padding: 2px;
     border-radius: 4px;

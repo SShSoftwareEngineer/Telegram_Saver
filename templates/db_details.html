@@ -14,14 +14,6 @@
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
             <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
-        {% else %}
-            {# Создание чекбокса для отметки на сохранение в БД #}
-            <span class="message-checkbox">
-                {% set checkbox_name = constants.select_to_save+'_det = '+group %}
-                <input type="checkbox" id="{{ checkbox_name }}" name="{{ checkbox_name }}"
-                       onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/db_select_details')">
-                <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
-            </span>
         {% endif %}
     </div>
     {# Вывод текста сообщения #}

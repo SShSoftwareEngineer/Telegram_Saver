@@ -40,7 +40,7 @@ class DbMessageGroup(Base):
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
     from_id: Mapped[int] = mapped_column(Integer, nullable=True)
     reply_to: Mapped[int] = mapped_column(Integer, nullable=True)
-    marked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
@@ -311,7 +311,7 @@ class DatabaseHandler:
                                dict(name=file_type.name, alt_text=file_type.alt_text,
                                     default_ext=file_type.default_ext, sign=file_type.sign))
         # Сбрасываем флаг "отмечена" у всех групп сообщений при старте приложения
-        stmt = update(DbMessageGroup).values(marked=False)
+        stmt = update(DbMessageGroup).values(selected=False)
         self.session.execute(stmt)
         # Сохраняем изменения в базе данных
         self.session.commit()

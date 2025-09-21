@@ -37,8 +37,8 @@ class GlobalConst:
     last_days_by_default = 30  # Default number of last days for messages filter
     message_datetime_format = '%d-%m-%Y %H:%M :%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'
-    saved_to_db_label = '✔ Saved in the DB'  # Label to indicate that a message has been saved to the database
-    save_to_db_label = 'Save to DB'  # Label for the checkbox to save a message to the database
+    saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database
+    save_to_db_label = 'Save'  # Label for the checkbox to save a message to the database
     checked_in_db_label = ''  # '✔ Checked'
     check_in_db_label = ''  # 'Check'
     mess_group_id = 'message_group_id'
