@@ -10,14 +10,6 @@
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if tg_details.saved_to_db %}
             <span>{{ constants.saved_to_db_label }}</span>
-        {% else %}
-            {# Создание чекбокса для отметки на сохранение в БД #}
-            {% set checkbox_name = constants.select_to_save+'_det = '+group %}
-            <span>
-            <input type="checkbox" id="{{ checkbox_name }}" name="{{ checkbox_name }}"
-                   onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/tg_select_details')">
-            <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
-        </span>
         {% endif %}
     </div>
     <div style="text-align: center;">

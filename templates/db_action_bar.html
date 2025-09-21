@@ -1,0 +1,22 @@
+<!-- Шаблон панели действий выбора сообщений базы данных -->
+
+<!-- Конфигурация элементов управления формы -->
+{% set form_cfg = form_btn_cfg.db_detail_tags %}
+
+<div class="db-action-bar-grid">
+    <div class="db-select action-bar-button-area">
+        <button class="action-bar-button">Select all</button>
+    </div>
+    <div class="db-deselect action-bar-button-area">
+        <button class="action-bar-button">Deselect all</button>
+    </div>
+    <div class="db-invert action-bar-button-area">
+        <button class="action-bar-button">Invert selection</button>
+    </div>
+    <div class="db-export action-bar-button-area">
+        <button class="action-bar-button">Export selection</button>
+    </div>
+    <div class="db-delete action-bar-button-area">
+        <button class="action-bar-button">Delete selection</button>
+    </div>
+</div>
