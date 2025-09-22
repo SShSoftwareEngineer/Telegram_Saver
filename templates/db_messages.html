@@ -16,19 +16,14 @@
                 {{ message_date }}</a>
             {# Вывод начала названия диалога #}
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(25) }}</span>
-            {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-            {% if db_message.saved_to_db %}
-                <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
-            {% else %}
-                {# Создание чекбокса для отметки на сохранение в БД #}
-                <span class="message-checkbox">
-                    {% set checkbox_name = constants.select_to_save+'_mess = '+db_message.grouped_id %}
-                    <input type="checkbox"
-                           id="{{ checkbox_name }}" name="{{ checkbox_name }}"
-                           onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/db_select_messages')">
-                    <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
-                </span>
-            {% endif %}
+            {# Создание чекбокса для отметки на экспорт или удаление #}
+            <span class="db-message-checkbox">
+                {% set checkbox_name = constants.select_in_database+'_mess = '+db_message.grouped_id %}
+                <input type="checkbox"
+                       id="{{ checkbox_name }}" name="{{ checkbox_name }}"
+                       onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/db_select_messages')">
+                <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
+            </span>
             {# Вывод обрезанного текста #}
             {% if db_message.text %}
                 <br>

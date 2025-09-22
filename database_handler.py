@@ -376,6 +376,12 @@ class DatabaseHandler:
         """
         Получение списка групп сообщений с учетом фильтров и сортировки
         """
+        # Сбрасываем флаг "отмечена" у всех групп сообщений
+        stmt = update(DbMessageGroup).values(selected=False)
+        self.session.execute(stmt)
+        # Сохраняем изменения в базе данных
+        self.session.commit()
+        # Формируем запрос с учетом фильтров и сортировки
         stmt = select(DbMessageGroup)
         # Фильтр по выбранным диалогам
         if self.message_sort_filter.selected_dialog_list:

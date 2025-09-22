@@ -42,7 +42,8 @@ class GlobalConst:
     checked_in_db_label = ''  # '✔ Checked'
     check_in_db_label = ''  # 'Check'
     mess_group_id = 'message_group_id'
-    select_to_save = 'select_to_save_to_db'
+    select_in_telegram = 'select_in_telegram'
+    select_in_database = 'select_in_database'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
 
 
