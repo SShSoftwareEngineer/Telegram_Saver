@@ -395,12 +395,12 @@ html, body {
 }
 
 /* Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
-.message-checkbox {
+.tg-message-checkbox, .db-message-checkbox {
     float: right;
 }
 
 /* Отметка о наличии сохраненного сообщения в БД */
-.saved-message-checkbox {
+.selected-message-checkbox {
     float: right;
     color: green;
 }

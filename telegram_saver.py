@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 from flask import Flask, render_template, request, send_from_directory, jsonify
+from sqlalchemy import update, select, func
 
 from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages
 from telegram_handler import TelegramHandler, TgFile
@@ -170,12 +171,16 @@ def tg_select_messages():
     # Получаем id группы сообщений
     selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
     # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_to_save) is not None
+    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_in_telegram) is not None
     # Устанавливаем признак сохранения для выбранной группы сообщений
     if selected_message_group_id:
         tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
                                            selected_message_group_id).selected = is_selected
-    return jsonify({})
+    # Подсчитываем количество отмеченных сообщений и формируем отчет
+    all_message_count = len(tg_handler.current_state.message_group_list)
+    sel_message_count = len([msg for msg in tg_handler.current_state.message_group_list if msg.selected])
+    sel_all_msg = f'({sel_message_count} / {all_message_count})' if sel_message_count else f'({all_message_count})'
+    return jsonify({'tg-messages-count': sel_all_msg})
 
 
 @tg_saver.route('/save_selected_message_to_db', methods=["POST"])
@@ -339,15 +344,25 @@ def db_select_messages():
     """
     Обработка отметки сообщений в базе данных в списке сообщений
     """
-    # # Получаем id группы сообщений
-    # selected_message_group_id = get_dict_value_by_partial_key(request.form, ProjectConst.mess_group_id)
-    # # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    # is_selected = get_dict_value_by_partial_key(request.form, ProjectConst.select_to_save) is not None
-    # # Устанавливаем признак сохранения для выбранной группы сообщений
-    # if selected_message_group_id:
-    #     tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
-    #                                        selected_message_group_id).selected = is_selected
-    return jsonify({})
+    # Получаем id группы сообщений
+    selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
+    # Получаем значение признака сохранения (чекбокса) для группы сообщений
+    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_in_database) is not None
+    # Устанавливаем признак "selected" для выбранной группы сообщений
+    if selected_message_group_id:
+        stmt = (update(DbMessageGroup)
+                .where(DbMessageGroup.grouped_id == selected_message_group_id)
+                .values(selected=is_selected))
+        db_handler.session.execute(stmt)
+        db_handler.session.commit()
+    # Подсчитываем количество отмеченных сообщений и формируем отчет
+    with db_handler.session as session:
+        stmt = (select(func.count())
+                .where(DbMessageGroup.selected.is_(True)))
+        sel_message_count = session.execute(stmt).scalar_one()
+    all_message_count = len(db_handler.current_state.message_group_list)
+    sel_all_msg = f'({sel_message_count} / {all_message_count})' if sel_message_count else f'({all_message_count})'
+    return jsonify({'db-messages-count': sel_all_msg})
 
 
 @tg_saver.route('/db_tag_add', methods=['POST'])

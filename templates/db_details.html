@@ -13,7 +13,7 @@
         <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|truncate(25) }}</span>
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
-            <span class="saved-message-checkbox">{{ constants.checked_in_db_label }}</span>
+            <span class="selected-message-checkbox">{{ constants.checked_in_db_label }}</span>
         {% endif %}
     </div>
     {# Вывод текста сообщения #}

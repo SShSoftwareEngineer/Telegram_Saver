@@ -106,6 +106,8 @@ function submitFormData(config, url) {
 
 // Универсальная функция обновления элементов по id = ключам из ответа
 function updateElementsFromResponse(data) {
+    console.log('updateElementsFromResponse called with:', data);
+
     Object.keys(data).forEach(key => {
         const element = document.getElementById(key);
         if (!element) {
@@ -114,6 +116,8 @@ function updateElementsFromResponse(data) {
         }
         if (element && typeof data[key] === 'string') {
             element.innerHTML = data[key];
+        } else {
+            console.warn(`❌ Data type for ${key} is:`, typeof data[key]);
         }
     });
 }
@@ -240,7 +244,10 @@ function handleCheckbox(checkbox, groupInputName, url) {
         body: formData
     })
         .then(r => r.json())
-        .then(data => console.log('Success checkbox handle:', data))
+        .then(data => {
+            console.log('Success checkbox handle:', data);
+            updateElementsFromResponse(data); // ← Добавьте эту строку
+        })
         .catch(err => {
             console.error('Error checkbox handle:', err);
             checkbox.checked = !checkbox.checked; // Откат при ошибке
