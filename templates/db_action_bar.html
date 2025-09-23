@@ -4,14 +4,26 @@
 {% set form_cfg = form_btn_cfg.db_detail_tags %}
 
 <div class="db-action-bar-grid">
-    <div class="db-select action-bar-button-area">
-        <button class="action-bar-button">Select all</button>
+    <div class="tg-select action-bar-button-area">
+        {# Apply to select all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="selectAllCB('.db-message-checkbox', 'db-messages-count');">
+            Select all
+        </button>
     </div>
-    <div class="db-deselect action-bar-button-area">
-        <button class="action-bar-button">Deselect all</button>
+    <div class="tg-deselect action-bar-button-area">
+        {# Apply to deselect all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="deSelectAllCB('.db-message-checkbox', 'db-messages-count');">
+            Deselect all
+        </button>
     </div>
-    <div class="db-invert action-bar-button-area">
-        <button class="action-bar-button">Invert selection</button>
+    <div class="tg-invert action-bar-button-area">
+        {# Apply to invert selection for all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="invertSelectionCB('.db-message-checkbox', 'db-messages-count');">
+            Invert selection
+        </button>
     </div>
     <div class="db-export action-bar-button-area">
         <button class="action-bar-button">Export selection</button>

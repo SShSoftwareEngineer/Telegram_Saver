@@ -19,11 +19,12 @@
                 <span class="selected-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
                 {# Создание чекбокса для отметки на сохранение в БД #}
-                <span class="tg-message-checkbox">
+                <span class="message-checkbox">
                     {% set checkbox_name = constants.select_in_telegram+'_mess = '+tg_message.grouped_id %}
-                    <input type="checkbox"
+                    <input type="checkbox" class="tg-message-checkbox"
                            id="{{ checkbox_name }}" name="{{ checkbox_name }}"
-                           onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/tg_select_messages')">
+                           onchange="updateCheckboxCounter('.tg-message-checkbox', 'tg-messages-count');">
+{#                           onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/tg_select_messages')">#}
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}

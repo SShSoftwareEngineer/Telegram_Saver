@@ -106,7 +106,7 @@ function submitFormData(config, url) {
 
 // Универсальная функция обновления элементов по id = ключам из ответа
 function updateElementsFromResponse(data) {
-    console.log('updateElementsFromResponse called with:', data);
+    // console.log('updateElementsFromResponse called with:', data);
 
     Object.keys(data).forEach(key => {
         const element = document.getElementById(key);
@@ -167,7 +167,6 @@ function callHandler(url) {
         })
         .catch(err => {
             console.error('Error:', err);
-            // Можно показать общую ошибку или не показывать вообще
         });
 }
 
@@ -297,6 +296,53 @@ setInterval(() => {
             }
         });
 }, 500);
+
+
+// Функции для работы с checkbox списков сообщений Telegram и базы данных
+
+// Функция для установки выделения всех checkbox в списке по ID контейнера
+function selectAllCB(selector, counterId) {
+    const checkboxes = document.querySelectorAll(selector);
+    checkboxes.forEach(cb => cb.checked = true);
+    updateCheckboxCounter(selector, counterId);
+}
+
+// Функция для снятия выделения всех checkbox в списке по ID контейнера
+function deSelectAllCB(selector, counterId) {
+    const checkboxes = document.querySelectorAll(selector);
+    checkboxes.forEach(cb => cb.checked = false);
+    updateCheckboxCounter(selector, counterId);
+}
+
+// Функция для инвертирования выделения всех checkbox в списке по ID контейнера
+function invertSelectionCB(selector, counterId) {
+    const checkboxes = document.querySelectorAll(selector);
+    checkboxes.forEach(cb => cb.checked = !cb.checked);
+    updateCheckboxCounter(selector, counterId);
+}
+
+// Функция для обновления счетчика выделенных и всех checkbox в списке по селектору
+function updateCheckboxCounter(checkboxSelector, modifyElementId) {
+    const allCheckboxes = document.querySelectorAll(checkboxSelector);
+    const allCount = allCheckboxes.length;
+    const selectedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    const counterElement = document.getElementById(modifyElementId);
+    if (counterElement) {
+        if (counterElement.tagName === 'INPUT' || counterElement.tagName === 'TEXTAREA') {
+            counterElement.value = `(${selectedCount} / ${allCount})`;
+        } else {
+            counterElement.textContent = `(${selectedCount} / ${allCount})`;
+        }
+    } else {
+        console.error(`Элемент с ID "${modifyElementId}" не найден.`);
+    }
+}
+
+// Функция для получения массива ID выделенных checkbox в списке по селектору
+function getSelectedIdsCB(checkboxSelector) {
+    const selected = document.querySelectorAll(`${checkboxSelector}:checked`);
+    return Array.from(selected).map(cb => cb.id);
+}
 
 
 // Функции для работы с уведомлениями

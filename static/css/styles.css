@@ -395,7 +395,7 @@ html, body {
 }
 
 /* Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
-.tg-message-checkbox, .db-message-checkbox {
+.message-checkbox {
     float: right;
 }
 
