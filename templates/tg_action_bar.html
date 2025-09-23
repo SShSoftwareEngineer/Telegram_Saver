@@ -5,13 +5,25 @@
 
 <div class="tg-action-bar-grid">
     <div class="tg-select action-bar-button-area">
-        <button class="action-bar-button">Select all</button>
+        {# Apply to select all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="selectAllCB('.tg-message-checkbox', 'tg-messages-count');">
+            Select all
+        </button>
     </div>
     <div class="tg-deselect action-bar-button-area">
-        <button class="action-bar-button">Deselect all</button>
+        {# Apply to deselect all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="deSelectAllCB('.tg-message-checkbox', 'tg-messages-count');">
+            Deselect all
+        </button>
     </div>
     <div class="tg-invert action-bar-button-area">
-        <button class="action-bar-button">Invert selection</button>
+        {# Apply to invert selection for all messages #}
+        <button type="button" class="action-bar-button"
+                onclick="invertSelectionCB('.tg-message-checkbox', 'tg-messages-count');">
+            Invert selection
+        </button>
     </div>
     <div class="tg-save_db action-bar-button-area">
         {# Apply to save selected messages to database #}

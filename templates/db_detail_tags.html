@@ -99,7 +99,8 @@
 </div>
 
 <!-- Adding a tag to the tag filter -->
-<button class="apply-filters-buttons vertical-spread"
+<button type="button"
+        class="apply-filters-buttons vertical-spread"
         onclick="addTagToFilterFromAllTags('{{ form_cfg.all_detail_tags }}',
                 '{{ form_btn_cfg.db_message_filter.tag_query }}',
                 separator = '{{ constants.tag_filter_separator }}')">
