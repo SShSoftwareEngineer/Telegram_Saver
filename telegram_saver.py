@@ -188,8 +188,10 @@ def save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
+    selected_messages_ids = request.form.getlist(GlobalConst.checkbox_selected_ids)
+    selected_messages_ids=[x.replace(GlobalConst.select_in_telegram,'').strip() for x in selected_messages_ids]
     for tg_message_group in tg_handler.current_state.message_group_list:
-        if tg_message_group.selected:
+        if tg_message_group.grouped_id in selected_messages_ids:
             # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных.
             # Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
@@ -254,7 +256,6 @@ def save_selected_message_to_db():
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
             # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
-            tg_message_group.selected = False
             tg_message_group.saved_to_db = True
             # Обновляем список сохраненных диалогов
             db_handler.all_dialogues_list = db_handler.get_dialog_list()

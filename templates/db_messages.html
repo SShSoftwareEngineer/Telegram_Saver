@@ -18,11 +18,10 @@
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(25) }}</span>
             {# Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
-                {% set checkbox_name = constants.select_in_database+'_mess = '+db_message.grouped_id %}
+                {% set checkbox_name = constants.select_in_database+' '+db_message.grouped_id %}
                 <input type="checkbox" class="db-message-checkbox"
                        id="{{ checkbox_name }}" name="{{ checkbox_name }}"
                        onchange="updateCheckboxCounter('.db-message-checkbox', 'db-messages-count');">
-{#                       onchange="handleCheckbox(this, '{{ message_grouped_id }}', '/db_select_messages')">#}
                 <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
             </span>
             {# Вывод обрезанного текста #}

@@ -44,6 +44,7 @@ class GlobalConst:
     mess_group_id = 'message_group_id'
     select_in_telegram = 'select_in_telegram'
     select_in_database = 'select_in_database'
+    checkbox_selected_ids = 'selected_ids'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
 
 
@@ -74,6 +75,7 @@ class StatusMessages:
                 [f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
         self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
         print(f'{current_time}  {self.operation} - {report}')  # Print the report message to the console
+
 
 # Global instance of StatusMessages
 status_messages = StatusMessages()
@@ -162,35 +164,46 @@ class FormButtonCfg:
                         'dialog_type': 'tg_dialog_type', 'dialog_title_query': 'tg_title_query',
                         'radio': ['sorting_field', 'sorting_order', 'dialog_type'],
                         'input': ['dialog_title_query'],
-                        'select': [], 'checkbox': []}
+                        'select': [], 'checkbox': [], 'checkbox_list': []}
     tg_message_filter = {'sorting_order': 'tg_mess_sort_order', 'date_from': 'tg_mess_date_from',
                          'date_to': 'tg_mess_date_to', 'message_query': 'tg_message_query',
                          'radio': ['sorting_order'],
                          'input': ['date_from', 'date_to', 'message_query'],
-                         'select': [], 'checkbox': []}
+                         'select': [], 'checkbox': [], 'checkbox_list': []}
     db_message_filter = {'dialog_select': 'db_dialog_select', 'sorting_field': 'db_mess_sort_field',
                          'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
                          'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
                          'radio': ['sorting_field', 'sorting_order'],
                          'input': ['date_from', 'date_to', 'message_query', 'tag_query'],
-                         'select': ['dialog_select'], 'checkbox': []}
+                         'select': ['dialog_select'], 'checkbox': [], 'checkbox_list': []}
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',
                       'tag_sorting_field': 'db_tag_sorting_field',
                       'input': ['edit_tag_name', 'old_tag_name'],
                       'select': ['curr_message_tags', 'all_detail_tags'],
-                      'radio': ['tag_sorting_field'], 'checkbox': []}
+                      'radio': ['tag_sorting_field'], 'checkbox': [], 'checkbox_list': []}
+    tg_db_checkbox_list = {'tg_checkbox_list': 'tg-message-checkbox', 'db_checkbox_list': 'db-message-checkbox',
+                           'input': [], 'select': [], 'radio': [], 'checkbox': [],
+                           'checkbox_list': ['tg_checkbox_list', 'db_checkbox_list']}
 
     @staticmethod
     def get_form_button_cfg(form_cfg: dict) -> dict:
         """
         Returns the button configuration for a given form.
         """
-        result = {'radio': [], 'input': [], 'select': [], 'checkbox': []}  # Default structure, do not change key names
+        result = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
+                  'checkbox_list': []}  # Default structure, do not change key names
         for key in result.keys():
-            for field_name in form_cfg[key]:
-                result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
+            if key == 'checkbox_list':
+                for field_name in form_cfg[key]:
+                    result[key].append({
+                        'selector': f'input.{form_cfg[field_name]}',
+                        'name': GlobalConst.checkbox_selected_ids
+                    })
+            else:
+                for field_name in form_cfg[key]:
+                    result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
         return result
 
 

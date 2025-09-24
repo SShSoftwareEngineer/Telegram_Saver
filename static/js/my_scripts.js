@@ -89,11 +89,20 @@ function submitFormData(config, url) {
     (config.select || []).forEach(field =>
         appendIfExists(formData, field.name, getSelectValue(field.id))
     );
-    // Обработка checkbox групп (массивы значений)
+    // Обработка checkbox группы, объединенных одним name, обрабатывает массив значений checkbox
     (config.checkbox || []).forEach(field => {
         const values = getCheckboxValues(field.id);
         values.forEach(value => formData.append(field.name, value));
     });
+    // Обработка списка ID checkbox (не группы), обрабатывает массив ID чекбоксов
+    (config.checkbox_list || []).forEach(field => {
+        const selected = document.querySelectorAll(`${field.selector}:checked`);
+        const selectedIds = Array.from(selected).map(cb => cb.id);
+        selectedIds.forEach(id => {
+            formData.append(field.name, id);
+        });
+    });
+
     // Отправка запроса и возврат Promise
     return fetch(url, {method: 'POST', body: formData})
         .then(r => r.json())
@@ -225,34 +234,6 @@ function clearFormFields(ids) {
     });
 }
 
-// Функция обработки Checkbox
-function handleCheckbox(checkbox, groupInputName, url) {
-    const formData = new FormData();
-    // Добавляем данные checkbox
-    if (checkbox.checked) {
-        formData.append(checkbox.name, 'on');
-    }
-    // Добавляем данные связанного input
-    const groupInput = document.querySelector(`input[name="${groupInputName}"]`);
-    if (groupInput) {
-        formData.append(groupInputName, groupInput.value);
-    }
-    // Отправляем данные в обработчик
-    fetch(url, {
-        method: 'POST',
-        body: formData
-    })
-        .then(r => r.json())
-        .then(data => {
-            console.log('Success checkbox handle:', data);
-            updateElementsFromResponse(data); // ← Добавьте эту строку
-        })
-        .catch(err => {
-            console.error('Error checkbox handle:', err);
-            checkbox.checked = !checkbox.checked; // Откат при ошибке
-        });
-}
-
 
 // Функция добавления тега в список ключевых слов для фильтра по тегам
 function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLineSeparator = '\n') {
@@ -336,12 +317,6 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
     } else {
         console.error(`Элемент с ID "${modifyElementId}" не найден.`);
     }
-}
-
-// Функция для получения массива ID выделенных checkbox в списке по селектору
-function getSelectedIdsCB(checkboxSelector) {
-    const selected = document.querySelectorAll(`${checkboxSelector}:checked`);
-    return Array.from(selected).map(cb => cb.id);
 }
 
 

@@ -199,7 +199,6 @@ class TgMessageGroup:
     reply_to: Optional[int] = None
     files_report: Optional[str] = ''
     saved_to_db: bool = False
-    selected: bool = False
 
     # dialog_title: str
     # existing_files: List[TgFile]
