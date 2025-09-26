@@ -39,7 +39,6 @@ class DbMessageGroup(Base):
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
     from_id: Mapped[int] = mapped_column(Integer, nullable=True)
-    reply_to: Mapped[int] = mapped_column(Integer, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))

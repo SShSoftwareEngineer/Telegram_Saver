@@ -309,13 +309,31 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
     const selectedCount = Array.from(allCheckboxes).filter(cb => cb.checked).length;
     const counterElement = document.getElementById(modifyElementId);
     if (counterElement) {
-        if (counterElement.tagName === 'INPUT' || counterElement.tagName === 'TEXTAREA') {
-            counterElement.value = `(${selectedCount} / ${allCount})`;
+        let counterString;
+        if (selectedCount > 0) {
+            counterString = `(${selectedCount} / ${allCount})`;
         } else {
-            counterElement.textContent = `(${selectedCount} / ${allCount})`;
+            counterString = `(${allCount})`;
+        }
+        if (counterElement.tagName === 'INPUT' || counterElement.tagName === 'TEXTAREA') {
+            counterElement.value = counterString;
+        } else {
+            counterElement.textContent = counterString;
         }
     } else {
         console.error(`Элемент с ID "${modifyElementId}" не найден.`);
+    }
+}
+
+// Функция удаления выделенных сообщений с подтверждением
+function deleteSelectedMessages(checkboxSelector, config, url) {
+    const selected = document.querySelectorAll(`${checkboxSelector}:checked`);
+    const selectedIds = Array.from(selected).map(cb => cb.id);
+    const totalSelected = selectedIds.length;
+    if (totalSelected > 0) {
+        if (confirm(`Удалить ${totalSelected} сообщений? Действие необратимо!`)) {
+            pressFormButton(config, url);
+        }
     }
 }
 

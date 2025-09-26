@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import List, Optional
 
+import unicodedata
 from dateutil.parser import parse
 
 # Set the profile for the project
@@ -33,7 +34,7 @@ class GlobalConst:
     """
     max_download_file_size = 50 * 2 ** 20  # 50 MB
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
-    truncated_text_length = 150  # Maximum length of text to display in the web page
+    truncated_text_length = 175  # Maximum length of text to display in the web page
     last_days_by_default = 30  # Default number of last days for messages filter
     message_datetime_format = '%d-%m-%Y %H:%M :%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'
@@ -44,7 +45,6 @@ class GlobalConst:
     mess_group_id = 'message_group_id'
     select_in_telegram = 'select_in_telegram'
     select_in_database = 'select_in_database'
-    checkbox_selected_ids = 'selected_ids'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
 
 
@@ -199,7 +199,7 @@ class FormButtonCfg:
                 for field_name in form_cfg[key]:
                     result[key].append({
                         'selector': f'input.{form_cfg[field_name]}',
-                        'name': GlobalConst.checkbox_selected_ids
+                        'name': form_cfg[field_name]
                     })
             else:
                 for field_name in form_cfg[key]:
@@ -235,6 +235,25 @@ def parse_date_string(date_str: str):
         return parse(date_str, dayfirst=True)
     except (ValueError, OverflowError):
         return None
+
+
+def clean_file_path(file_path: str | None) -> str | None:
+    """
+    Очищает имя файла или директории от недопустимых символов
+    """
+    clean_filepath = None
+    if file_path:
+        # Нормализуем Юникод (убирает акценты, приводит к ASCII)
+        clean_filepath = unicodedata.normalize('NFKD', file_path).encode('ascii', 'ignore').decode('ascii')
+        # Удаляем или заменяем недопустимые символы Windows/Linux/URL: <>:"/\\|?* + пробелы, апострофы, скобки, амперсанды, проценты
+        clean_filepath = re.sub(r'[<>:"/\\|?*\'`\s\t\n\r\f\v%&()]', '_', clean_filepath)
+        # Убираем множественные символы замены подряд на одинарные, а также в начале и конце
+        clean_filepath = re.sub(f'{re.escape('_')}{{2,}}', '_', clean_filepath).strip('_')
+        # Убираем множественные пробелы подряд на одинарные, а также в начале и конце
+        clean_filepath = re.sub(f'{re.escape(' ')}{{2,}}', ' ', clean_filepath).strip(' ')
+        # Убираем лишние точки в начале и конце
+        clean_filepath = clean_filepath.strip('.')
+    return clean_filepath
 
 
 if __name__ == '__main__':

@@ -4,7 +4,8 @@ from typing import Optional
 from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import update, select, func
 
-from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages
+from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages, \
+    clean_file_path
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -163,36 +164,17 @@ def get_dict_value_by_partial_key(my_dict: dict, key_part: str) -> Optional[str]
     return None
 
 
-@tg_saver.route('/tg_select_messages', methods=["POST"])
-def tg_select_messages():
-    """
-    Обработка отметки сохранения сообщений Telegram в списке сообщений
-    """
-    # Получаем id группы сообщений
-    selected_message_group_id = get_dict_value_by_partial_key(request.form, GlobalConst.mess_group_id)
-    # Получаем значение признака сохранения (чекбокса) для группы сообщений
-    is_selected = get_dict_value_by_partial_key(request.form, GlobalConst.select_in_telegram) is not None
-    # Устанавливаем признак сохранения для выбранной группы сообщений
-    if selected_message_group_id:
-        tg_handler.get_message_group_by_id(tg_handler.current_state.message_group_list,
-                                           selected_message_group_id).selected = is_selected
-    # Подсчитываем количество отмеченных сообщений и формируем отчет
-    all_message_count = len(tg_handler.current_state.message_group_list)
-    sel_message_count = len([msg for msg in tg_handler.current_state.message_group_list if msg.selected])
-    sel_all_msg = f'({sel_message_count} / {all_message_count})' if sel_message_count else f'({all_message_count})'
-    return jsonify({'tg-messages-count': sel_all_msg})
-
-
-@tg_saver.route('/save_selected_message_to_db', methods=["POST"])
-def save_selected_message_to_db():
+@tg_saver.route('/tg_save_selected_message_to_db', methods=["POST"])
+def tg_save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    selected_messages_ids = request.form.getlist(GlobalConst.checkbox_selected_ids)
-    selected_messages_ids=[x.replace(GlobalConst.select_in_telegram,'').strip() for x in selected_messages_ids]
+    form_cfg = FormButtonCfg.tg_db_checkbox_list
+    selected_messages_ids = request.form.getlist(form_cfg['tg_checkbox_list'])
+    selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip() for x in selected_messages_ids]
     for tg_message_group in tg_handler.current_state.message_group_list:
         if tg_message_group.grouped_id in selected_messages_ids:
-            # Если группа сообщений отмечена для сохранения, сохраняем её в базе данных.
+            # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных.
             # Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
             db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
@@ -209,7 +191,6 @@ def save_selected_message_to_db():
                                                              truncated_text=tg_message_group.truncated_text,
                                                              files_report=tg_message_group.files_report,
                                                              from_id=tg_message_group.from_id,
-                                                             reply_to=tg_message_group.reply_to,
                                                              dialog_id=tg_dialog.dialog_id))
             # Устанавливаем relationship для группы сообщений, если не установлен
             if db_message_group.dialog is None:
@@ -243,21 +224,20 @@ def save_selected_message_to_db():
                 'text': tg_message_group.text,
                 'files_report': tg_message_group.files_report,
                 'from_id': tg_message_group.from_id,
-                'reply_to': tg_message_group.reply_to,
                 'files': [{'file_name': Path(tg_file.file_path).name,
                            'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
             }
             # Формирование пути к файлу в файловой системе
             file_name = TgFile.get_self_file_name(tg_message_group.date, MessageFileTypes.CONTENT,
                                                   tg_message_group.grouped_id, 0, MessageFileTypes.CONTENT.default_ext)
-            file_path = Path(
-                ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
+            file_path = Path(ProjectDirs.media_dir) / clean_file_path(
+                tg_dialog.get_self_dir()) / tg_message_group.get_self_dir() / file_name
             html_content = render_template('export_message.html', **message_group_export_data)
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
-            # Сбрасываем отметку "сохранить" после сохранения в БД и устанавливаем признак "сохранено"
+            # После сохранения в БД устанавливаем признак "сохранено"
             tg_message_group.saved_to_db = True
-            # Обновляем список сохраненных диалогов
+            # Обновляем список диалогов, сохраненных в базе данных
             db_handler.all_dialogues_list = db_handler.get_dialog_list()
             db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
     return jsonify({FormButtonCfg.db_message_filter.get(
@@ -265,10 +245,10 @@ def save_selected_message_to_db():
                                                                'title')})
 
 
-@tg_saver.route('/sync_local_files_with_db', methods=["POST"])
-def sync_local_files_with_db():
+@tg_saver.route('/db_database_maintenance', methods=["POST"])
+def db_database_maintenance():
     """
-    Синхронизация локальных медиа файлов с базой данных
+    Сервисное обслуживание базы данных и файловой системы
     """
     # Получаем из БД все файлы с указанными расширениями
     file_ext_to_sync = ['.jpg', '.mp4']
@@ -338,6 +318,25 @@ def db_get_details(message_group_id: str):
                     FormButtonCfg.db_detail_tags.get(
                         'curr_message_tags'): db_handler.get_select_content_string(
                         db_handler.current_state.message_details.get('tags'), 'id', 'name')})
+
+
+@tg_saver.route('/db_export_selected_message_to_html', methods=["POST"])
+def db_export_selected_message_to_html():
+    """
+    Экспорт отмеченных сообщений из базы данных в HTML файл
+    """
+    pass
+
+
+@tg_saver.route('/db_delete_selected_from_database', methods=["POST"])
+def db_delete_selected_from_database():
+    """
+    Удаление отмеченных сообщений из базы данных
+    """
+    form_cfg = FormButtonCfg.tg_db_checkbox_list
+    selected_messages_ids = request.form.getlist(form_cfg['db_checkbox_list'])
+    selected_messages_ids = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_ids]
+    pass
 
 
 @tg_saver.route('/db_select_messages', methods=["POST"])
@@ -459,8 +458,9 @@ if __name__ == '__main__':
 # TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
 # TODO: В диалогах различать свои и не свои сообщения
-# TODO: В сервисной кнопке сделать удаление неиспользуемых диалогов
+# TODO: В сервисной кнопке сделать удаление неиспользуемых диалогов (и при запуске тоже)
 # TODO: В сервисной кнопке сделать резервное копирование базы данных
+# TODO: В сервисной кнопке сделать удаление неиспользуемых HTML файлов и потом пустых директорий
 # TODO: Сделать Unit тесты
 
 # Оставлять архивные подписки в базе
