@@ -27,7 +27,7 @@
             {# Вывод обрезанного текста #}
             {% if db_message.text %}
                 <br>
-                {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(175) }}
+                {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
             {% endif %}
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}

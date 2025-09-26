@@ -1,4 +1,3 @@
-import re
 from asyncio import new_event_loop, set_event_loop
 from collections import Counter
 from mimetypes import guess_extension
@@ -13,7 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string, status_messages
+from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string, status_messages, \
+    clean_file_path
 
 # Создаем и сохраняем цикл событий
 loop = new_event_loop()
@@ -196,7 +196,6 @@ class TgMessageGroup:
     text: str = ''
     truncated_text: str = ''
     from_id: Optional[int] = None
-    reply_to: Optional[int] = None
     files_report: Optional[str] = ''
     saved_to_db: bool = False
 
@@ -214,7 +213,6 @@ class TgMessageGroup:
         Добавляет сообщение в группу сообщений
         """
         self.from_id = message.from_id if self.from_id is None else self.from_id
-        self.reply_to = message.reply_to if self.reply_to is None else self.reply_to
         self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
         self.ids.append(message.id)
         if message.text:
@@ -630,8 +628,8 @@ class TelegramHandler:
         # Формирование пути к файлу в файловой системе
         tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
                                                       message_group.grouped_id, message.id, file_ext)
-        file_path = Path(self.get_dialog_by_id(
-            dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
+        file_path = Path(clean_file_path(self.get_dialog_by_id(
+            dialog_id).get_self_dir())) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
         return tg_file
 
@@ -703,21 +701,6 @@ class TelegramHandler:
                             f'No messages found: {no_messages_found}')
         status_messages.mess_update('', resulting_report)
         return resulting_report
-
-
-def clean_file_path(file_path: str | None) -> str | None:
-    """
-    Очищает имя файла или директории от недопустимых символов
-    """
-    clean_filepath = None
-    if file_path:
-        # Удаляем или заменяем недопустимые символы
-        clean_filepath = re.sub(r'[<>:"/\\|?*]', '_', file_path)
-        # Заменяем множественные пробелы на одинарные
-        clean_filepath = re.sub(r'\s+', ' ', clean_filepath)
-        # Убираем лишние точки и пробелы в начале и конце
-        clean_filepath = clean_filepath.strip('. ')
-    return clean_filepath
 
 
 def convert_text_hyperlinks(message_text: str) -> Optional[str]:

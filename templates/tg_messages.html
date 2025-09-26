@@ -28,9 +28,9 @@
                 </span>
             {% endif %}
             {# Вывод обрезанного текста #}
-            {% if tg_message.truncated_text %}
+            {% if tg_message.text %}
                 <br>
-                {{ tg_message.truncated_text|replace('\n', '<br>')|safe }}
+                {{ tg_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
             {% endif %}
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if tg_message.files_report %}
