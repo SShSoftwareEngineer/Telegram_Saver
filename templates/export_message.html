@@ -8,7 +8,10 @@
 </head>
 <body>
 <div style="text-align: center;">
-    <b>{{ message_date }}</b><br>{{ dialog_title }}
+    {# Вывод даты сообщения #}
+    <b>{{ message_date }}</b>
+    {# Вывод начала названия диалога #}
+    <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
 </div>
 {# Вывод текста сообщения #}
 {% if text %}

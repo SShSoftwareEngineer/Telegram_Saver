@@ -10,7 +10,7 @@
         {# Вывод даты сообщения #}
         <b>{{ message_date }}</b>
         {# Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|truncate(25) }}</span>
+        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
         {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
             <span class="selected-message-checkbox">{{ constants.checked_in_db_label }}</span>
