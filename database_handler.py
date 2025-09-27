@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    text, Boolean, update
+    text, Boolean, update, delete
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
@@ -328,10 +328,19 @@ class DatabaseHandler:
         """
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
         """
-        stmt = (
-            select(DbDialog)
-            .order_by(asc(DbDialog.title))
-        )
+        # Получаем множество ID всех диалогов
+        all_dialogs_id = set(self.session.execute(select(DbDialog.dialog_id)).scalars().all())
+        # Получаем множество ID диалогов, на которые есть ссылки в группах сообщений
+        referenced_dialogs_id = set(self.session.execute(select(DbMessageGroup.dialog_id).distinct()).scalars().all())
+        # Находим не используемые диалоги
+        unused_dialogs_id = all_dialogs_id - referenced_dialogs_id
+        # Удаляем неиспользуемые диалоги
+        if unused_dialogs_id:
+            stmt = delete(DbDialog).where(DbDialog.dialog_id.in_(unused_dialogs_id))
+            self.session.execute(stmt)
+            self.session.commit()
+        # Получаем оставшиеся диалоги с учетом фильтров и сортировки
+        stmt = select(DbDialog).order_by(asc(DbDialog.title))
         query_result = self.session.execute(stmt).scalars().all()
         status_messages.mess_update('Loading chat lists',
                                     f'{len(query_result)} chats loaded from the database')

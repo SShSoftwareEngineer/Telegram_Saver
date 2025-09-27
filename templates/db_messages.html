@@ -15,7 +15,7 @@
                onclick="loadURL('{{ url_for('db_get_details', message_group_id=db_message.grouped_id) }}'); return false;">
                 {{ message_date }}</a>
             {# Вывод начала названия диалога #}
-            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(25) }}</span>
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|safe|truncate(constants.truncated_title_length) }}</span>
             {# Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
                 {% set checkbox_name = constants.select_in_database+' '+db_message.grouped_id %}

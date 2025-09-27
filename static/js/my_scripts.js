@@ -326,12 +326,15 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
 }
 
 // Функция удаления выделенных сообщений с подтверждением
-function deleteSelectedMessages(checkboxSelector, config, url) {
-    const selected = document.querySelectorAll(`${checkboxSelector}:checked`);
-    const selectedIds = Array.from(selected).map(cb => cb.id);
-    const totalSelected = selectedIds.length;
+function deleteSelectedButton(config, url) {
+    // Подсчитываем выделенные через config селектор
+    let totalSelected = 0;
+    (config.checkbox_list || []).forEach(field => {
+        const selected = document.querySelectorAll(`${field.selector}:checked`);
+        totalSelected += selected.length;
+    });
     if (totalSelected > 0) {
-        if (confirm(`Удалить ${totalSelected} сообщений? Действие необратимо!`)) {
+        if (confirm(`Are you sure you want to delete ${totalSelected} messages?\nThis action cannot be undone!`)) {
             pressFormButton(config, url);
         }
     }

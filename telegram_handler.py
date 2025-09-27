@@ -62,7 +62,7 @@ class TgDialog:
         """
         Возвращает путь к директории диалога
         """
-        return f'{self.title}_{self.dialog_id}'
+        return clean_file_path(f'{self.title}_{self.dialog_id}')
 
 
 @dataclass
@@ -180,7 +180,7 @@ class TgFile:
         """
         file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
                      f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
-        return file_name
+        return clean_file_path(file_name)
 
 
 @dataclass
@@ -280,7 +280,7 @@ class TgMessageGroup:
         """
         Возвращает путь к директории группы сообщений
         """
-        return self.date.astimezone().strftime('%Y-%m-%d')
+        return clean_file_path(self.date.astimezone().strftime('%Y-%m-%d'))
 
 
 @dataclass
@@ -628,8 +628,8 @@ class TelegramHandler:
         # Формирование пути к файлу в файловой системе
         tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
                                                       message_group.grouped_id, message.id, file_ext)
-        file_path = Path(clean_file_path(self.get_dialog_by_id(
-            dialog_id).get_self_dir())) / message_group.get_self_dir() / tg_file.file_name
+        file_path = Path(
+            self.get_dialog_by_id(dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
         return tg_file
 

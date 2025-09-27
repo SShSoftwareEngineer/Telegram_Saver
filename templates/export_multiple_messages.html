@@ -1,0 +1,113 @@
+<!-- Шаблон для экспорта из БД нескольких сохраненных сообщений -->
+
+<!DOCTYPE html>
+<html lang="ru">
+<meta charset="utf-8">
+<head>
+    <title>Экспорт сообщений - {{ export_date }}</title>
+    <style>
+        /* Встроенные стили для автономного HTML файла */
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .export-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 8px;
+        }
+        .message-block {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .message-separator {
+            border-top: 2px solid #ccc;
+            margin: 30px 0;
+        }
+        .media-files-area { margin: 15px 0; }
+        .media-files-container {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .media-files-two-column {
+            display: inline-block;
+            width: 48%;
+            margin: 1%;
+            vertical-align: top;
+        }
+        .media-files-one-column { width: 100%; }
+        .media-file-name {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Заголовок экспорта -->
+<div class="export-header">
+    <h1>Экспорт сообщений Telegram</h1>
+    <p>Дата экспорта: {{ export_date }}</p>
+    <p>Всего сообщений: {{ messages|length }}</p>
+</div>
+
+<!-- Цикл по всем сообщениям -->
+{% for message in messages %}
+    <div class="message-block">
+        <!-- Заголовок сообщения -->
+        <div style="text-align: center;">
+            <b>{{ message.message_date }}</b>
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ message.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
+        </div>
+
+        <!-- Текст сообщения -->
+        {% if message.text %}
+            <br>
+            {{ message.text|replace('\n', '<br>')|safe }}
+        {% endif %}
+
+        <!-- Медиафайлы -->
+        {% if message.files %}
+            <br>
+            <div class="media-files-area">
+                {% for message_file in message.files %}
+                    <div class="{% if message.files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
+                        <!-- Изображения -->
+                        {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
+                            <img class="media-files-container"
+                                 src="{{ message_file.file_name }}" alt="{{ message_file.alt_text }}">
+                        {% endif %}
+
+                        <!-- Видео -->
+                        {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
+                            <video class="media-files-container"
+                                   src="{{ message_file.file_name }}" controls preload="metadata">
+                                Video is not supported by your browser
+                            </video>
+                        {% endif %}
+
+                        <!-- Имя файла -->
+                        <div class="media-file-name">
+                            {{ message_file.file_name }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Разделитель между сообщениями (кроме последнего) -->
+    {% if not loop.last %}
+        <div class="message-separator"></div>
+    {% endif %}
+
+{% endfor %}
+
+</body>
+</html>
