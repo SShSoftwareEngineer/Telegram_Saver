@@ -48,6 +48,25 @@ class DbMessageGroup(Base):
     # Relationships to 'DbTag' table
     tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
+    def get_export_data(self) -> dict:
+        """
+        Возвращает данные группы сообщений в виде словаря для экспорта в HTML или JSON
+        """
+        export_data = dict(
+            dialog_id=self.dialog_id,
+            dialog_title=self.dialog.title if self.dialog else '',
+            message_group_id=self.grouped_id,
+            date=self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
+            text=self.text if self.text else '',
+            from_id=self.from_id,
+            files=[dict(file_path=db_file.file_path,
+                        alt_text=db_file.file_type.alt_text,
+                        type_name=db_file.file_type.name if db_file.file_type else '')
+                   for db_file in self.files] if self.files else [],
+            tags=[db_tag.name for db_tag in self.tags] if self.tags else []
+        )
+        return export_data
+
 
 class DbTag(Base):
     """
