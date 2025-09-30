@@ -24,6 +24,7 @@ class ProjectDirs:
     A class to hold the directory paths for a project.
     """
     media_dir = r'media_storage'
+    export_dir= r'exported_messages'
     telegram_settings_file = Path('configs') / f'.env_{PROFILE}'
     data_base_file = Path('database') / f'telegram_archive_{PROFILE}.db'
 
@@ -241,10 +242,8 @@ def clean_file_path(file_path: str | None) -> str | None:
     """
     clean_filepath = None
     if file_path:
-        # Нормализуем Юникод (убирает акценты, приводит к ASCII)
-        clean_filepath = unicodedata.normalize('NFKD', file_path).encode('ascii', 'ignore').decode('ascii')
         # Удаляем или заменяем недопустимые символы Windows/Linux/URL: <>:"/\\|?* + пробелы, апострофы, скобки, амперсанды, проценты
-        clean_filepath = re.sub(r'[<>:"/\\|?*\'`\s\t\n\r\f\v%&()]', '_', clean_filepath)
+        clean_filepath = re.sub(r'[<>:"/\\|?*\'`\s\t\n\r\f\v%&()]', '_', file_path)
         # Убираем множественные символы замены подряд на одинарные, а также в начале и конце
         clean_filepath = re.sub(f'{re.escape('_')}{{2,}}', '_', clean_filepath).strip('_')
         # Убираем множественные пробелы подряд на одинарные, а также в начале и конце

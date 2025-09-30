@@ -6,8 +6,13 @@
 <head>
     <title>Экспорт сообщений - {{ export_date }}</title>
     <style>
+
         /* Встроенные стили для автономного HTML файла */
-        body { font-family: Arial, sans-serif; margin: 20px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
         .export-header {
             text-align: center;
             margin-bottom: 30px;
@@ -15,6 +20,7 @@
             background: #e3f2fd;
             border-radius: 8px;
         }
+
         .message-block {
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -22,56 +28,74 @@
             padding: 15px;
             background: #fafafa;
         }
+
         .message-separator {
             border-top: 2px solid #ccc;
             margin: 30px 0;
         }
-        .media-files-area { margin: 15px 0; }
-        .media-files-container {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        /* Область медиафайлов */
+        .media-files-area {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
+
+        /* Медиафайлы в одну колонку */
+        .media-files-one-column {
+            width: 90%;
+            height: 90vh;
+        }
+
+        /* Медиафайлы в две колонки */
         .media-files-two-column {
-            display: inline-block;
-            width: 48%;
-            margin: 1%;
-            vertical-align: top;
+            width: 45%;
+            height: 45vh;
         }
-        .media-files-one-column { width: 100%; }
+
+        /* Контейнер для медиафайлов */
+        .media-files-container {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Вывод названия файла */
         .media-file-name {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
             text-align: center;
+            margin-top: 5px;
         }
+
     </style>
 </head>
 <body>
 
-<!-- Заголовок экспорта -->
+<!-- Заголовок файла -->
 <div class="export-header">
-    <h1>Экспорт сообщений Telegram</h1>
-    <p>Дата экспорта: {{ export_date }}</p>
-    <p>Всего сообщений: {{ messages|length }}</p>
+    <h1>Экспорт сообщений Telegram, {{ export_date }}</h1>
+    <p>Всего сообщений: {{ exported_messages|length }}</p>
 </div>
 
-<!-- Цикл по всем сообщениям -->
-{% for message in messages %}
+<!-- Цикл по сообщениям -->
+{% for message in exported_messages %}
     <div class="message-block">
         <!-- Заголовок сообщения -->
         <div style="text-align: center;">
-            <b>{{ message.message_date }}</b>
+            <b>{{ message.date }}</b>
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ message.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
         </div>
-
+        <!-- Теги сообщения -->
+        {% if message.tags %}
+            <br>
+            Message tags: {{ message.tags|join(', ') }}
+            <br>
+        {% endif %}
         <!-- Текст сообщения -->
         {% if message.text %}
             <br>
             {{ message.text|replace('\n', '<br>')|safe }}
         {% endif %}
-
         <!-- Медиафайлы -->
         {% if message.files %}
             <br>
@@ -81,27 +105,20 @@
                         <!-- Изображения -->
                         {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                             <img class="media-files-container"
-                                 src="{{ message_file.file_name }}" alt="{{ message_file.alt_text }}">
+                                 src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
                         {% endif %}
-
                         <!-- Видео -->
                         {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                             <video class="media-files-container"
-                                   src="{{ message_file.file_name }}" controls preload="metadata">
+                                   src="{{ message_file.file_path }}" controls preload="metadata">
                                 Video is not supported by your browser
                             </video>
                         {% endif %}
-
-                        <!-- Имя файла -->
-                        <div class="media-file-name">
-                            {{ message_file.file_name }}
-                        </div>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     </div>
-
     <!-- Разделитель между сообщениями (кроме последнего) -->
     {% if not loop.last %}
         <div class="message-separator"></div>

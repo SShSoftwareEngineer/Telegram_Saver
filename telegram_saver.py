@@ -1,10 +1,12 @@
 import logging
+import shutil
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 from flask import Flask, render_template, request, send_from_directory, jsonify
-from sqlalchemy import update, select, func, delete
+from sqlalchemy import delete, select
 
-from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages
+from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages, \
+    clean_file_path
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
@@ -207,20 +209,16 @@ def tg_save_selected_message_to_db():
             db_handler.session.commit()
             # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
             # Формирование набора данных с контентом группы сообщений для возможного сохранения в файловую систему
-            message_group_export_data = {
-                'message_date': tg_message_group.date.strftime(GlobalConst.message_datetime_format),
-                'dialog_title': tg_dialog.title,
-                'text': tg_message_group.text,
-                'files_report': tg_message_group.files_report,
-                'from_id': tg_message_group.from_id,
-                'files': [{'file_name': Path(tg_file.file_path).name,
-                           'alt_text': tg_file.alt_text} for tg_file in tg_message_group.files],
-            }
+            message_group_export_data = db_message_group.get_export_data()
+            message_group_export_data.update({'files_report': tg_message_group.files_report})
+            for file in message_group_export_data.get('files', []):
+                file['file_name'] = Path(file['file_path']).name
             # Формирование пути к файлу в файловой системе
             file_name = TgFile.get_self_file_name(tg_message_group.date, MessageFileTypes.CONTENT,
                                                   tg_message_group.grouped_id, 0, MessageFileTypes.CONTENT.default_ext)
             file_path = Path(
                 ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
+            # Создаем директории файла, если их нет
             file_path.parent.mkdir(parents=True, exist_ok=True)
             html_content = render_template('export_message.html', **message_group_export_data)
             with open(file_path, 'w', encoding='utf-8') as cf:
@@ -230,9 +228,9 @@ def tg_save_selected_message_to_db():
             # Обновляем список диалогов, сохраненных в базе данных
             db_handler.all_dialogues_list = db_handler.get_dialog_list()
             db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
-    # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
-    for tg_message_group in tg_handler.current_state.message_group_list:
-        tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
+            # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
+            for tg_message_group in tg_handler.current_state.message_group_list:
+                tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
     return jsonify({'tg_messages': render_template('tg_messages.html'),
                     'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
                     FormButtonCfg.db_message_filter.get(
@@ -323,8 +321,29 @@ def db_export_selected_message_to_html():
     form_cfg = FormButtonCfg.db_checkbox_list
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
-
-    pass
+    if not selected_messages_id:
+        return jsonify({})
+    stmt = (
+        select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id)).order_by(DbMessageGroup.date))
+    query_result = db_handler.session.execute(stmt).scalars().all()
+    exported_messages = []
+    export_date_time = clean_file_path(datetime.now().strftime(GlobalConst.message_datetime_format))
+    for result in query_result:
+        export_data = result.get_export_data()
+        # Корректируем пути к файлам для возможности открытия из HTML файла
+        for file in export_data.get('files', []):
+            if Path(Path(ProjectDirs.media_dir) / file.get('file_path')).exists():
+                new_file_path = Path(ProjectDirs.export_dir) / export_date_time / Path(file['file_path']).name
+                new_file_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(Path(ProjectDirs.media_dir) / file.get('file_path'), new_file_path)
+                file['file_path'] = (Path(export_date_time) / Path(file['file_path']).name).as_posix()
+        exported_messages.append(export_data)
+    html_content = render_template('export_multiple_messages.html', exported_messages=exported_messages)
+    with open(Path(ProjectDirs.export_dir) / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
+              encoding='utf-8') as cf:
+        cf.write(html_content)
+    selected_messages_id = [f'{GlobalConst.select_in_database} {x}' for x in selected_messages_id]
+    return jsonify({id: 'exported' for id in selected_messages_id})
 
 
 @tg_saver.route('/db_delete_selected_from_database', methods=["POST"])
