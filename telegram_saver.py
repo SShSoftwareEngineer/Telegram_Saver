@@ -4,15 +4,14 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import delete, select
-
 from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages, \
     clean_file_path
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
 tg_saver = Flask(__name__)
-tg_handler = TelegramHandler()
 db_handler = DatabaseHandler()
+tg_handler = TelegramHandler()
 
 
 @tg_saver.context_processor
@@ -258,7 +257,7 @@ def db_database_maintenance():
     # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     status_messages.mess_update('Synchronizing the list of local files with the database',
-                                f'Files deleted from local storage: {files_deleted_count}', new_list=True)
+                                f'Files deleted from local storage: {files_deleted_count}', True)
     # Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
@@ -323,12 +322,13 @@ def db_export_selected_message_to_html():
     selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
     if not selected_messages_id:
         return jsonify({})
+    status_messages.mess_update(f'Export selected {len(selected_messages_id)} messages to HTML file', '', new_list=True)
     stmt = (
         select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id)).order_by(DbMessageGroup.date))
     query_result = db_handler.session.execute(stmt).scalars().all()
     exported_messages = []
     export_date_time = clean_file_path(datetime.now().strftime(GlobalConst.message_datetime_format))
-    for result in query_result:
+    for counter, result in enumerate(query_result, start=1):
         export_data = result.get_export_data()
         # Корректируем пути к файлам для возможности открытия из HTML файла
         for file in export_data.get('files', []):
@@ -338,12 +338,16 @@ def db_export_selected_message_to_html():
                 shutil.copy2(Path(ProjectDirs.media_dir) / file.get('file_path'), new_file_path)
                 file['file_path'] = (Path(export_date_time) / Path(file['file_path']).name).as_posix()
         exported_messages.append(export_data)
-    html_content = render_template('export_multiple_messages.html', exported_messages=exported_messages)
+        status_messages.mess_update('', f'Export message {counter} of {len(selected_messages_id)}')
+    html_content = render_template('export_multiple_messages.html',
+                                   exported_messages=exported_messages,
+                                   export_date=datetime.now().strftime(GlobalConst.message_datetime_format))
     with open(Path(ProjectDirs.export_dir) / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
               encoding='utf-8') as cf:
         cf.write(html_content)
     selected_messages_id = [f'{GlobalConst.select_in_database} {x}' for x in selected_messages_id]
-    return jsonify({id: 'exported' for id in selected_messages_id})
+    status_messages.mess_update('', f'{len(selected_messages_id)} messages exported to HTML file')
+    return jsonify({})
 
 
 @tg_saver.route('/db_delete_selected_from_database', methods=["POST"])
@@ -450,11 +454,7 @@ if __name__ == '__main__':
 
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
-# TODO: сделать возможность удаления сообщений из базы данных
-# TODO: Режимы: автоматические отметки по условию (продумать условия)
-# TODO: Режимы: просмотр базы с возможностью удаления
 # TODO: Сделать Избранное (и на английском)
-# TODO: Экспорт выделенных постов в Excel файл и HTML, выделенных по условию (продумать условия)
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
 # TODO: В диалогах различать свои и не свои сообщения
 # TODO: В сервисной кнопке сделать удаление неиспользуемых диалогов (и при запуске тоже)
@@ -462,6 +462,7 @@ if __name__ == '__main__':
 # TODO: В сервисной кнопке сделать удаление неиспользуемых HTML файлов и потом пустых директорий
 # TODO: Сделать сброс флажков и счетчика при действиях на списках
 # TODO: Сделать обновление списка диалогов и тегов после удаления сообщений
-# TODO: Сделать Unit тесты
+# TODO: Сделать тесты
+# TODO: Оформить READ.ME, код и комментарии по PEP8, PEP257, и прочим рекомендациям
 
 # Установить отдельно предельные размеры для файлов и медиа разных типов

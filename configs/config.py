@@ -3,15 +3,12 @@ from enum import Enum
 import re
 from pathlib import Path
 from typing import List, Optional
-
-import unicodedata
 from dateutil.parser import parse
 
 # Set the profile for the project
-PROFILE = 'dev_1'
-
-# PROFILE = 'dev_2'
-# PROFILE = 'prod'
+# PROFILE = '_dev_1'
+# PROFILE = '_dev_2'
+PROFILE = ''
 
 """ 
 Classes.
@@ -25,8 +22,8 @@ class ProjectDirs:
     """
     media_dir = r'media_storage'
     export_dir= r'exported_messages'
-    telegram_settings_file = Path('configs') / f'.env_{PROFILE}'
-    data_base_file = Path('database') / f'telegram_archive_{PROFILE}.db'
+    telegram_settings_file = Path('configs') / f'.env{PROFILE}'
+    data_base_file = Path('database') / f'telegram_archive{PROFILE}.db'
 
 
 class GlobalConst:
