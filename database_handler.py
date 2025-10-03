@@ -361,8 +361,8 @@ class DatabaseHandler:
         # Получаем оставшиеся диалоги с учетом фильтров и сортировки
         stmt = select(DbDialog).order_by(asc(DbDialog.title))
         query_result = self.session.execute(stmt).scalars().all()
-        status_messages.mess_update('Loading chat lists',
-                                    f'{len(query_result)} chats loaded from the database')
+        # status_messages.mess_update('Loading chat lists',
+        #                             f'{len(query_result)} chats loaded from the database')
         return list(query_result)
 
     def get_all_tag_list(self) -> List[DbTag]:

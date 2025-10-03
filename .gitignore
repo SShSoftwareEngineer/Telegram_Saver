@@ -166,6 +166,7 @@ Support Materials/
 .idea/
 
 media_storage/
+/exported_messages/
 
 /Notes/notes.txt
 /pyvenv.cfg
@@ -184,3 +185,4 @@ media_storage/
 /database/telegram_archive_dev_1.db
 /database/telegram_archive_dev_2.db
 /configs/.env_prod
+/database/backup/

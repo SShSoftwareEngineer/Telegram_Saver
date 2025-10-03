@@ -6,9 +6,9 @@ from typing import List, Optional
 from dateutil.parser import parse
 
 # Set the profile for the project
-# PROFILE = '_dev_1'
+PROFILE = '_dev_1'
 # PROFILE = '_dev_2'
-PROFILE = ''
+# PROFILE = ''
 
 """ 
 Classes.
@@ -23,7 +23,8 @@ class ProjectDirs:
     media_dir = r'media_storage'
     export_dir= r'exported_messages'
     telegram_settings_file = Path('configs') / f'.env{PROFILE}'
-    data_base_file = Path('database') / f'telegram_archive{PROFILE}.db'
+    data_base_dir = Path('database')
+    data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
 
 
 class GlobalConst:
