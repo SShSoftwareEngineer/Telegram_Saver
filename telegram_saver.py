@@ -241,6 +241,12 @@ def tg_save_selected_message_to_db():
 def db_database_maintenance():
     """
     Сервисное обслуживание базы данных и файловой системы
+    1. Удаление из локальной файловой системы файлов, на которые нет ссылок в базе данных
+    2. Удаление пустых директорий в локальной файловой системе
+    3. Скачивание файлов, которые есть в базе данных, но отсутствуют в локальной файловой системе
+    4. Резервное копирование базы данных
+    5. Удаление неиспользуемых диалогов из таблицы диалогов базы данных
+    6. Удаление неиспользуемых тегов из таблицы тегов базы данных, пересчет количества использований тегов
     """
     # Получаем из БД все файлы с указанными расширениями
     file_ext_to_sync = ['.jpg', '.mp4']
@@ -262,8 +268,7 @@ def db_database_maintenance():
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
                              not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
-    status_messages.mess_update('Synchronizing the list of local files with the database',
-                                f'Empty directories deleted from local storage: {dir_deleted_count}')
+    status_messages.mess_update('', f'Empty directories deleted from local storage: {dir_deleted_count}')
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
     downloaded_file_list = []
     for file_path in files_to_download:
@@ -272,6 +277,19 @@ def db_database_maintenance():
         if downloaded_file:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
+    # Резервное копирование базы данных
+    database_backup = (Path(ProjectDirs.data_base_dir) / 'backup' /
+          f'{Path(ProjectDirs.data_base_file).stem}_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}'
+          f'{Path(ProjectDirs.data_base_file).suffix}')
+    # Создаем директории файла, если их нет
+    database_backup.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ProjectDirs.data_base_file,database_backup)
+    status_messages.mess_update('', f'Database backup created')
+    # Обновление списка диалогов в БД с сортировкой по текущим установкам и удалением неиспользуемых
+    db_handler.all_dialogues_list = db_handler.get_dialog_list()
+    db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
+    # Обновление списка тегов в БД с сортировкой по текущим установкам и пересчетом количества использований
+    db_handler.all_tags_list = db_handler.get_all_tag_list()
     return jsonify({})
 
 
