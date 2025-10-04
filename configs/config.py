@@ -46,6 +46,7 @@ class GlobalConst:
     select_in_telegram = 'select_in_telegram'
     select_in_database = 'select_in_database'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
+    me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
 
 
 class StatusMessages:
