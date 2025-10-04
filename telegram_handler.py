@@ -399,6 +399,8 @@ class TelegramHandler:
                                      int(self._connection_settings['API_ID']),
                                      self._connection_settings['API_HASH'], loop=loop)
         self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
+        # Получаем имя пользователя Telegram
+        self.me = loop.run_until_complete(self.client.get_me())
         # Получаем список всех диалогов аккаунта Telegram
         self.all_dialogues_list = self.get_dialog_list()
         # Устанавливаем текущее состояние клиента Telegram
@@ -440,6 +442,8 @@ class TelegramHandler:
         dialog_list = []
         for dialog in dialogs:
             tg_dialog = TgDialog(dialog)
+            if tg_dialog.dialog_id == self.me.id:
+                tg_dialog.title = GlobalConst.me_dialog_title
             if self.dialog_sort_filter.check_filters(tg_dialog):
                 dialog_list.append(tg_dialog)
         status_messages.mess_update('Loading chat lists', f'{len(dialog_list)} chats loaded from Telegram')
