@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    text, Boolean, update, delete
+    text, Boolean, update, delete, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
@@ -44,7 +44,7 @@ class DbMessageGroup(Base):
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
     # Relationships to 'DbFile' table
-    files: Mapped[List['DbFile']] = relationship(back_populates='message_group')
+    files: Mapped[List['DbFile']] = relationship(back_populates='message_group', cascade="all, delete-orphan")
     # Relationships to 'DbTag' table
     tags: Mapped[List['DbTag']] = relationship(secondary=message_group_tag_links, back_populates='message_groups')
 
@@ -122,7 +122,8 @@ class DbFile(Base):
     file_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
     # Relationships to 'DbMessageGroup' table
-    grouped_id: Mapped[str] = mapped_column(String, ForeignKey(f'{TableNames.message_groups}.grouped_id'))
+    grouped_id: Mapped[str] = mapped_column(String,
+                                            ForeignKey(f'{TableNames.message_groups}.grouped_id', ondelete='CASCADE'))
     message_group: Mapped['DbMessageGroup'] = relationship(back_populates='files')
     # Relationships to 'DbFileType' table
     file_type_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.file_types}.file_type_id'))
@@ -309,12 +310,26 @@ class DatabaseHandler:
             self.session.flush()  # Flush to get the ID if it's an autoincrement field
         return existing
 
+    def setup_database_connection(self):
+        """
+        Настройка параметров подключения к базе данных SQLite
+        """
+
+        # Enforce foreign key constraints in SQLite
+        @event.listens_for(self.engine, "connect")
+        def set_sqlite_pragma(dbapi_conn, connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+
     def __init__(self):
         """
         Initializes the database handler by creating an engine, a session, and the necessary tables.
         Инициализирует обработчик базы данных, создавая движок, сессию и необходимые таблицы.
         """
         self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}')
+        self.setup_database_connection()
         self.session = Session(self.engine)
         # Creating tables in the database if they do not exist
         # Создаем таблицы в базе данных, если они отсутствуют
