@@ -185,7 +185,7 @@ def tg_save_selected_message_to_db():
             # Устанавливаем relationship для группы сообщений, если не установлен
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
-            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу.
             status_messages.mess_update('Downloading files', '', new_list=True)
             for tg_file in tg_message_group.files:
                 db_file = db_handler.upsert_record(DbFile, dict(file_path=tg_file.file_path),
@@ -204,24 +204,38 @@ def tg_save_selected_message_to_db():
                 downloading_result = tg_handler.download_message_file(tg_file)
                 report_msg = f'{tg_file.file_path} downloaded successfully' if downloading_result else f'Failed to download file {tg_file.file_path}'
                 status_messages.mess_update('Downloading files', report_msg)
-            # Сохраняем изменения в базе данных
-            db_handler.session.commit()
-            # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
-            # Формирование набора данных с контентом группы сообщений для возможного сохранения в файловую систему
+            db_handler.session.flush()
+            # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл.
             message_group_export_data = db_message_group.get_export_data()
             message_group_export_data.update({'files_report': tg_message_group.files_report})
+            # Корректируем пути к файлам для возможности открытия из HTML файла в той же директории
             for file in message_group_export_data.get('files', []):
                 file['file_name'] = Path(file['file_path']).name
-            # Формирование пути к файлу в файловой системе
+            # Формирование пути к файлу и вложенных директорий в файловой системе
             file_name = TgFile.get_self_file_name(tg_message_group.date, MessageFileTypes.CONTENT,
                                                   tg_message_group.grouped_id, 0, MessageFileTypes.CONTENT.default_ext)
             file_path = Path(
                 ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
-            # Создаем директории файла, если их нет
             file_path.parent.mkdir(parents=True, exist_ok=True)
+            # Генерируем HTML контент для файла
             html_content = render_template('export_message.html', **message_group_export_data)
+            # Сохраняем HTML файл с контентом сообщения в файловой системе
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
+            # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений
+            db_file = db_handler.upsert_record(DbFile, dict(file_path=file_path.as_posix()),
+                                               dict(message_id=0,
+                                                    size=len(html_content.encode('utf-8')),
+                                                    grouped_id=message_group_export_data.get('message_group_id'),
+                                                    file_type_id=MessageFileTypes.CONTENT.type_id))
+            # Устанавливаем relationships для файла, если не установлены
+            if db_file.message_group is None:
+                db_file.message_group = db_message_group
+            if db_file.file_type is None:
+                db_file.file_type = db_handler.session.query(DbFileType).filter_by(
+                    file_type_id=MessageFileTypes.CONTENT.type_id).first()
+            # Сохраняем изменения в базе данных
+            db_handler.session.commit()
             # После сохранения в БД устанавливаем признак "сохранено"
             tg_message_group.saved_to_db = True
             # Обновляем список диалогов, сохраненных в базе данных
@@ -264,7 +278,7 @@ def db_database_maintenance():
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     status_messages.mess_update('Synchronizing the list of local files with the database',
                                 f'Files deleted from local storage: {files_deleted_count}', True)
-    # Удаляем пустые директории
+    # Удаляем пустые директорииfile_types
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
                              not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
@@ -279,11 +293,11 @@ def db_database_maintenance():
     tg_handler.download_message_file_from_list(downloaded_file_list)
     # Резервное копирование базы данных
     database_backup = (Path(ProjectDirs.data_base_dir) / 'backup' /
-          f'{Path(ProjectDirs.data_base_file).stem}_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}'
-          f'{Path(ProjectDirs.data_base_file).suffix}')
+                       f'{Path(ProjectDirs.data_base_file).stem}_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}'
+                       f'{Path(ProjectDirs.data_base_file).suffix}')
     # Создаем директории файла, если их нет
     database_backup.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ProjectDirs.data_base_file,database_backup)
+    shutil.copy2(ProjectDirs.data_base_file, database_backup)
     status_messages.mess_update('', f'Database backup created')
     # Обновление списка диалогов в БД с сортировкой по текущим установкам и удалением неиспользуемых
     db_handler.all_dialogues_list = db_handler.get_dialog_list()
@@ -474,11 +488,11 @@ if __name__ == '__main__':
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
 # TODO: В диалогах различать свои и не свои сообщения
-# TODO: В сервисной кнопке сделать удаление неиспользуемых HTML файлов и потом пустых директорий
+# TODO: Сделать удаление HTML файлов при удалении ссылок из базы данных, а на докачку их не ставить
 # TODO: Сделать сброс флажков и счетчика при действиях на списках
 # TODO: Сделать обновление списка диалогов и тегов после удаления сообщений
-# TODO: Сделать удаление файлов при удалении сообщений On_DELETE CASCADE и файлов с диска
 # TODO: Сделать тесты
 # TODO: Оформить READ.ME, код и комментарии по PEP8, PEP257, и прочим рекомендациям
+# TODO: Глюк - расширение деталей, если там большая картинка, надо зафиксировать ширину столбцов и уменьшать картинку
 
 # Установить отдельно предельные размеры для файлов и медиа разных типов
