@@ -1,7 +1,7 @@
 <!-- Шаблон для фильтрации сообщений в выбранном диалоге Telegram -->
 
 {# Конфигурация элементов управления формы #}
-{% set form_cfg = form_btn_cfg.tg_message_filter %}
+{% set form_cfg = form_ctrl_cfg.tg_message_filter %}
 
 <!-- Dialog messages sort order radiobuttons -->
 <p class="group-label no-margin-top">Messages sort order</p>
@@ -46,6 +46,6 @@
 
 <!-- Apply message filters button -->
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/tg_message_apply_filters')">
+        onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_message_apply_filters')">
     Apply message filters
 </button>

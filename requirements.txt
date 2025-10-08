@@ -1,5 +1,6 @@
 telethon
+cryptg
 SQLAlchemy
 Flask
-python-dateutil
 Flask-SocketIO
+python-dateutil

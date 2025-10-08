@@ -317,7 +317,7 @@ class DatabaseHandler:
 
         # Enforce foreign key constraints in SQLite
         @event.listens_for(self.engine, "connect")
-        def set_sqlite_pragma(dbapi_conn, connection_record):
+        def set_sqlite_pragma(dbapi_conn, _): # placeholder _ используется вместо необязательного параметра connection_record
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()

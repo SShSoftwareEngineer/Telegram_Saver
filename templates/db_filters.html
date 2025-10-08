@@ -1,7 +1,7 @@
 <!-- Шаблон для фильтрации диалогов в базе данных -->
 
 {# Конфигурация элементов управления формы #}
-{% set form_cfg = form_btn_cfg.db_message_filter %}
+{% set form_cfg = form_ctrl_cfg.db_message_filter %}
 
 <!-- Database dialog filter -->
 <label for="{{ form_cfg.dialog_select }}" class="group-label no-margin-top">Filter by chat names</label>
@@ -90,6 +90,6 @@
 
 <!-- Apply database message filters button -->
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_message_apply_filters')">
+        onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_message_apply_filters')">
     Apply message filters
 </button>

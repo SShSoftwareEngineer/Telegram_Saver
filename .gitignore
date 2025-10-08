@@ -176,10 +176,8 @@ media_storage/
 /.session
 /Notes/infa.docx
 /~$infa.docx
-/Notes/Идеи.docx
 /Notes/telethon-flask-module.py
 /.session-journal
-/Notes/tg_table.txt
 /configs/.env_dev_1
 /configs/.env_dev_2
 /database/telegram_archive_dev_1.db

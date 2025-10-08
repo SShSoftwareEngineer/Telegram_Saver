@@ -112,7 +112,7 @@ html, body {
         "filters chats action_bar details"
         "filters chats messages details"
         "save_to_db chats messages details";
-    grid-template-columns: 10fr 25fr 30fr 35fr;
+    grid-template-columns: minmax(0, 15fr) minmax(0, 25fr) minmax(0, 30fr) minmax(0, 30fr);
     grid-template-rows: auto auto auto 1fr;
     min-height: 0;
     height: 100%;
@@ -152,7 +152,7 @@ html, body {
         "filters_h messages_h details_h tags_h"
         "filters action_bar details tags"
         "filters messages details tags";
-    grid-template-columns: 15fr 30fr 40fr 15fr;
+    grid-template-columns: minmax(0, 15fr) minmax(0, 30fr) minmax(0, 40fr) minmax(0, 15fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     min-height: 0;
     height: 100%;
@@ -170,51 +170,6 @@ html, body {
 .db-details { grid-area: details; }
 .db-tags { grid-area: tags; }
 /* @formatter:on */
-
-/*!* Стили для CSS Grid контейнера и зон для вкладки Test tab *!*/
-/*.container_tab_3 {*/
-/*    display: grid;*/
-/*    grid-template-areas:*/
-/*        "cell_11 cell_12 cell_13"*/
-/*        "cell_21 cell_22 cell_23"*/
-/*        "cell_31 cell_32 cell_33";*/
-/*    grid-template-columns: 300px 1fr 200px;*/
-/*    grid-template-rows: max-content auto max-content;*/
-/*    min-height: 0;*/
-/*    height: 100%;*/
-/*    gap: 5px;*/
-/*}*/
-
-/*!* @formatter:off *!*/
-/*.cell_11 { grid-area: cell_11; }*/
-/*.cell_12 { grid-area: cell_12; }*/
-/*.cell_13 { grid-area: cell_13; }*/
-/*.cell_21 { grid-area: cell_21; }*/
-/*.cell_22 { grid-area: cell_22; }*/
-/*.cell_23 { grid-area: cell_23; }*/
-/*.cell_31 { grid-area: cell_31; }*/
-/*.cell_32 { grid-area: cell_32; }*/
-/*.cell_33 { grid-area: cell_33; }*/
-/*!* @formatter:on *!*/
-
-/*!* Стили для CSS Grid контейнера и зон для вкладки Service *!*/
-/*.sub_container_tab_3 {*/
-/*    display: grid;*/
-/*    grid-template-areas:*/
-/*        "cell_1"*/
-/*        "cell_2"*/
-/*        "cell_3";*/
-/*    grid-template-rows: max-content auto max-content;*/
-/*    height: 100%;*/
-/*    gap: 5px;*/
-/*}*/
-
-/*!* @formatter:off *!*/
-/*.cell_11 { grid-area: cell_11; }*/
-/*.cell_21 { grid-area: cell_21; }*/
-/*.cell_31 { grid-area: cell_31; }*/
-/*!* @formatter:on *!*/
-
 
 /* Панели действий для выбора сообщений из списка */
 
@@ -328,8 +283,9 @@ html, body {
 
 /* Поле и кнопка очистки поля ввода или выбора */
 .control-X-button {
+    width: 100%;
     display: grid;
-    grid-template-columns: auto max-content;
+    grid-template-columns: minmax(0, 1fr) max-content;
     gap: 5px;
     align-items: center;
 }
@@ -404,6 +360,12 @@ html, body {
     float: right;
     color: green;
 }
+
+/* Сообщения владельца аккаунта */
+.my-message-in-list {
+    margin-left: 7%;
+}
+
 
 /* Вывод или экспорт деталей сообщения */
 

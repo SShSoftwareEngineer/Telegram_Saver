@@ -1,7 +1,7 @@
 <!-- Шаблон панели действий выбора сообщений базы данных -->
 
 <!-- Конфигурация элементов управления формы -->
-{% set form_cfg = form_btn_cfg.db_checkbox_list %}
+{% set form_cfg = form_ctrl_cfg.db_checkbox_list %}
 
 <div class="db-action-bar-grid">
     <div class="db-select action-bar-button-area">
@@ -28,14 +28,14 @@
     <div class="db-export action-bar-button-area">
         {# Apply to export selected messages to HTML #}
         <button class="action-bar-button"
-                onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_export_selected_message_to_html')">
+                onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_export_selected_message_to_html')">
             Export selection to HTML
         </button>
     </div>
     <div class="db-delete action-bar-button-area">
         {# Apply to delete selected messages from the database #}
         <button class="action-bar-button"
-                onclick="deleteSelectedButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/db_delete_selected_from_database')">
+                onclick="deleteSelectedButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_delete_selected_from_database')">
             Delete selection from the database
         </button>
     </div>

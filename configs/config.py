@@ -157,9 +157,9 @@ class TableNames:
     message_group_tag_links = 'message_group_tag_links'
 
 
-class FormButtonCfg:
+class FormCfg:
     """
-    Constants for button configurations in the web interface.
+    Constants for form controls configurations in the web interface.
     """
     tg_dialog_filter = {'sorting_field': 'tg_sorting_field', 'sorting_order': 'tg_dial_sort_order',
                         'dialog_type': 'tg_dialog_type', 'dialog_title_query': 'tg_title_query',
@@ -186,7 +186,7 @@ class FormButtonCfg:
                         'checkbox_list': ['db_checkbox_list']}
 
     @staticmethod
-    def get_form_button_cfg(form_cfg: dict) -> dict:
+    def get_form_cfg(form_cfg: dict) -> dict:
         """
         Returns the button configuration for a given form.
         """

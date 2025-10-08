@@ -29,15 +29,15 @@
             {% endif %}
             {# Вывод обрезанного текста #}
             {% if tg_message.text %}
-                <br>
-                {{ tg_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+                <div class="{% if tg_message.from_id.user_id==tg_me.id %}my-message-in-list{% endif %}">
+                    {{ tg_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+                </div>
             {% endif %}
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if tg_message.files_report %}
-                <br>
                 <b>{{ tg_message.files_report }}</b>
             {% endif %}
-            <br>
+
         </li>
     {% endfor %}
 </ul>
