@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import delete, select
-from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormButtonCfg, TagsSorting, status_messages, \
+from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormCfg, TagsSorting, status_messages, \
     clean_file_path
 from telegram_handler import TelegramHandler, TgFile
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
@@ -22,7 +22,8 @@ def inject_field_names():
     return {
         'constants': GlobalConst,
         'tg_file_types': MessageFileTypes,
-        'form_btn_cfg': FormButtonCfg,
+        'form_ctrl_cfg': FormCfg,
+        'tg_me': tg_handler.me,
         'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
@@ -114,7 +115,7 @@ def tg_dialog_apply_filters():
     Получение списка диалогов Telegram с применением фильтров
     """
     # Установка фильтров диалогов Telegram по значениям из формы
-    form_cfg = FormButtonCfg.tg_dialog_filter
+    form_cfg = FormCfg.tg_dialog_filter
     form = request.form
     dial_filter = tg_handler.dialog_sort_filter
     dial_filter.sort_field(form.get(form_cfg['sorting_field']))
@@ -137,7 +138,7 @@ def tg_message_apply_filters():
     Получение списка сообщений диалога Telegram с применением фильтров
     """
     # Установка фильтров списка сообщений Telegram по значениям из формы
-    form_cfg = FormButtonCfg.tg_message_filter
+    form_cfg = FormCfg.tg_message_filter
     form = request.form
     mess_filter = tg_handler.message_sort_filter
     mess_filter.sort_order = form.get(form_cfg['sorting_order'])
@@ -159,7 +160,7 @@ def tg_save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    form_cfg = FormButtonCfg.tg_checkbox_list
+    form_cfg = FormCfg.tg_checkbox_list
     selected_messages_ids = request.form.getlist(form_cfg['tg_checkbox_list'])
     selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip() for x in selected_messages_ids]
     for tg_message_group in tg_handler.current_state.message_group_list:
@@ -244,11 +245,13 @@ def tg_save_selected_message_to_db():
             # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
             for tg_message_group in tg_handler.current_state.message_group_list:
                 tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
-    return jsonify({'tg_messages': render_template('tg_messages.html'),
-                    'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
-                    FormButtonCfg.db_message_filter.get(
-                        'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
-                                                                               'dialog_id', 'title')})
+    # Формирование структуры данных для обновления списков диалогов и сообщений
+    data_structure = {'tg_messages': render_template('tg_messages.html'),
+                      'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                      FormCfg.db_message_filter.get(
+                          'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
+                                                                                 'dialog_id', 'title')}
+    return jsonify(data_structure)
 
 
 @tg_saver.route('/db_database_maintenance', methods=["POST"])
@@ -263,7 +266,9 @@ def db_database_maintenance():
     6. Пересчет количества использований тегов, удаление неиспользуемых из таблицы тегов
     """
     # Получаем из БД все файлы с указанными расширениями
-    file_ext_to_sync = ['.jpg', '.mp4']
+    file_ext_to_sync = [MessageFileTypes.IMAGE.default_ext,  # '.jpg' 
+                        MessageFileTypes.VIDEO.default_ext,  # '.mp4' 
+                        MessageFileTypes.CONTENT.default_ext]  # '.html'                        
     database_files = set([f'{ProjectDirs.media_dir}/{file}' for file in
                           db_handler.get_file_list_by_extension(file_ext_to_sync)])
     # Находим все локальные файлы с указанными расширениями рекурсивно
@@ -278,17 +283,17 @@ def db_database_maintenance():
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     status_messages.mess_update('Synchronizing the list of local files with the database',
                                 f'Files deleted from local storage: {files_deleted_count}', True)
-    # Удаляем пустые директорииfile_types
+    # Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
                              not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
     status_messages.mess_update('', f'Empty directories deleted from local storage: {dir_deleted_count}')
-    # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе
+    # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе, кроме HTML файлов
     downloaded_file_list = []
     for file_path in files_to_download:
         # Получаем информацию о файле из базы данных
         downloaded_file = db_handler.get_file_by_local_path(file_path)
-        if downloaded_file:
+        if downloaded_file and Path(file_path).suffix != MessageFileTypes.CONTENT.default_ext:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
     # Резервное копирование базы данных
@@ -304,7 +309,12 @@ def db_database_maintenance():
     db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
     # Обновление списка тегов в БД с сортировкой по текущим установкам и пересчетом количества использований
     db_handler.all_tags_list = db_handler.get_all_tag_list()
-    return jsonify({})
+    # Формирование структуры данных для обновления списков диалогов и тегов в форме базы данных
+    data_structure = {FormCfg.db_message_filter.get('dialog_select'): db_handler.get_select_content_string(
+        db_handler.current_state.dialog_list, 'dialog_id', 'title'),
+        FormCfg.db_detail_tags.get('all_detail_tags'): db_handler.get_select_content_string(
+            db_handler.all_tags_list, 'id', 'name')}
+    return jsonify(data_structure)
 
 
 @tg_saver.route('/db_message_apply_filters', methods=['POST'])
@@ -313,7 +323,7 @@ def db_message_apply_filters():
     Получение списка сообщений из базы данных с применением фильтров
     """
     # Установка фильтров списка сообщений из базы данных по значениям из формы
-    form_cfg = FormButtonCfg.db_message_filter
+    form_cfg = FormCfg.db_message_filter
     form = request.form
     mess_filter = db_handler.message_sort_filter
     mess_filter.selected_dialog_list = form.getlist(form_cfg['dialog_select'])
@@ -338,10 +348,11 @@ def db_get_details(message_group_id: str):
     """
     db_handler.current_state.message_details = db_handler.get_message_detail(message_group_id)
     db_handler.current_state.selected_message_group_id = message_group_id
-    return jsonify({'db_details': render_template('db_details.html'),
-                    FormButtonCfg.db_detail_tags.get(
-                        'curr_message_tags'): db_handler.get_select_content_string(
-                        db_handler.current_state.message_details.get('tags'), 'id', 'name')})
+    # Формирование структуры данных для обновления списка тегов
+    data_structure = {'db_details': render_template('db_details.html'), FormCfg.db_detail_tags.get(
+        'curr_message_tags'): db_handler.get_select_content_string(db_handler.current_state.message_details.get('tags'),
+                                                                   'id', 'name')}
+    return jsonify(data_structure)
 
 
 @tg_saver.route('/db_export_selected_message_to_html', methods=["POST"])
@@ -349,7 +360,7 @@ def db_export_selected_message_to_html():
     """
     Экспорт отмеченных сообщений из базы данных в HTML файл
     """
-    form_cfg = FormButtonCfg.db_checkbox_list
+    form_cfg = FormCfg.db_checkbox_list
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
     if not selected_messages_id:
@@ -387,7 +398,7 @@ def db_delete_selected_from_database():
     """
     Удаление отмеченных сообщений из базы данных
     """
-    form_cfg = FormButtonCfg.db_checkbox_list
+    form_cfg = FormCfg.db_checkbox_list
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
     stmt = delete(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id))
@@ -395,9 +406,17 @@ def db_delete_selected_from_database():
     db_handler.session.commit()
     db_handler.current_state.message_group_list = db_handler.get_message_group_list()
     db_handler.current_state.message_details = None
-    return jsonify({'db_messages': render_template('db_messages.html'),
-                    'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
-                    'db_details': '', })
+    # Обновляем список диалогов, сохраненных в базе данных
+    db_handler.all_dialogues_list = db_handler.get_dialog_list()
+    db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
+    # Формирование структуры данных для обновления списков диалогов
+    data_structure = {'db_messages': render_template('db_messages.html'),
+                      'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
+                      'db_details': '',
+                      FormCfg.db_message_filter.get(
+                          'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
+                                                                                 'dialog_id', 'title')}
+    return jsonify(data_structure)
 
 
 @tg_saver.route('/db_tag_add', methods=['POST'])
@@ -405,7 +424,7 @@ def db_tag_add():
     """
     Добавление тега к сообщению
     """
-    form_cfg = FormButtonCfg.db_detail_tags
+    form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
@@ -420,7 +439,7 @@ def db_tag_remove():
     """
     Удаление тега сообщения
     """
-    form_cfg = FormButtonCfg.db_detail_tags
+    form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
@@ -435,7 +454,7 @@ def db_tag_update():
     """
     Изменение тега сообщения
     """
-    form_cfg = FormButtonCfg.db_detail_tags
+    form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
@@ -451,7 +470,7 @@ def db_tag_update_everywhere():
     """
     Изменение тега сообщения и такого же тега всех сообщений
     """
-    form_cfg = FormButtonCfg.db_detail_tags
+    form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
@@ -467,7 +486,7 @@ def db_all_tag_sorting():
     """
     Сортировка всех тегов базы данных в поле выбора тегов
     """
-    form_cfg = FormButtonCfg.db_detail_tags
+    form_cfg = FormCfg.db_detail_tags
     match request.form.get(form_cfg['tag_sorting_field']):
         case '1':
             db_handler.current_state.all_tags_list_sorting = TagsSorting.usage_count_desc
@@ -487,12 +506,8 @@ if __name__ == '__main__':
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
-# TODO: В диалогах различать свои и не свои сообщения
-# TODO: Сделать удаление HTML файлов при удалении ссылок из базы данных, а на докачку их не ставить
 # TODO: Сделать сброс флажков и счетчика при действиях на списках
-# TODO: Сделать обновление списка диалогов и тегов после удаления сообщений
 # TODO: Сделать тесты
 # TODO: Оформить READ.ME, код и комментарии по PEP8, PEP257, и прочим рекомендациям
-# TODO: Глюк - расширение деталей, если там большая картинка, надо зафиксировать ширину столбцов и уменьшать картинку
 
 # Установить отдельно предельные размеры для файлов и медиа разных типов

@@ -1,7 +1,7 @@
 <!-- Шаблон для фильтрации диалогов Telegram -->
 
 {# Конфигурация элементов управления формы #}
-{% set form_cfg = form_btn_cfg.tg_dialog_filter %}
+{% set form_cfg = form_ctrl_cfg.tg_dialog_filter %}
 
 <!-- Telegram dialogs sort field radiobuttons -->
 <p class="group-label no-margin-top">Chats sorting field</p>
@@ -49,6 +49,6 @@
 
 <!-- Apply dialog filters button -->
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/tg_dialog_apply_filters')">
+        onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_dialog_apply_filters')">
     Apply chat filters
 </button>

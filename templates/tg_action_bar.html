@@ -1,7 +1,7 @@
 <!-- Шаблон панели действий выбора сообщений Telegram -->
 
 <!-- Конфигурация элементов управления формы -->
-{% set form_cfg = form_btn_cfg.tg_checkbox_list %}
+{% set form_cfg = form_ctrl_cfg.tg_checkbox_list %}
 
 <div class="tg-action-bar-grid">
     <div class="tg-select action-bar-button-area">
@@ -28,7 +28,7 @@
     <div class="tg-save_db action-bar-button-area">
         {# Apply to save selected messages to database #}
         <button class="action-bar-button"
-                onclick="pressFormButton({{ form_btn_cfg.get_form_button_cfg(form_cfg) }}, '/tg_save_selected_message_to_db')">
+                onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_save_selected_message_to_db')">
             Save selection to database
         </button>
     </div>
