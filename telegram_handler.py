@@ -199,9 +199,6 @@ class TgMessageGroup:
     files_report: Optional[str] = ''
     saved_to_db: bool = False
 
-    # dialog_title: str
-    # existing_files: List[TgFile]
-
     def __init__(self, grouped_id: str, dialog_id: int):
         self.grouped_id = grouped_id
         self.dialog_id = dialog_id

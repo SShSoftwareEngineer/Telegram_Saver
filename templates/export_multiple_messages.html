@@ -1,4 +1,4 @@
-<!-- Шаблон для экспорта из БД нескольких сохраненных сообщений -->
+{# Шаблон для экспорта из БД нескольких сохраненных сообщений #}
 
 <!DOCTYPE html>
 <html lang="ru">
@@ -61,53 +61,47 @@
             object-fit: contain;
         }
 
-        /* Вывод названия файла */
-        .media-file-name {
-            text-align: center;
-            margin-top: 5px;
-        }
-
     </style>
 </head>
 <body>
 
-<!-- Заголовок файла -->
+{# Заголовок файла #}
 <div class="export-header">
     <h2>Export Telegram messages, {{ export_date }}</h2>
     <p>Total messages: {{ exported_messages|length }}</p>
 </div>
 
-<!-- Цикл по сообщениям -->
+{# Цикл по сообщениям #}
 {% for message in exported_messages %}
     <div class="message-block">
-        <!-- Заголовок сообщения -->
+        {#         Заголовок сообщения #}
         <div style="text-align: center;">
             <b>{{ message.date }}</b>
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ message.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
         </div>
-        <!-- Теги сообщения -->
+        {#         Теги сообщения #}
         {% if message.tags %}
             <br>
             Message tags: {{ message.tags|join(', ') }}
             <br>
         {% endif %}
-        <!-- Текст сообщения -->
+        {#         Текст сообщения #}
         {% if message.text %}
             <br>
             {{ message.text|replace('\n', '<br>')|safe }}
         {% endif %}
-        <!-- Медиафайлы -->
+        {#         Медиафайлы #}
         {% if message.files %}
             <br>
             <div class="media-files-area">
                 {% for message_file in message.files %}
                     <div class="{% if message.files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-                        <!-- Изображения -->
+                        {#                         Изображения #}
                         {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                             <img class="media-files-container"
                                  src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
                         {% endif %}
-                        <!-- Видео -->
+                        {#                         Видео #}
                         {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                             <video class="media-files-container"
                                    src="{{ message_file.file_path }}" controls preload="metadata">
@@ -119,7 +113,7 @@
             </div>
         {% endif %}
     </div>
-    <!-- Разделитель между сообщениями (кроме последнего) -->
+    {#     Разделитель между сообщениями (кроме последнего) #}
     {% if not loop.last %}
         <div class="message-separator"></div>
     {% endif %}

@@ -362,35 +362,37 @@ def db_export_selected_message_to_html():
     """
     form_cfg = FormCfg.db_checkbox_list
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
-    selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
-    if not selected_messages_id:
-        return jsonify({})
-    status_messages.mess_update(f'Export selected {len(selected_messages_id)} messages to HTML file', '', new_list=True)
-    stmt = (
-        select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id)).order_by(DbMessageGroup.date))
-    query_result = db_handler.session.execute(stmt).scalars().all()
-    exported_messages = []
-    export_date_time = clean_file_path(datetime.now().strftime(GlobalConst.message_datetime_format))
-    for counter, result in enumerate(query_result, start=1):
-        export_data = result.get_export_data()
-        # Корректируем пути к файлам для возможности открытия из HTML файла
-        for file in export_data.get('files', []):
-            if Path(Path(ProjectDirs.media_dir) / file.get('file_path')).exists():
-                new_file_path = Path(ProjectDirs.export_dir) / export_date_time / Path(file['file_path']).name
-                new_file_path.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(Path(ProjectDirs.media_dir) / file.get('file_path'), new_file_path)
-                file['file_path'] = (Path(export_date_time) / Path(file['file_path']).name).as_posix()
-        exported_messages.append(export_data)
-        status_messages.mess_update('', f'Export message {counter} of {len(selected_messages_id)}')
-    html_content = render_template('export_multiple_messages.html',
-                                   exported_messages=exported_messages,
-                                   export_date=datetime.now().strftime(GlobalConst.message_datetime_format))
-    with open(Path(ProjectDirs.export_dir) / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
-              encoding='utf-8') as cf:
-        cf.write(html_content)
-    selected_messages_id = [f'{GlobalConst.select_in_database} {x}' for x in selected_messages_id]
-    status_messages.mess_update('', f'{len(selected_messages_id)} messages exported to HTML file')
-    return jsonify({})
+    export_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
+    data_structure={}
+    if export_messages_id:
+        status_messages.mess_update(f'Export selected {len(export_messages_id)} messages to HTML file', '',
+                                    new_list=True)
+        stmt = (select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(export_messages_id)).order_by(
+            DbMessageGroup.date))
+        query_result = db_handler.session.execute(stmt).scalars().all()
+        exported_messages = []
+        export_date_time = clean_file_path(datetime.now().strftime(GlobalConst.message_datetime_format))
+        for counter, result in enumerate(query_result, start=1):
+            export_data = result.get_export_data()
+            # Корректируем пути к файлам для возможности открытия из экспортированного HTML файла
+            for file in export_data.get('files', []):
+                if Path(Path(ProjectDirs.media_dir) / file.get('file_path')).exists():
+                    new_file_path = Path(ProjectDirs.export_dir) / export_date_time / Path(file['file_path']).name
+                    new_file_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(Path(ProjectDirs.media_dir) / file.get('file_path'), new_file_path)
+                    file['file_path'] = (Path(export_date_time) / Path(file['file_path']).name).as_posix()
+            exported_messages.append(export_data)
+            status_messages.mess_update('', f'Export message {counter} of {len(export_messages_id)}')
+        html_content = render_template('export_multiple_messages.html',
+                                       exported_messages=exported_messages,
+                                       export_date=datetime.now().strftime(GlobalConst.message_datetime_format))
+        with open(Path(ProjectDirs.export_dir) / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
+                  encoding='utf-8') as cf:
+            cf.write(html_content)
+        status_messages.mess_update('', f'{len(export_messages_id)} messages exported to HTML file')
+        # Формирование структуры данных для снятия выделения с экспортированных сообщений
+        data_structure={x: False for x in selected_messages_id}
+    return jsonify(data_structure)
 
 
 @tg_saver.route('/db_delete_selected_from_database', methods=["POST"])
@@ -506,8 +508,5 @@ if __name__ == '__main__':
 # TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
-# TODO: Сделать сброс флажков и счетчика при действиях на списках
 # TODO: Сделать тесты
 # TODO: Оформить READ.ME, код и комментарии по PEP8, PEP257, и прочим рекомендациям
-
-# Установить отдельно предельные размеры для файлов и медиа разных типов

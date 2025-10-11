@@ -116,20 +116,27 @@ function submitFormData(config, url) {
 // Универсальная функция обновления элементов по id = ключам из ответа
 function updateElementsFromResponse(data) {
     // console.log('updateElementsFromResponse called with:', data);
-
     Object.keys(data).forEach(key => {
         const element = document.getElementById(key);
         if (!element) {
             console.warn(`❌ Элемент с ID '${key}' НЕ НАЙДЕН на странице!`);
             return;
         }
-        if (element && typeof data[key] === 'string') {
+        // Для checkbox и radio - обновляем checked
+        if (element.type === 'checkbox' || element.type === 'radio') {
+            element.checked = data[key];
+        }
+        // Для input/textarea - обновляем value
+        else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+            element.value = data[key];
+        }
+        // Для остальных элементов - обновляем innerHTML
+        else if (typeof data[key] === 'string') {
             element.innerHTML = data[key];
-        } else {
-            console.warn(`❌ Data type for ${key} is:`, typeof data[key]);
         }
     });
 }
+
 
 // Функция, реализующая нажатие кнопки с конфигурацией элементов формы и URL обработчика
 function pressFormButton(config, url) {
