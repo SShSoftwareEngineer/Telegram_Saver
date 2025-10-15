@@ -1,7 +1,13 @@
-{# Шаблон для фильтрации сообщений в выбранном диалоге Telegram #}
+{#
+Отображение фильтра для групп сообщений Telegram.
+Переменные:
+  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+#}
+
 
 {# Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.tg_message_filter %}
+
 
 {# Dialog messages sort order radiobuttons #}
 <p class="group-label no-margin-top">Messages sort order</p>
@@ -11,6 +17,7 @@
     <input type="radio" id="tg_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1">
     <label for="tg_mess_reverse_1">Oldest first</label>
 </div>
+
 
 {# Filtering by date #}
 <p class="group-label">Filter by message date</p>
@@ -31,6 +38,7 @@
            placeholder="DD/MM/YYYY">
 </div>
 
+
 {# Filtering by Telegram message text #}
 <label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
@@ -43,6 +51,7 @@
             class="clear-button X-button"> ✖
     </button>
 </div>
+
 
 {# Apply message filters button #}
 <button class="apply-filters-buttons"

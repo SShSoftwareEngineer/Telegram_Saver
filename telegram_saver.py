@@ -6,12 +6,10 @@ from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import delete, select
 from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormCfg, TagsSorting, status_messages, \
     clean_file_path
-from telegram_handler import TelegramHandler, TgFile
-from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
+from telegram_handler import tg_handler, TgFile
+from database_handler import db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 
 tg_saver = Flask(__name__)
-db_handler = DatabaseHandler()
-tg_handler = TelegramHandler()
 
 
 @tg_saver.context_processor
@@ -35,16 +33,9 @@ def inject_field_names():
     }
 
 
-def initialize_data():
-    """
-    Инициализация данных при запуске
-    """
-    logging.getLogger('werkzeug').setLevel(logging.INFO)
-
-
 # Инициализация после создания приложения
 with tg_saver.app_context():
-    initialize_data()
+    logging.getLogger('werkzeug').setLevel(logging.INFO)
 
 
 @tg_saver.route(f'/{ProjectDirs.media_dir}/<path:filename>')
@@ -363,7 +354,7 @@ def db_export_selected_message_to_html():
     form_cfg = FormCfg.db_checkbox_list
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     export_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
-    data_structure={}
+    data_structure = {}
     if export_messages_id:
         status_messages.mess_update(f'Export selected {len(export_messages_id)} messages to HTML file', '',
                                     new_list=True)
@@ -391,7 +382,7 @@ def db_export_selected_message_to_html():
             cf.write(html_content)
         status_messages.mess_update('', f'{len(export_messages_id)} messages exported to HTML file')
         # Формирование структуры данных для снятия выделения с экспортированных сообщений
-        data_structure={x: False for x in selected_messages_id}
+        data_structure = {x: False for x in selected_messages_id}
     return jsonify(data_structure)
 
 

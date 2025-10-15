@@ -1,9 +1,16 @@
-{# Шаблон панели действий выбора сообщений Telegram #}
+{#
+Отображает панель действий выбора сообщений Telegram.
+Переменные:
+  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+#}
+
 
 {# Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.tg_checkbox_list %}
 
+
 <div class="tg-action-bar-grid">
+
     <div class="tg-select action-bar-button-area">
         {# Apply to select all messages #}
         <button type="button" class="action-bar-button"
@@ -11,6 +18,7 @@
             Select all
         </button>
     </div>
+
     <div class="tg-deselect action-bar-button-area">
         {# Apply to deselect all messages #}
         <button type="button" class="action-bar-button"
@@ -18,6 +26,7 @@
             Deselect all
         </button>
     </div>
+
     <div class="tg-invert action-bar-button-area">
         {# Apply to invert selection for all messages #}
         <button type="button" class="action-bar-button"
@@ -25,6 +34,7 @@
             Invert selection
         </button>
     </div>
+
     <div class="tg-save_db action-bar-button-area">
         {# Apply to save selected messages to database #}
         <button class="action-bar-button"
@@ -32,4 +42,5 @@
             Save selection to database
         </button>
     </div>
+
 </div>

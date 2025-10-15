@@ -317,11 +317,10 @@ class DatabaseHandler:
 
         # Enforce foreign key constraints in SQLite
         @event.listens_for(self.engine, "connect")
-        def set_sqlite_pragma(dbapi_conn, _): # placeholder _ используется вместо необязательного параметра connection_record
+        def set_sqlite_pragma(dbapi_conn, _):  # _ используется вместо необязательного параметра connection_record
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
-
 
     def __init__(self):
         """
@@ -602,6 +601,9 @@ class DatabaseHandler:
         all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
+
+# Создаем экземпляр DatabaseHandler()
+db_handler = DatabaseHandler()
 
 if __name__ == '__main__':
     pass

@@ -1,16 +1,20 @@
-{# Шаблон с опциями детальной информации сообщений базы данных #}
+{#
+Отображение деталей выбранного сообщения из базы данных.
+Переменные:
+  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+  - form_ctrl_cfg: класс конфигураций всех элементов управления формами
+  - db_all_tags: список всех тегов в базе данных
+  - constants: глобальные константы
+#}
 
-<style>
-    .vertical-spread {
-        margin-top: 15px;
-    }
-</style>
 
 {# Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.db_detail_tags %}
 
+
 {# Скрытый элемент, сохраняющий значение тега, переданного из SELECT в поле для редактирования #}
 <input type="hidden" id="{{ form_cfg.old_tag_name }}" name="{{ form_cfg.old_tag_name }}" value="">
+
 
 {# Current message tag list #}
 <label for="{{ form_cfg.curr_message_tags }}" class="group-label no-margin-top">Message Tags</label>
@@ -29,8 +33,9 @@
     </button>
 </div>
 
+
 {# Edit tag name #}
-<label for="{{ form_cfg.edit_tag_name }}" class="group-label vertical-spread">Edit Tag Name</label>
+<label for="{{ form_cfg.edit_tag_name }}" class="group-label vertical-spread-detail-tags">Edit Tag Name</label>
 <div class="control-X-button">
     <input type="text" id="{{ form_cfg.edit_tag_name }}" name="{{ form_cfg.edit_tag_name }}">
     <button type="button"
@@ -39,34 +44,39 @@
     </button>
 </div>
 
+
 {# Add a tag to a message #}
-<button class="apply-filters-buttons vertical-spread"
+<button class="apply-filters-buttons vertical-spread-detail-tags"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_add');">
     Add tag
 </button>
 
+
 {# Remove tag #}
-<button class="apply-filters-buttons vertical-spread"
+<button class="apply-filters-buttons vertical-spread-detail-tags"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_remove')">
     Remove tag
 </button>
 
+
 {# Update tag #}
-<button class="apply-filters-buttons vertical-spread"
+<button class="apply-filters-buttons vertical-spread-detail-tags"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update');
                 clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag
 </button>
 
+
 {# Update all tags #}
-<button class="apply-filters-buttons vertical-spread"
+<button class="apply-filters-buttons vertical-spread-detail-tags"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update_everywhere');
                 clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag everywhere
 </button>
 
+
 {# All tags sorting #}
-<label for="{{ form_cfg.all_detail_tags }}" class="group-label vertical-spread">All tags</label>
+<label for="{{ form_cfg.all_detail_tags }}" class="group-label vertical-spread-detail-tags">All tags</label>
 
 <form onchange="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_all_tag_sorting')">
     <div id="{{ form_cfg.tag_sorting_field }}">
@@ -79,8 +89,9 @@
     </div>
 </form>
 
+
 {# All tags list #}
-<div class="control-X-button vertical-spread">
+<div class="control-X-button vertical-spread-detail-tags">
     <select class="select-element"
             id="{{ form_cfg.all_detail_tags }}"
             name="{{ form_cfg.all_detail_tags }}"
@@ -98,9 +109,10 @@
     </button>
 </div>
 
+
 {# Adding a tag to the tag filter #}
 <button type="button"
-        class="apply-filters-buttons vertical-spread"
+        class="apply-filters-buttons vertical-spread-detail-tags"
         onclick="addTagToFilterFromAllTags('{{ form_cfg.all_detail_tags }}',
                 '{{ form_ctrl_cfg.db_message_filter.tag_query }}',
                 separator = '{{ constants.tag_filter_separator }}')">

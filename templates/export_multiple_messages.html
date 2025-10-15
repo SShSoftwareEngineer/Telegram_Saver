@@ -1,18 +1,22 @@
-{# Шаблон для экспорта из БД нескольких сохраненных сообщений #}
+{#
+Шаблон для экспорта из БД одного или нескольких сохраненных сообщений.
+Переменные:
+  - export_date: дата и время экспорта
+  - exported_messages: список экспортируемых сообщений
+#}
 
 <!DOCTYPE html>
 <html lang="ru">
 <meta charset="utf-8">
 <head>
     <title>Экспорт сообщений - {{ export_date }}</title>
-    <style>
 
+    <style>
         /* Встроенные стили для автономного HTML файла */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
         }
-
         .export-header {
             text-align: center;
             margin-bottom: 30px;
@@ -20,7 +24,6 @@
             background: #e3f2fd;
             border-radius: 8px;
         }
-
         .message-block {
             border: 1px solid #ddd;
             border-radius: 8px;
@@ -28,12 +31,10 @@
             padding: 15px;
             background: #fafafa;
         }
-
         .message-separator {
             border-top: 2px solid #ccc;
             margin: 30px 0;
         }
-
         /* Область медиафайлов */
         .media-files-area {
             display: flex;
@@ -41,29 +42,27 @@
             flex-wrap: wrap;
             justify-content: center;
         }
-
         /* Медиафайлы в одну колонку */
         .media-files-one-column {
             width: 90%;
             height: 90vh;
         }
-
         /* Медиафайлы в две колонки */
         .media-files-two-column {
             width: 45%;
             height: 45vh;
         }
-
         /* Контейнер для медиафайлов */
         .media-files-container {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
-
     </style>
+
 </head>
 <body>
+
 
 {# Заголовок файла #}
 <div class="export-header">
@@ -71,37 +70,42 @@
     <p>Total messages: {{ exported_messages|length }}</p>
 </div>
 
-{# Цикл по сообщениям #}
+
+{# Вывод сообщений из списка сообщений #}
 {% for message in exported_messages %}
     <div class="message-block">
-        {#         Заголовок сообщения #}
+
+        {# Заголовок сообщения #}
         <div style="text-align: center;">
             <b>{{ message.date }}</b>
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ message.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
         </div>
-        {#         Теги сообщения #}
+
+        {# Теги сообщения #}
         {% if message.tags %}
             <br>
             Message tags: {{ message.tags|join(', ') }}
             <br>
         {% endif %}
-        {#         Текст сообщения #}
+
+        {# Текст сообщения #}
         {% if message.text %}
             <br>
             {{ message.text|replace('\n', '<br>')|safe }}
         {% endif %}
-        {#         Медиафайлы #}
+
+        {# Графические, видео и другие файлы #}
         {% if message.files %}
             <br>
             <div class="media-files-area">
                 {% for message_file in message.files %}
                     <div class="{% if message.files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-                        {#                         Изображения #}
+                        {# Изображения #}
                         {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                             <img class="media-files-container"
                                  src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
                         {% endif %}
-                        {#                         Видео #}
+                        {# Видео #}
                         {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                             <video class="media-files-container"
                                    src="{{ message_file.file_path }}" controls preload="metadata">
@@ -113,11 +117,11 @@
             </div>
         {% endif %}
     </div>
-    {#     Разделитель между сообщениями (кроме последнего) #}
+
+    {# Разделитель между сообщениями (кроме последнего) #}
     {% if not loop.last %}
         <div class="message-separator"></div>
     {% endif %}
-
 {% endfor %}
 
 </body>

@@ -1,7 +1,13 @@
-{# Шаблон для фильтрации диалогов в базе данных #}
+{#
+Отображение фильтра для диалогов и групп сообщений из базы данных.
+Переменные:
+  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+#}
+
 
 {# Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.db_message_filter %}
+
 
 {# Database dialog filter #}
 <label for="{{ form_cfg.dialog_select }}" class="group-label no-margin-top">Filter by chat names</label>
@@ -22,6 +28,7 @@
     </button>
 </div>
 
+
 {# Database messages sort field radiobuttons #}
 <p class="group-label">Messages sorting field</p>
 <div id="{{ form_cfg.sorting_field }}">
@@ -31,6 +38,7 @@
     <label for="db_mess_sort_field_1">Sort by chat name</label>
 </div>
 
+
 {# Database messages sort order radiobuttons #}
 <p class="group-label">Messages sort order</p>
 <div id="{{ form_cfg.sorting_order }}">
@@ -39,6 +47,7 @@
     <input type="radio" id="db_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1" checked>
     <label for="db_mess_reverse_1">Descending</label>
 </div>
+
 
 {# Filter database messages by date #}
 <p class="group-label">Filter by message date</p>
@@ -59,6 +68,7 @@
            placeholder="DD/MM/YYYY">
 </div>
 
+
 {# Filtering database messages by message text #}
 <label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
@@ -71,6 +81,7 @@
             class="clear-button X-button"> ✖
     </button>
 </div>
+
 
 {# Filtering database messages by tags #}
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
@@ -87,6 +98,7 @@
             class="clear-button X-button"> ✖
     </button>
 </div>
+
 
 {# Apply database message filters button #}
 <button class="apply-filters-buttons"

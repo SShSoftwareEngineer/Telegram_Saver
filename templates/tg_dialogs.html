@@ -1,6 +1,14 @@
-{# Шаблон информации списка диалогов Telegram #}
+{#
+Отображает список диалогов Telegram в виде гиперссылок.
+Переменные:
+  - tg_dialogs: список диалогов Telegram
+  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
+  - message_date: отформатированная дата и время сообщения
+  - constants: глобальные константы
+  - tg_file_types: типы файлов Telegram
+#}
 
-{# Вывод списка диалогов Telegram #}
+{# Вывод списка диалогов Telegram в виде гиперссылок #}
 <ul class="dialogs-messages-list">
     {% for tg_dialog in tg_dialogs %}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">

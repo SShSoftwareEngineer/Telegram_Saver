@@ -1,4 +1,13 @@
-{# Шаблон информации о группе сообщений в списке сообщений выбранного диалога Telegram #}
+{#
+Отображение списка групп сообщений выбранного диалога Telegram.
+Переменные:
+  - tg_messages: список групп сообщений
+  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
+  - message_date: отформатированная дата и время сообщения
+  - constants: глобальные константы
+  - tg_file_types: типы файлов Telegram
+#}
+
 
 {# Вывод списка групп сообщений Telegram #}
 <ul class="dialogs-messages-list">
@@ -6,7 +15,7 @@
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+tg_message.grouped_id %}
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ message_grouped_id }}" value="{{ tg_message.grouped_id }}">
-        {# Стиль чередования фонов групп сообщений  #}
+        {# Выбор стиля чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
@@ -37,7 +46,6 @@
             {% if tg_message.files_report %}
                 <b>{{ tg_message.files_report }}</b>
             {% endif %}
-
         </li>
     {% endfor %}
 </ul>
