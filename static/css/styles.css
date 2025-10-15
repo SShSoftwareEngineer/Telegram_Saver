@@ -227,7 +227,7 @@ html, body {
 
 /* Стили для строки статуса */
 
-/* НЕЗАВИСИМЫЙ Grid для строки статуса */
+/* Независимый Grid для строки статуса */
 .status-bar-grid {
     display: grid;
     grid-template-columns: 45fr 55fr;
@@ -272,6 +272,11 @@ html, body {
 /* Без отступа сверху */
 .no-margin-top {
     margin-top: 0;
+}
+
+/* Отступ сверху для тегов */
+.vertical-spread-detail-tags {
+    margin-top: 15px;
 }
 
 /* Кнопка очистки поля ввода или выбора */

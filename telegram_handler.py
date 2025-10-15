@@ -1,8 +1,8 @@
+import atexit
 from asyncio import new_event_loop, set_event_loop
 from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
-
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive, MessageMediaWebPage
@@ -14,10 +14,6 @@ from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string, status_messages, \
     clean_file_path
-
-# Создаем и сохраняем цикл событий
-loop = new_event_loop()
-set_event_loop(loop)
 
 
 @dataclass
@@ -714,6 +710,24 @@ def convert_text_hyperlinks(message_text: str) -> Optional[str]:
                                                     f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
     return message_text
 
+
+def cleanup_loop():
+    """
+    Вызывается при завершении приложения и закрывает цикл событий, если он открыт.
+    """
+    if loop.is_running():
+        loop.stop()
+    if not loop.is_closed():
+        loop.close()
+    set_event_loop(None)
+
+
+# Создаем и сохраняем цикл событий
+loop = new_event_loop()
+set_event_loop(loop)
+atexit.register(cleanup_loop)
+# Создаем экземпляр TelegramHandler()
+tg_handler = TelegramHandler()
 
 if __name__ == "__main__":
     pass

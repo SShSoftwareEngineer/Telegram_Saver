@@ -1,21 +1,35 @@
-{# Шаблон информации о группе сообщений в списке сообщений выбранного диалога базы данных #}
+{#
+Отображение списка групп сообщений выбранного диалога из базы данных.
+Переменные:
+  - db_messages: список групп сообщений
+  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
+  - message_date: отформатированная дата и время сообщения
+  - constants: глобальные константы
+  - db_file_types: типы файлов Telegram
+#}
+
 
 {# Вывод списка групп сообщений из базы данных #}
 <ul class="dialogs-messages-list">
     {% for db_message in db_messages %}
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+db_message.grouped_id %}
+
         {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_message.grouped_id }}">
+
         {# Стиль чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
+
             {# Формирование даты и времени сообщения как ссылки #}
             {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
             {# Ссылка на детали сообщения для загрузки #}
             <a href="/db_details/{{ db_message.grouped_id }}"
                onclick="loadURL('{{ url_for('db_get_details', message_group_id=db_message.grouped_id) }}'); return false;">
                 {{ message_date }}</a>
+
             {# Вывод начала названия диалога #}
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|safe|truncate(constants.truncated_title_length) }}</span>
+
             {# Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
                 {% set checkbox_name = constants.select_in_database+' '+db_message.grouped_id %}
@@ -24,11 +38,13 @@
                        onchange="updateCheckboxCounter('.db-message-checkbox', 'db-messages-count');">
                 <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
             </span>
+
             {# Вывод обрезанного текста #}
             {% if db_message.text %}
                 <br>
                 {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
             {% endif %}
+
             {# Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}
                 <br>
