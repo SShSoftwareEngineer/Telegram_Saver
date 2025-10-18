@@ -1,8 +1,8 @@
 {#
-Шаблон для экспорта из БД одного или нескольких сохраненных сообщений.
-Переменные:
-  - export_date: дата и время экспорта
-  - exported_messages: список экспортируемых сообщений
+Export one or more saved messages from the database.
+Variables:
+  - export_date: date and time of export
+  - exported_messages: list of messages to be exported
 #}
 
 <!DOCTYPE html>
@@ -12,7 +12,7 @@
     <title>Экспорт сообщений - {{ export_date }}</title>
 
     <style>
-        /* Встроенные стили для автономного HTML файла */
+        /* Built-in styles for standalone HTML file / Встроенные стили для автономного HTML файла */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
@@ -35,24 +35,24 @@
             border-top: 2px solid #ccc;
             margin: 30px 0;
         }
-        /* Область медиафайлов */
+        /* Media files area / Область медиафайлов */
         .media-files-area {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             justify-content: center;
         }
-        /* Медиафайлы в одну колонку */
+        /* Media files in a single column / Медиафайлы в одну колонку */
         .media-files-one-column {
             width: 90%;
             height: 90vh;
         }
-        /* Медиафайлы в две колонки */
+        /* Media files in two columns / Медиафайлы в две колонки */
         .media-files-two-column {
             width: 45%;
             height: 45vh;
         }
-        /* Контейнер для медиафайлов */
+        /* Container for media files / Контейнер для медиафайлов */
         .media-files-container {
             width: 100%;
             height: 100%;
@@ -64,48 +64,54 @@
 <body>
 
 
-{# Заголовок файла #}
+{# File header / Заголовок файла #}
 <div class="export-header">
     <h2>Export Telegram messages, {{ export_date }}</h2>
     <p>Total messages: {{ exported_messages|length }}</p>
 </div>
 
 
-{# Вывод сообщений из списка сообщений #}
+{# Displaying messages from the message list / Вывод сообщений из списка сообщений #}
 {% for message in exported_messages %}
     <div class="message-block">
 
-        {# Заголовок сообщения #}
+        {# Message header / Заголовок сообщения #}
         <div style="text-align: center;">
+
+            {# Displaying the date of the message / Вывод даты сообщения #}
             <b>{{ message.date }}</b>
+
+            {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ message.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
         </div>
 
-        {# Теги сообщения #}
+        {# Displaying message tags / Вывод тегов сообщения #}
         {% if message.tags %}
             <br>
             Message tags: {{ message.tags|join(', ') }}
             <br>
         {% endif %}
 
-        {# Текст сообщения #}
+        {# Displaying the message text / Вывод текста сообщения #}
         {% if message.text %}
             <br>
             {{ message.text|replace('\n', '<br>')|safe }}
         {% endif %}
 
-        {# Графические, видео и другие файлы #}
+        {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}
         {% if message.files %}
             <br>
             <div class="media-files-area">
                 {% for message_file in message.files %}
                     <div class="{% if message.files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-                        {# Изображения #}
+
+                        {# Displaying of graphics files / Вывод графических файлов #}
                         {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                             <img class="media-files-container"
                                  src="{{ message_file.file_path }}" alt="{{ message_file.alt_text }}">
                         {% endif %}
-                        {# Видео #}
+
+                        {# Displaying of video files / Вывод видео файлов #}
                         {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                             <video class="media-files-container"
                                    src="{{ message_file.file_path }}" controls preload="metadata">
@@ -118,7 +124,7 @@
         {% endif %}
     </div>
 
-    {# Разделитель между сообщениями (кроме последнего) #}
+    {# Separator between messages (except the last one) / Разделитель между сообщениями (кроме последнего) #}
     {% if not loop.last %}
         <div class="message-separator"></div>
     {% endif %}

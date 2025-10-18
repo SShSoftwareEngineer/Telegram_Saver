@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
-from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, parse_date_string, status_messages, \
-    clean_file_path
+from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
+from utils import parse_date_string, clean_file_path, status_messages
 
 
 @dataclass
@@ -386,6 +386,8 @@ class TelegramHandler:
             for line in file_env:
                 if not line.strip().startswith('#') and '=' in line:
                     key, value = line.strip().split('=')
+                    if value.startswith("'") and value.endswith("'") or value.startswith('"') and value.endswith('"'):
+                        value = value[1:-1]
                     self._connection_settings[key] = value
         # Создаем и запускаем клиент Telegram
         self.client = TelegramClient(self._connection_settings['SESSION_NAME'],

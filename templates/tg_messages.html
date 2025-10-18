@@ -1,33 +1,41 @@
 {#
-Отображение списка групп сообщений выбранного диалога Telegram.
-Переменные:
-  - tg_messages: список групп сообщений
-  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
-  - message_date: отформатированная дата и время сообщения
-  - constants: глобальные константы
-  - tg_file_types: типы файлов Telegram
+Display a list of message groups for the selected Telegram chat.
+Variables:
+  - tg_messages: list of message groups
+  - message_grouped_id: name of the hidden field for grouped_id of the message group
+  - message_date: formatted date and time of the message
+  - constants: global constants
+  - tg_file_types: Telegram file types
 #}
 
 
-{# Вывод списка групп сообщений Telegram #}
+{# Displaying a list of message groups from Telegram / Вывод списка групп сообщений Telegram #}
 <ul class="dialogs-messages-list">
     {% for tg_message in tg_messages %}
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+tg_message.grouped_id %}
-        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
+
+        {# Hidden element that returns the grouped_id of the corresponding message group
+           Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ message_grouped_id }}" value="{{ tg_message.grouped_id }}">
-        {# Выбор стиля чередования фонов групп сообщений  #}
+
+        {# Style of alternation of message group backgrounds / Выбор стиля чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
-            {# Формирование даты и времени сообщения как ссылки #}
+
+            {# Forming the date and time of a message as a reference / Формирование даты и времени сообщения как ссылки #}
             {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
-            {# Ссылка на детали сообщения для загрузки #}
+
+            {# Link to message details for loading / Ссылка на детали сообщения для загрузки #}
             <a href="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
                onclick="loadURL('{{ url_for('tg_get_details', dialog_id=tg_message.dialog_id, message_group_id=tg_message.grouped_id) }}'); return false;">
                 {{ message_date }}</a>
-            {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
+
+            {# Display a label indicating saving to the database or a checkbox for marking for saving
+               Вывод метки о сохранении в БД или чекбокса для отметки на сохранение #}
             {% if tg_message.saved_to_db %}
                 <span class="selected-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
-                {# Создание чекбокса для отметки на сохранение в БД #}
+
+                {# Creating a checkbox for marking items to save to the database / Создание чекбокса для отметки на сохранение в БД #}
                 <span class="message-checkbox">
                     {% set checkbox_name = constants.select_in_telegram+' '+tg_message.grouped_id %}
                     <input type="checkbox" class="tg-message-checkbox"
@@ -36,13 +44,15 @@
                     <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
                 </span>
             {% endif %}
-            {# Вывод обрезанного текста #}
+
+            {# Displaying the beginning of the text / Вывод начального фрагмента текста #}
             {% if tg_message.text %}
                 <div class="{% if tg_message.from_id.user_id==tg_me.id %}my-message-in-list{% endif %}">
                     {{ tg_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
                 </div>
             {% endif %}
-            {# Вывод строки информации о файлах в группе сообщений #}
+
+            {# Displaying information about files in a message group / Вывод строки информации о файлах в группе сообщений #}
             {% if tg_message.files_report %}
                 <b>{{ tg_message.files_report }}</b>
             {% endif %}

@@ -1,11 +1,11 @@
 {#
-Отображение деталей выбранного сообщения из базы данных.
-Переменные:
-  - db_details: детальная информация сообщения
-  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
-  - message_date: отформатированная дата и время сообщения
-  - constants: глобальные константы
-  - db_file_types: типы файлов Telegram
+Display details of the selected message from the database.
+Variables:
+  - db_details: detailed message information
+  - message_grouped_id: name of the hidden field for grouped_id of the message group
+  - message_date: formatted date and time of the message
+  - constants: global constants
+  - db_file_types: Telegram file types
 #}
 
 
@@ -14,29 +14,31 @@
     {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
     {% set message_grouped_id = constants.mess_group_id+'_det = '+group %}
 
-    {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
+    {# Hidden element that returns the grouped_id of the corresponding message group for details /
+       Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений для деталей #}
     <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_details.message_group_id }}">
     <div style="text-align: center;">
 
-        {# Вывод даты сообщения #}
+        {# Displaying a date of message / Вывод даты сообщения #}
         <b>{{ message_date }}</b>
 
-        {# Вывод начала названия диалога #}
+        {# Beginning of dialog title / Вывод начала названия диалога #}
         <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
 
-        {# Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
+        {# Displaying a label from the database or a checkbox for saving
+           Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
         {% if db_details.saved_to_db %}
             <span class="selected-message-checkbox">{{ constants.checked_in_db_label }}</span>
         {% endif %}
     </div>
 
-    {# Вывод текста сообщения #}
+    {# Message text / Вывод текста сообщения #}
     {% if db_details.text %}
         <br>
         {{ db_details.text|replace('\n', '<br>')|safe }}
     {% endif %}
 
-    {# Вывод графических, видео и других файлов #}
+    {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}
     {% if db_details.existing_files %}
         <br>
         <div class="media-files-area">
@@ -45,13 +47,13 @@
                 <div class="{% if db_details.existing_files|length > 1 %} media-files-two-column
                                 {% else %} media-files-one-column {% endif %}">
 
-                    {# Вывод графических файлов #}
+                    {# Displaying of graphics files / Вывод графических файлов #}
                     {% if message_file.file_type.alt_text==tg_file_types.IMAGE.alt_text %}
                         <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
                              alt="{{ message_file.alt_text }}" class="media-files-container">
                     {% endif %}
 
-                    {# Вывод видео файлов #}
+                    {# Displaying of video files / Вывод видео файлов #}
                     {% if message_file.file_type.alt_text==tg_file_types.VIDEO.alt_text %}
                         <video src="{{ url_for('media_dir', filename=message_file.file_path, _external=True) }}"
                                controls preload="metadata" class="media-files-container">

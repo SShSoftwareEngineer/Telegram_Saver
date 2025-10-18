@@ -1,18 +1,18 @@
 {#
-Отображает панель действий выбора сообщений Telegram.
-Переменные:
-  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+Displays the Telegram message selection action bar.
+Variables:
+  - form_cfg: configuration of form controls for filter processing
 #}
 
 
-{# Конфигурация элементов управления формы #}
+{# Form control configuration / Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.tg_checkbox_list %}
 
 
 <div class="tg-action-bar-grid">
 
     <div class="tg-select action-bar-button-area">
-        {# Apply to select all messages #}
+        {# Select all messages / Выбрать все сообщения #}
         <button type="button" class="action-bar-button"
                 onclick="selectAllCB('.tg-message-checkbox', 'tg-messages-count');">
             Select all
@@ -20,7 +20,7 @@
     </div>
 
     <div class="tg-deselect action-bar-button-area">
-        {# Apply to deselect all messages #}
+        {# Deselect all messages / Снять выделение со всех сообщений #}
         <button type="button" class="action-bar-button"
                 onclick="deSelectAllCB('.tg-message-checkbox', 'tg-messages-count');">
             Deselect all
@@ -28,7 +28,7 @@
     </div>
 
     <div class="tg-invert action-bar-button-area">
-        {# Apply to invert selection for all messages #}
+        {# Invert selection / Инвертировать выделенное #}
         <button type="button" class="action-bar-button"
                 onclick="invertSelectionCB('.tg-message-checkbox', 'tg-messages-count');">
             Invert selection
@@ -36,7 +36,7 @@
     </div>
 
     <div class="tg-save_db action-bar-button-area">
-        {# Apply to save selected messages to database #}
+        {# Save selected messages to database / Сохранить выбранные сообщения в базе данных #}
         <button class="action-bar-button"
                 onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_save_selected_message_to_db')">
             Save selection to database
