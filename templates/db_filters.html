@@ -1,15 +1,15 @@
 {#
-Отображение фильтра для диалогов и групп сообщений из базы данных.
-Переменные:
-  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+Displaying a filter for dialogs and message groups from the database.
+Variables:
+- form_cfg: configuration of form controls for filter processing
 #}
 
 
-{# Конфигурация элементов управления формы #}
+{# Configuration of form controls for filter processing / Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.db_message_filter %}
 
 
-{# Database dialog filter #}
+{# Database dialog filter / Фильтр по списку чатов в базе данных #}
 <label for="{{ form_cfg.dialog_select }}" class="group-label no-margin-top">Filter by chat names</label>
 <div class="control-X-button">
     <select class="select-element"
@@ -29,7 +29,7 @@
 </div>
 
 
-{# Database messages sort field radiobuttons #}
+{# Database messages sort field radiobuttons / Выбор поля сортировки #}
 <p class="group-label">Messages sorting field</p>
 <div id="{{ form_cfg.sorting_field }}">
     <input type="radio" id="db_mess_sort_field_0" name="{{ form_cfg.sorting_field }}" value="0" checked>
@@ -39,7 +39,7 @@
 </div>
 
 
-{# Database messages sort order radiobuttons #}
+{# Database messages sort order radiobuttons / Выбор порядка сортировки #}
 <p class="group-label">Messages sort order</p>
 <div id="{{ form_cfg.sorting_order }}">
     <input type="radio" id="db_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0">
@@ -49,17 +49,17 @@
 </div>
 
 
-{# Filter database messages by date #}
+{# Filter database messages by date / Фильтр сообщений базы данных по дате #}
 <p class="group-label">Filter by message date</p>
 <div class="date-from-to-buttons-grid">
-{#    Filtering by date from #}
+{#    Filtering by date from / Фильтр по дате начала периода #}
     <label for="{{ form_cfg.date_from }}">Date from:</label>
     <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_from }}"
            name="{{ form_cfg.date_from }}"
            min="2013-01-01"
            placeholder="DD/MM/YYYY">
-{#     Filtering by date to #}
+{#     Filtering by date to / Фильтр по дате конца периода #}
     <label for="{{ form_cfg.date_to }}">Date to:</label>
     <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_to }}"#}
@@ -69,7 +69,7 @@
 </div>
 
 
-{# Filtering database messages by message text #}
+{# Filtering database messages by message text / Фильтр по фрагменту текста сообщений #}
 <label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
     <input type="text"
@@ -83,7 +83,7 @@
 </div>
 
 
-{# Filtering database messages by tags #}
+{# Filtering database messages by tags / Фильтр по тегам сообщений #}
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
 <div class="control-X-button">
     {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; flask; HTML" %}
@@ -100,7 +100,7 @@
 </div>
 
 
-{# Apply database message filters button #}
+{# Apply database message filters button / Кнопка применения фильтра #}
 <button class="apply-filters-buttons"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_message_apply_filters')">
     Apply message filters

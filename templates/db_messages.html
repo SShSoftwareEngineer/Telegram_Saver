@@ -1,36 +1,38 @@
 {#
-Отображение списка групп сообщений выбранного диалога из базы данных.
-Переменные:
-  - db_messages: список групп сообщений
-  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
-  - message_date: отформатированная дата и время сообщения
-  - constants: глобальные константы
-  - db_file_types: типы файлов Telegram
+Display a list of message groups for the selected dialogue from the database.
+Variables:
+  - db_messages: list of message groups
+  - message_grouped_id: name of the hidden field for grouped_id of the message group
+  - message_date: formatted date and time of the message
+  - constants: global constants
+  - db_file_types: Telegram file types
 #}
 
 
-{# Вывод списка групп сообщений из базы данных #}
+{# Displaying a list of message groups from the database / Вывод списка групп сообщений из базы данных #}
 <ul class="dialogs-messages-list">
     {% for db_message in db_messages %}
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+db_message.grouped_id %}
 
-        {# Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
+        {# Hidden element that returns the grouped_id of the corresponding message group
+           Скрытый элемент, возвращающий grouped_id соответствующей группы сообщений #}
         <input type="hidden" name="{{ message_grouped_id }}" value="{{ db_message.grouped_id }}">
 
-        {# Стиль чередования фонов групп сообщений  #}
+        {# Style of alternation of message group backgrounds / Стиль чередования фонов групп сообщений  #}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
 
-            {# Формирование даты и времени сообщения как ссылки #}
+            {# Forming the date and time of a message as a reference / Формирование даты и времени сообщения как ссылки #}
             {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
-            {# Ссылка на детали сообщения для загрузки #}
+
+            {# Link to message details for loading / Ссылка на детали сообщения для загрузки #}
             <a href="/db_details/{{ db_message.grouped_id }}"
                onclick="loadURL('{{ url_for('db_get_details', message_group_id=db_message.grouped_id) }}'); return false;">
                 {{ message_date }}</a>
 
-            {# Вывод начала названия диалога #}
+            {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
             <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|safe|truncate(constants.truncated_title_length) }}</span>
 
-            {# Создание чекбокса для отметки на экспорт или удаление #}
+            {# Creating a checkbox for marking for export or deletion / Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
                 {% set checkbox_name = constants.select_in_database+' '+db_message.grouped_id %}
                 <input type="checkbox" class="db-message-checkbox"
@@ -39,13 +41,13 @@
                 <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
             </span>
 
-            {# Вывод обрезанного текста #}
+            {# Displaying the beginning of the text / Вывод начального фрагмента текста #}
             {% if db_message.text %}
                 <br>
                 {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
             {% endif %}
 
-            {# Вывод строки информации о файлах в группе сообщений #}
+            {# Displaying information about files in a message group / Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}
                 <br>
                 <b>{{ db_message.files_report }}</b>

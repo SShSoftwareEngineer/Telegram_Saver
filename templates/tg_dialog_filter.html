@@ -1,21 +1,20 @@
 {#
-Отображает фильтр для диалогов Telegram.
-Переменные:
-  - form_cfg: конфигурация элементов управления формы для обработки фильтра
-
-  - tg_messages: список объектов сообщений
-  - message_grouped_id: имя скрытого поля для grouped_id группы сообщений
-  - message_date: отформатированная дата и время сообщения
-  - constants: глобальные константы
-  - tg_file_types: типы файлов Telegram
+Displays a filter for Telegram dialogs.
+Variables:
+  - form_cfg: configuration of form controls for filter processing
+  - tg_messages: list of message objects
+  - message_grouped_id: name of the hidden field for the grouped_id of the message group
+  - message_date: formatted date and time of the message
+  - constants: global constants
+  - tg_file_types: Telegram file types
 #}
 
 
-{# Конфигурация элементов управления формы #}
+{# Configuration of form controls for filter processing / Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.tg_dialog_filter %}
 
 
-{# Telegram dialogs sort field radiobuttons #}
+{# Telegram dialogs sort field radiobuttons / Выбор поля сортировки списка чатов Telegram #}
 <p class="group-label no-margin-top">Chats sorting field</p>
 <div id="{{ form_cfg.sorting_field }}">
     <input type="radio" id="tg_sort_field_0" name="{{ form_cfg.sorting_field }}" value="0" checked>
@@ -25,7 +24,7 @@
 </div>
 
 
-{# Telegram dialogs sort order radiobuttons #}
+{# Telegram dialogs sort order radiobuttons / Выбор порядка сортировки чатов Telegram #}
 <p class="group-label">Chats sort order</p>
 <div id="{{ form_cfg.sorting_order }}">
     <input type="radio" id="tg_dial_sort_order_0" name="{{ form_cfg.sorting_order }}" value="0" checked>
@@ -35,7 +34,7 @@
 </div>
 
 
-{# Dialog types selection radiobuttons #}
+{# Dialog types selection radiobuttons / Выбор типа чатов Telegram #}
 <p class="group-label">Chat types filter</p>
 <div id="{{ form_cfg.dialog_type }}">
     <input type="radio" id="tg_type_filter_0" name="{{ form_cfg.dialog_type }}" value="0" checked>
@@ -49,7 +48,7 @@
 </div>
 
 
-{# Filtering by dialog title #}
+{# Filtering by dialog title / Фильтр по фрагменту названия чата #}
 <label for="{{ form_cfg.dialog_title_query }}" class="group-label">Filter by chat name</label>
 <div class="control-X-button">
     <input type="text"
@@ -63,7 +62,7 @@
 </div>
 
 
-{# Apply dialog filters button #}
+{# Apply dialog filters button / Кнопка применения фильтра #}
 <button class="apply-filters-buttons"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_dialog_apply_filters')">
     Apply chat filters

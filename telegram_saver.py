@@ -4,8 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import delete, select
-from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormCfg, TagsSorting, status_messages, \
-    clean_file_path
+from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormCfg, TagsSorting
+from utils import clean_file_path, status_messages
 from telegram_handler import tg_handler, TgFile
 from database_handler import db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 

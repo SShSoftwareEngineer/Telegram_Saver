@@ -1,10 +1,10 @@
 {#
-Шаблон для экспорта из БД одного сохраненного сообщения.
-Переменные:
-  - date: дата сообщения
-  - dialog_title: название диалога
-  - text: текст сообщения
-  - files: список файлов сообщения
+Export one saved message from the database.
+Variables:
+  - date: message date
+  - dialog_title: dialog title
+  - text: message text
+  - files: list of message files
 #}
 
 <!DOCTYPE html>
@@ -14,35 +14,35 @@
     <title>{{ date }} {{ dialog_title }}</title>
 
     <style>
-        /* Встроенные стили для автономного HTML файла */
+        /* Built-in styles for standalone HTML file / Встроенные стили для автономного HTML файла */
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
         }
-        /* Область медиафайлов */
+        /* Media files area / Область медиафайлов */
         .media-files-area {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             justify-content: center;
         }
-        /* Медиафайлы в одну колонку */
+        /* Media files in a single column / Медиафайлы в одну колонку */
         .media-files-one-column {
             width: 90%;
             height: 90vh;
         }
-        /* Медиафайлы в две колонки */
+        /* Media files in two columns / Медиафайлы в две колонки */
         .media-files-two-column {
             width: 45%;
             height: 45vh;
         }
-        /* Контейнер для медиафайлов */
+        /* Container for media files / Контейнер для медиафайлов */
         .media-files-container {
             width: 100%;
             height: 100%;
             object-fit: contain;
         }
-        /* Вывод названия файла */
+        /* File name output / Вывод названия файла */
         .media-file-name {
             text-align: center;
             margin-top: 5px;
@@ -53,33 +53,33 @@
 <body>
 <div style="text-align: center;">
 
-    {# Вывод даты сообщения #}
+    {# Displaying the date of the message / Вывод даты сообщения #}
     <b>{{ date }}</b>
 
-    {# Вывод начала названия диалога #}
+    {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
     <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
 </div>
 
-{# Вывод текста сообщения #}
+{# Displaying the message text / Вывод текста сообщения #}
 {% if text %}
     <br>
     {{ text|replace('\n', '<br>')|safe }}
 {% endif %}
 
-{# Вывод графических, видео и других файлов #}
+{# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}
 {% if files %}
     <br>
     <div class="media-files-area">
         {% for message_file in files %}
             <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
 
-                {# Вывод графических файлов #}
+                {# Displaying of graphics files / Вывод графических файлов #}
                 {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
                     <img class="media-files-container"
                          src="{{ message_file.file_name }}" alt="{{ message_file.alt_text }}">
                 {% endif %}
 
-                {# Вывод видео файлов #}
+                {# Displaying of video files / Вывод видео файлов #}
                 {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
                     <video class="media-files-container"
                            src="{{ message_file.file_name }}" controls preload="metadata">
@@ -87,7 +87,7 @@
                     </video>
                 {% endif %}
 
-                {# Вывод имени файла #}
+                {# Displaying file name / Вывод имени файла #}
                 <div class="media-file-name">
                     {{ message_file.file_name }}
                 </div>

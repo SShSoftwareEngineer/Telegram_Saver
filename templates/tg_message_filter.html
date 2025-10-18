@@ -1,15 +1,15 @@
 {#
-Отображение фильтра для групп сообщений Telegram.
-Переменные:
-  - form_cfg: конфигурация элементов управления формы для обработки фильтра
+Displaying a filter for Telegram message groups.
+Variables:
+  - form_cfg: configuration of form controls for filter processing
 #}
 
 
-{# Конфигурация элементов управления формы #}
+{# Configuration of form controls for filter processing / Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.tg_message_filter %}
 
 
-{# Dialog messages sort order radiobuttons #}
+{# Messages sort order radiobuttons / Выбор порядка сортировки сообщений #}
 <p class="group-label no-margin-top">Messages sort order</p>
 <div id="{{ form_cfg.sorting_order }}">
     <input type="radio" id="tg_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0" checked>
@@ -19,17 +19,17 @@
 </div>
 
 
-{# Filtering by date #}
+{# Filter Telegram messages by date / Фильтр сообщений Telegram по дате #}
 <p class="group-label">Filter by message date</p>
 <div class="date-from-to-buttons-grid">
-{#     Filtering by date from #}
+{#    Filtering by date from / Фильтр по дате начала периода #}
     <label for="{{ form_cfg.date_from }}">Date from:</label>
     <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_from }}"
            name="{{ form_cfg.date_from }}"
            min="2013-01-01"
            value="{{ tg_mess_date_from_default }}">
-{#     Filtering by date to #}
+{#     Filtering by date to / Фильтр по дате конца периода #}
     <label for="{{ form_cfg.date_to }}">Date to:</label>
     <input type="date" class="date-from-to-buttons"
            id="{{ form_cfg.date_to }}"
@@ -39,7 +39,7 @@
 </div>
 
 
-{# Filtering by Telegram message text #}
+{# Filtering Telegram message by text / Фильтр по фрагменту текста сообщений Telegram #}
 <label for="{{ form_cfg.message_query }}" class="group-label">Filter by message text</label>
 <div class="control-X-button">
     <input type="text"
@@ -53,7 +53,7 @@
 </div>
 
 
-{# Apply message filters button #}
+{# Apply message filters button / Кнопка применения фильтра #}
 <button class="apply-filters-buttons"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_message_apply_filters')">
     Apply message filters

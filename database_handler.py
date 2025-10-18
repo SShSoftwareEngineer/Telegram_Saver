@@ -7,8 +7,9 @@ from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, 
     text, Boolean, update, delete, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 
-from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, parse_date_string, \
-    TagsSorting, status_messages
+from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
+
+from utils import parse_date_string, status_messages
 
 
 class Base(DeclarativeBase):

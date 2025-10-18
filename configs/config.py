@@ -1,19 +1,13 @@
-from datetime import datetime
 from enum import Enum
 import re
 from pathlib import Path
-from typing import List, Optional
-from dateutil.parser import parse
 
 # Set the profile for the project
 PROFILE = '_dev_1'
+
+
 # PROFILE = '_dev_2'
 # PROFILE = ''
-
-""" 
-Classes.
-Классы. 
-"""
 
 
 class ProjectDirs:
@@ -21,7 +15,7 @@ class ProjectDirs:
     A class to hold the directory paths for a project.
     """
     media_dir = r'media_storage'
-    export_dir= r'exported_messages'
+    export_dir = r'exported_messages'
     telegram_settings_file = Path('configs') / f'.env{PROFILE}'
     data_base_dir = Path('database')
     data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
@@ -47,39 +41,6 @@ class GlobalConst:
     select_in_database = 'select_in_database'
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
-
-
-class StatusMessages:
-    """
-    A class to hold status messages for the web interface.
-    """
-    operation: str = ''  # Current operation
-    report_list: Optional[List[str]] = None  # Report messages
-    messages: dict = {}  # Messages for the web interface
-
-    def mess_update(self, operation: str, report: str, new_list: bool = False):
-        """
-        Sets the current status messages for the web interface.
-        """
-        if operation:
-            self.operation = operation
-        current_time = datetime.now().strftime('%H:%M:%S.%f')[:-3]  # Current time with milliseconds
-        if new_list or self.report_list is None:
-            self.report_list = []
-        if report:
-            report_string = f'{current_time} - {report}'
-            self.report_list.append(report_string)
-        # Формируем строку для тега в HTML формате для содержимого <select>
-        select_string = ''
-        if self.report_list:
-            select_string = '\n'.join(
-                [f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
-        self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
-        print(f'{current_time}  {self.operation} - {report}')  # Print the report message to the console
-
-
-# Global instance of StatusMessages
-status_messages = StatusMessages()
 
 
 class DialogTypes(Enum):
@@ -116,7 +77,7 @@ class MessageFileTypes(Enum):
     THUMBNAIL = (4, 'Image', '.jpg', 'vth')
     AUDIO = (5, 'Audio', '.mp4', 'aud')
     WEBPAGE = (6, 'Image', '.jpg', 'wpg')
-    CONTENT = (7, 'Content', '.html', 'cnt')
+    CONTENT = (7, 'Content', '.html', 'ctx')
     UNKNOWN = (10, 'Unknown', '.unk', 'unk')
 
     def __init__(self, type_id: int, alt_text: str, default_ext: str, sign: str):
@@ -215,41 +176,6 @@ class TagsSorting:
     usage_count_desc = {'field': 'usage_count', 'order': 'desc'}
     updated_at_asc = {'field': 'updated_at', 'order': 'asc'}
     updated_at_desc = {'field': 'updated_at', 'order': 'desc'}
-
-
-""" 
-Functions.
-Функции. 
-"""
-
-
-def parse_date_string(date_str: str):
-    """
-    Parses a date string and returns a datetime object.
-    """
-    if not date_str:
-        return None
-    try:
-        return parse(date_str, dayfirst=True)
-    except (ValueError, OverflowError):
-        return None
-
-
-def clean_file_path(file_path: str | None) -> str | None:
-    """
-    Очищает имя файла или директории от недопустимых символов
-    """
-    clean_filepath = None
-    if file_path:
-        # Удаляем или заменяем недопустимые символы Windows/Linux/URL: <>:"/\\|?* + пробелы, апострофы, скобки, амперсанды, проценты
-        clean_filepath = re.sub(r'[<>:"/\\|?*\'`\s\t\n\r\f\v%&()]', '_', file_path)
-        # Убираем множественные символы замены подряд на одинарные, а также в начале и конце
-        clean_filepath = re.sub(f'{re.escape('_')}{{2,}}', '_', clean_filepath).strip('_')
-        # Убираем множественные пробелы подряд на одинарные, а также в начале и конце
-        clean_filepath = re.sub(f'{re.escape(' ')}{{2,}}', ' ', clean_filepath).strip(' ')
-        # Убираем лишние точки в начале и конце
-        clean_filepath = clean_filepath.strip('.')
-    return clean_filepath
 
 
 if __name__ == '__main__':
