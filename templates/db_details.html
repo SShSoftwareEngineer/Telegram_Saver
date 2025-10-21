@@ -24,12 +24,6 @@ Variables:
 
         {# Beginning of dialog title / Вывод начала названия диалога #}
         <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
-
-        {# Displaying a label from the database or a checkbox for saving
-           Вывод метки от сохранении в БД или чекбокса для отметки на сохранение #}
-        {% if db_details.saved_to_db %}
-            <span class="selected-message-checkbox">{{ constants.checked_in_db_label }}</span>
-        {% endif %}
     </div>
 
     {# Message text / Вывод текста сообщения #}

@@ -9,6 +9,7 @@ html, body {
     height: 100%;
 }
 
+/* ====== BASE ELEMENTS ======= */
 /* ===== БАЗОВЫЕ ЭЛЕМЕНТЫ ===== */
 html, body {
     margin: 1px;
@@ -16,24 +17,29 @@ html, body {
     overflow: hidden;
 }
 
+/* ===== VARIABLES ====== */
 /* ===== ПЕРЕМЕННЫЕ ===== */
 :root {
-    --tab-height: 40px; /* Высота панели вкладок */
-    --status-bar-height: 30px; /* Высота строки статуса */
-    --status-bar-padding: 5px;
-    --status-height: calc(var(--status-bar-height) + var(--status-bar-padding));
+    --tab-height: 40px; /* Tab bar height / Высота панели вкладок */
+    --status-bar-height: 30px; /* Status bar height / Высота строки статуса */
+    --status-bar-padding: 5px; /* Padding above status bar / Отступ сверху строки статуса */
+    --status-height: calc(var(--status-bar-height) + var(--status-bar-padding)); /* Total status bar height / Общая высота строки статуса */
 }
 
 /* ===== LAYOUT ===== */
+/* ===== МАКЕТ ====== */
 
-/* Основной контейнер */
+/* Main container / Основной контейнер */
 .main-container {
     display: grid;
     grid-template-rows: var(--tab-height) 1fr var(--status-height); /* var(--status-height); */
     height: 100vh;
 }
 
-/* Стили для вкладок */
+
+/* ==== Styles for tabs ==== * /
+/* ==== Стили для вкладок ==== */
+
 .tabs {
     overflow: hidden;
     background-color: #f0f0f0;
@@ -63,15 +69,17 @@ html, body {
     display: block;
 }
 
-/* Стили для содержимого вкладок */
 
-/* Область контента - просто контейнер */
+/* ======= Styles for tab content ======== */
+/* ==== Стили для содержимого вкладок ==== */
+
+/* Content area container / Контейнер области контента */
 .content-area {
     overflow: hidden;
     position: relative;
 }
 
-/* Область вкладки */
+/* Tab area / Область вкладки */
 .tab-content {
     display: none;
     padding: 0;
@@ -80,9 +88,10 @@ html, body {
 }
 
 
-/* Общие стили для CSS Grid всех вкладок */
+/* ==== Common styles for CSS Grid on all tabs ==== */
+/* ==== Общие стили для CSS Grid всех вкладок ===== */
 
-/* Заголовки */
+/* Headers / Заголовки */
 .header {
     padding: 5px;
     text-align: center;
@@ -90,7 +99,7 @@ html, body {
     font-weight: bold;
 }
 
-/* Сетка */
+/* CSS Grid cell styles / Стили ячеек сетки CSS Grid */
 .grid {
     padding: 7px;
     border: 1px solid #ddd;
@@ -98,13 +107,15 @@ html, body {
     height: 100%;
 }
 
-/* Области прокрутки */
+/* Scroll areas / Области прокрутки */
 .scroll {
     overflow: auto;
 }
 
 
-/* Стили для CSS Grid контейнера и зон для вкладки Telegram */
+/* ======= Styles for CSS Grid container for Telegram tab ======= */
+/* ===== Стили для CSS Grid контейнера для вкладки Telegram ===== */
+
 .tg-container-tab_1 {
     display: grid;
     grid-template-areas:
@@ -145,7 +156,10 @@ html, body {
     align-items: center;
 }
 
-/* Стили для CSS Grid контейнера и зон для вкладки Database */
+
+/* ======= Styles for CSS Grid container for Database tab ======= */
+/* ===== Стили для CSS Grid контейнера для вкладки Database ===== */
+
 .db-container-tab_2 {
     display: grid;
     grid-template-areas:
@@ -171,21 +185,23 @@ html, body {
 .db-tags { grid-area: tags; }
 /* @formatter:on */
 
-/* Панели действий для выбора сообщений из списка */
 
-/* Кнопка панели действий */
+/* ===== Action bars for selecting messages from a list ===== */
+/* ===== Панели действий для выбора сообщений из списка ===== */
+
+/* Action bar button / Кнопка панели действий */
 .action-bar-button {
     width: 100%;
     margin: 2px 6px;
 }
 
-/* Расположение кнопки панели действий */
+/* Location of the action bar button / Расположение кнопки панели действий */
 .action-bar-button-area {
     display: flex;
     align-items: center;
 }
 
-/* Сетка разметки панели действий для выбора сообщений Telegram */
+/* CSS Grid layout of the action bar for selecting Telegram messages / CSS Grid разметки панели действий для выбора сообщений Telegram */
 .tg-action-bar-grid {
     display: grid;
     grid-template-areas:
@@ -204,7 +220,7 @@ html, body {
 .tg-save_db { grid-area: save_db }
 /* @formatter:on */
 
-/* Сетка разметки панели действий для выбора сообщений Telegram */
+/* CSS Grid layout of the action bar for selecting database messages / CSS Grid разметки панели действий для выбора сообщений базы данных */
 .db-action-bar-grid {
     display: grid;
     grid-template-areas:
@@ -225,9 +241,10 @@ html, body {
 /* @formatter:on */
 
 
-/* Стили для строки статуса */
+/* ======= Status bar styles ======= */
+/* ===== Стили строки статуса ====== */
 
-/* Независимый Grid для строки статуса */
+/* CSS Grid for status bar / CSS Grid для строки статуса */
 .status-bar-grid {
     display: grid;
     grid-template-columns: 45fr 55fr;
@@ -258,9 +275,10 @@ html, body {
 /* @formatter:on */
 
 
-/* ===== КОМПОНЕНТЫ ===== */
+/* ======= SINGLE COMPONENTS ====== */
+/* ===== ОТДЕЛЬНЫЕ КОМПОНЕНТЫ ===== */
 
-/* Метка группы */
+/* Group label / Метка группы */
 .group-label {
     font-size: 1rem;
     font-weight: bold;
@@ -269,24 +287,24 @@ html, body {
     display: block;
 }
 
-/* Без отступа сверху */
+/* No indent from the top / Без отступа сверху */
 .no-margin-top {
     margin-top: 0;
 }
 
-/* Отступ сверху для тегов */
+/* Top indent for tags / Отступ сверху для тегов */
 .vertical-spread-detail-tags {
     margin-top: 15px;
 }
 
-/* Кнопка очистки поля ввода или выбора */
+/* Button for clearing the input or selection field / Кнопка очистки поля ввода или выбора */
 .X-button {
     font-size: 0.75rem;
     height: 1.25rem;
     aspect-ratio: 1;
 }
 
-/* Поле и кнопка очистки поля ввода или выбора */
+/* Input or selection field and button to clear this field / Поле ввода или выбора и кнопка очистки этого поля */
 .control-X-button {
     width: 100%;
     display: grid;
@@ -295,13 +313,13 @@ html, body {
     align-items: center;
 }
 
-/* Одна кнопка в ячейке */
+/* One button in a cell / Одна кнопка в ячейке */
 .button-in-cell {
     width: 100%;
     height: max-content;
 }
 
-/* Сетка разметки для кнопок выбора дат от и до */
+/* CSS Grid markup for date pickers from and to / CSS Grid разметки для кнопок выбора дат от и до */
 .date-from-to-buttons-grid {
     display: grid;
     grid-template-columns: auto max-content;
@@ -309,18 +327,18 @@ html, body {
     gap: 5px;
 }
 
-/* Кнопки выбора дат от и до */
+/* From and to date selection buttons / Кнопки выбора дат от и до */
 .date-from-to-buttons {
     width: 110px;
 }
 
-/* Кнопки применения фильтров */
+/* Filter application buttons / Кнопки применения фильтров */
 .apply-filters-buttons {
     width: 100%;
     margin-top: 10px;
 }
 
-/* Многострочное поле для ввода тегов сообщений для поиска */
+/* Multi-line field for entering message tags for tag search / Многострочное поле для ввода тегов сообщений для поиска по тегам */
 .filter_tags-textarea {
     width: 100%;
     resize: none;
@@ -328,53 +346,56 @@ html, body {
     border-radius: 4px;
 }
 
-/* Элемент выбора Select */
+/* Select element / Элемент выбора Select */
 .select-element {
     padding: 2px;
     border-radius: 4px;
 }
 
 
-/* Списки диалогов и сообщений */
+/* ===== Lists of dialogs and messages ===== */
+/* ====== Списки диалогов и сообщений ====== */
 
-/* Общие параметры */
+/* General settings / Общие параметры */
 .dialogs-messages-list {
     list-style-type: none;
     padding-left: 5px;
 }
 
-/* Нечетные чередующиеся цветные строки в списках, цвет белый */
+/* Odd alternating colored rows, white color / Нечетные чередующиеся цветные строки в списках, цвет белый */
 .alternating-lines-white {
     padding-top: 9px;
     background-color: #ffffff;
 }
 
-/* Четные чередующиеся цветные строки в списках, цвет серый */
+/* Even alternating colored rows in lists, color gray / Четные чередующиеся цветные строки в списках, цвет серый */
 .alternating-lines-gray {
     padding-top: 9px;
     background-color: #f5f5f5;
 }
 
-/* Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
+/* Checkbox for saving selected messages to the database or manipulating saved messages in the database
+   Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
 .message-checkbox {
     float: right;
 }
 
-/* Отметка о наличии сохраненного сообщения в БД */
+/* Mark indicating the presence of a saved message in the database / Отметка о наличии сохраненного сообщения в БД */
 .selected-message-checkbox {
     float: right;
     color: green;
 }
 
-/* Сообщения владельца аккаунта */
+/* Account owner's message style / Стиль сообщений владельца аккаунта */
 .my-message-in-list {
     margin-left: 7%;
 }
 
 
-/* Вывод или экспорт деталей сообщения */
+/* ====== Display or export message details ====== */
+/* ===== Вывод или экспорт деталей сообщения ===== */
 
-/* Форматирование области вывода графических и видео файлов */
+/* Style of the output area for graphic and video files / Стиль области вывода графических и видео файлов */
 .media-files-area {
     display: flex;
     gap: 10px;
@@ -382,26 +403,26 @@ html, body {
     justify-content: center;
 }
 
-/* Медиафайлы в одну колонку */
+/* Media files are arranged in a single column / Медиафайлы расположены в одну колонку */
 .media-files-one-column {
     width: 90%;
     height: 90vh;
 }
 
-/* Медиафайлы в две колонки */
+/* Media files are arranged in two columns / Медиафайлы расположены в две колонки */
 .media-files-two-column {
     width: 45%;
     height: 45vh;
 }
 
-/* Контейнер для медиафайлов */
+/* Media file container / Контейнер для медиафайлов */
 .media-files-container {
     width: 100%;
     height: 100%;
     object-fit: contain;
 }
 
-/* Вывод названия файла */
+/* Output the file name in the export template / Вывод названия файла в шаблоне для экспорта */
 .media-file-name {
     text-align: center;
     margin-top: 5px;

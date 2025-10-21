@@ -14,6 +14,7 @@ from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
 from utils import parse_date_string, clean_file_path, status_messages
+from dotenv import dotenv_values
 
 
 @dataclass
@@ -381,14 +382,7 @@ class TelegramHandler:
 
     def __init__(self):
         # Загружаем настройки подключения к Telegram из файла
-        self._connection_settings = dict()
-        with open(ProjectDirs.telegram_settings_file, 'r', encoding='utf-8') as file_env:
-            for line in file_env:
-                if not line.strip().startswith('#') and '=' in line:
-                    key, value = line.strip().split('=')
-                    if value.startswith("'") and value.endswith("'") or value.startswith('"') and value.endswith('"'):
-                        value = value[1:-1]
-                    self._connection_settings[key] = value
+        self._connection_settings = dotenv_values(ProjectDirs.telegram_settings_file)
         # Создаем и запускаем клиент Telegram
         self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
                                      int(self._connection_settings['API_ID']),

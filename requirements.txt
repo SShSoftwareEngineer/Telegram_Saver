@@ -4,3 +4,5 @@ SQLAlchemy
 Flask
 Flask-SocketIO
 python-dateutil
+dotenv
+python-dotenv
