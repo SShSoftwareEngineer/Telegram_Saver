@@ -12,10 +12,11 @@ class ServiceMessage(Base): a model class for service messages
 def export_data_to_excel(): a function for exporting data from the database to MS Excel file
 session: a session object for working with the database
 """
-
+from typing import Dict, List, Any
+from dataclasses import dataclass
+from pathlib import Path
 from enum import Enum
 import re
-from pathlib import Path
 
 # Set the profile for the project
 PROFILE = '_dev_1'
@@ -24,18 +25,24 @@ PROFILE = '_dev_1'
 # PROFILE = '_dev_2'
 # PROFILE = ''
 
-
+@dataclass(frozen=True)
 class ProjectDirs:
     """
     A class to hold the directory paths for a project. / Класс для хранения путей к директориям проекта.
     """
-    media_dir = r'media_storage' # Directory for storing downloaded media files from Telegram / Директория для хранения загруженных медиафайлов из Telegram
-    export_dir = r'exported_messages' # Directory for exporting messages to HTML files / Директория для экспорта сообщений в HTML и другие файлы
-    telegram_settings_file = Path('configs') / f'.env{PROFILE}' # Telegram API settings file / Файл с настройками API Telegram
-    data_base_dir = Path('database') # Directory for storing the SQLite database file / Директория для хранения файла базы данных SQLite
-    data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db' # SQLite database file / Файл базы данных SQLite
+    # Directory for storing downloaded media files from Telegram / Директория для загруженных медиафайлов из Telegram
+    media_dir = r'media_storage'
+    # Directory for exporting messages to HTML files / Директория для экспорта сообщений в HTML и другие файлы
+    export_dir = r'exported_messages'
+    # Telegram API settings file / Файл с настройками API Telegram
+    telegram_settings_file = Path('configs') / f'.env{PROFILE}'
+    # Directory for storing the SQLite database file / Директория для хранения файла базы данных SQLite
+    data_base_dir = Path('database')
+    # SQLite database file / Файл базы данных SQLite
+    data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
 
 
+@dataclass(frozen=True)
 class GlobalConst:
     """
     A class to hold constant values for the project. / Класс для хранения констант проекта.
@@ -46,14 +53,14 @@ class GlobalConst:
     last_days_by_default = 30  # Default number of last days for messages filter
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     message_datetime_format = '%d-%m-%Y %H:%M :%S'  # Format for displaying date and time for messages and details
-    file_datetime_format = '%Y-%m-%d %H_%M_%S' # Date and time format for file names
+    file_datetime_format = '%Y-%m-%d %H_%M_%S'  # Date and time format for file names
     saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database
     save_to_db_label = 'Save'  # Label for the checkbox to save a message to the database
     checked_in_db_label = ''  # '✔ Checked' # Not use now
     check_in_db_label = ''  # 'Check' # Not use now
-    mess_group_id = 'message_group_id' # Key name for message group ID in HTML templates
-    select_in_telegram = 'select_in_telegram' # Key name for message selection in Telegram for HTML templates
-    select_in_database = 'select_in_database' # Key name for message selection in database for HTML templates
+    mess_group_id = 'message_group_id'  # Key name for message group ID in HTML templates
+    select_in_telegram = 'select_in_telegram'  # Key name for message selection in Telegram for HTML templates
+    select_in_database = 'select_in_database'  # Key name for message selection in database for HTML templates
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
 
@@ -63,10 +70,10 @@ class DialogTypes(Enum):
     The class holds the IDs and names of the dialog types in Telegram.
     Класс содержит ID и названия типов диалогов в Telegram.
     """
-    Channel = 1
-    Group = 2
-    User = 3
-    Unknown = 4
+    CHANNEL = 1
+    GROUP = 2
+    USER = 3
+    UNKNOWN = 4
 
     @staticmethod
     def get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
@@ -80,13 +87,12 @@ class DialogTypes(Enum):
             str: The type name of the dialog
         """
         if is_channel:
-            return DialogTypes.Channel.name
-        elif is_group:
-            return DialogTypes.Group.name
-        elif is_user:
-            return DialogTypes.User.name
-        else:
-            return DialogTypes.Unknown.name
+            return DialogTypes.CHANNEL.name
+        if is_group:
+            return DialogTypes.GROUP.name
+        if is_user:
+            return DialogTypes.USER.name
+        return DialogTypes.UNKNOWN.name
 
 
 class MessageFileTypes(Enum):
@@ -124,9 +130,11 @@ class MessageFileTypes(Enum):
         Returns the MessageFileTypes for a given file type_id.
         Возвращает MessageFileTypes для заданного type_id файла.
         """
+        result = MessageFileTypes.UNKNOWN
         for item in cls:
             if item.type_id == type_id:
-                return item
+                result = item
+        return result
 
     def __repr__(self):
         """
@@ -135,6 +143,7 @@ class MessageFileTypes(Enum):
         return f'{self.__class__.__name__}.{self.name}'
 
 
+@dataclass(frozen=True)
 class TableNames:
     """
     Database tables names.
@@ -149,6 +158,7 @@ class TableNames:
     message_group_tag_links = 'message_group_tag_links'
 
 
+@dataclass(frozen=True)
 class FormCfg:
     """
     Form controls configurations in the web interface.
@@ -194,21 +204,22 @@ class FormCfg:
         Returns:
             dict: The button configuration dictionary.
         """
-        result = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
-                  'checkbox_list': []}  # Default structure, do not change key names
-        for key in result.keys():
+        result: Dict[str, List[Any]] = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
+                                        'checkbox_list': []}  # Default structure, do not change key names
+        for key, value in result.items():
             if key == 'checkbox_list':
                 for field_name in form_cfg.get(key) or []:
-                    result[key].append({
+                    value.append({
                         'selector': f'input.{form_cfg[field_name]}',
                         'name': form_cfg[field_name]
                     })
             else:
                 for field_name in form_cfg.get(key) or []:
-                    result[key].append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
+                    value.append({'id': form_cfg[field_name], 'name': form_cfg[field_name]})
         return result
 
 
+@dataclass(frozen=True)
 class TagsSorting:
     """
     The class contains tag sorting options.

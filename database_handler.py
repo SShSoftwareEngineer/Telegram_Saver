@@ -1,23 +1,38 @@
-from dataclasses import dataclass
+"""
+The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+
+class DatabaseHandler:a class to represent handle database operations.
+class Base(DeclarativeBase): a declarative class for creating tables in the database
+class DbDialog(Base): a class to represent a dialog (chat) in the database.
+class DbDialogType(Base): a class to represent a type of dialog (chat) in the database.
+class DbFile(Base): a class to represent a file associated with a message group in the database.
+class DbFileType(Base): a class to represent a type of file associated with a message group in the database.
+class DbMessageGroup(Base): a class to represent a message group in the database.
+class DbTag(Base): a class to represent a tag associated with a message group in the database.
+class DbCurrentState: a class representing the current state of the database client
+class DbMessageSortFilter:a class to represent sorting and filtering of message groups in the database.
+db_handler: an object of the DatabaseHandler class for working with the database
+message_group_tag_links: a relationship table for many-to-many relationship between message groups and tags
+ModelType: a TypeVar for model classes, bound to Base
+"""
+
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
-
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
     text, Boolean, update, delete, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
-
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
-
 from utils import parse_date_string, status_messages
 
 
-class Base(DeclarativeBase):
+class Base(DeclarativeBase):  # pylint: disable=too-few-public-methods
     """ A declarative class for creating tables in the database """
 
 
 # TypeVar for model classes, bound to Base
-ModelType = TypeVar('ModelType', bound=Base)
+ModelType = TypeVar('ModelType', bound=Base)  # pylint: disable=invalid-name
 
 # Relationships Many-to-Many to 'MessageGroup' and 'DbTag' tables
 message_group_tag_links = Table(
@@ -27,7 +42,7 @@ message_group_tag_links = Table(
 )
 
 
-class DbMessageGroup(Base):
+class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a message group in the database.
     Класс для представления группы сообщений в базе данных.
@@ -53,23 +68,22 @@ class DbMessageGroup(Base):
         """
         Возвращает данные группы сообщений в виде словаря для экспорта в HTML или JSON
         """
-        export_data = dict(
-            dialog_id=self.dialog_id,
-            dialog_title=self.dialog.title if self.dialog else '',
-            message_group_id=self.grouped_id,
-            date=self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
-            text=self.text if self.text else '',
-            from_id=self.from_id,
-            files=[dict(file_path=db_file.file_path,
-                        alt_text=db_file.file_type.alt_text,
-                        type_name=db_file.file_type.name if db_file.file_type else '')
-                   for db_file in self.files] if self.files else [],
-            tags=[db_tag.name for db_tag in self.tags] if self.tags else []
-        )
+        export_data = {'dialog_id': self.dialog_id,
+                       'dialog_title': self.dialog.title if self.dialog else '',
+                       'message_group_id': self.grouped_id,
+                       'date': self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
+                       'text': self.text if self.text else '',
+                       'from_id': self.from_id,
+                       'files': [{'file_path': db_file.file_path,
+                                  'alt_text': db_file.file_type.alt_text,
+                                  'type_name': db_file.file_type.name if db_file.file_type else ''}
+                                 for db_file in self.files] if self.files else [],
+                       'tags': [db_tag.name for db_tag in self.tags] if self.tags else []
+                       }
         return export_data
 
 
-class DbTag(Base):
+class DbTag(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a tag associated with a message group in the database.
     Класс для представления тега, связанного с группой сообщений в базе данных.
@@ -84,7 +98,7 @@ class DbTag(Base):
                                                                   back_populates='tags')
 
 
-class DbDialog(Base):
+class DbDialog(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a dialog (chat) in the database.
     Класс для представления диалога (чата) в базе данных.
@@ -100,7 +114,7 @@ class DbDialog(Base):
     dialog_type: Mapped['DbDialogType'] = relationship(back_populates='dialogs')
 
 
-class DbDialogType(Base):
+class DbDialogType(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a type of dialog (chat) in the database.
     Класс для представления типа диалога (чата) в базе данных.
@@ -112,7 +126,7 @@ class DbDialogType(Base):
     dialogs: Mapped['DbDialog'] = relationship(back_populates='dialog_type')
 
 
-class DbFile(Base):
+class DbFile(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a file associated with a message group in the database.
     Класс для представления файла, связанного с группой сообщений в базе данных.
@@ -137,7 +151,7 @@ class DbFile(Base):
         return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
 
 
-class DbFileType(Base):
+class DbFileType(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a type of file associated with a message group in the database.
     Класс для представления типа файла, связанного с группой сообщений в базе данных.
@@ -153,7 +167,7 @@ class DbFileType(Base):
 
 
 @dataclass
-class DbMessageSortFilter:
+class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     """
     A class to represent sorting and filtering of message groups in the database.
     Класс для представления параметров сортировки и фильтра для групп сообщений в базе данных.
@@ -211,7 +225,7 @@ class DbMessageSortFilter:
         """
         Устанавливает порядок сортировки сообщений по заданному полю
         """
-        self._sort_order = False if value == '0' else True
+        self._sort_order = value != '0'  # False if value == '0' else True
 
     @property
     def date_from(self) -> Optional[datetime]:
@@ -270,14 +284,16 @@ class DbMessageSortFilter:
         self._tag_query = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else None
 
 
+@dataclass
 class DbCurrentState:
     """
-    Текущее состояние клиента базы данных.
+    A class representing the current state of the database client
+    Класс, содержащий текущее состояние клиента базы данных.
     """
-    dialog_list: List[DbDialog] = None
-    message_group_list: List[DbMessageGroup] = None
-    selected_message_group_id: str = None
-    message_details: Dict[str, Any] = None
+    dialog_list: list[DbDialog] = field(default_factory=list)
+    message_group_list: list[DbMessageGroup] = field(default_factory=list)
+    selected_message_group_id: str = ''
+    message_details: dict[str, Any] = field(default_factory=dict)
     all_tags_list_sorting: dict = TagsSorting.name_asc
 
 
@@ -287,8 +303,8 @@ class DatabaseHandler:
     Класс для представления операций с базой данных.
     """
 
-    all_dialogues_list: List[DbDialog] = None
-    all_tags_list: List[DbTag] = None
+    all_dialogues_list: list[DbDialog] = field(default_factory=list)
+    all_tags_list: list[DbTag] = field(default_factory=list)
     message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
     current_state: DbCurrentState = DbCurrentState()
 
@@ -336,13 +352,12 @@ class DatabaseHandler:
         Base.metadata.create_all(self.engine)
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in DialogTypes:
-            self.upsert_record(DbDialogType, dict(dialog_type_id=dialog_type.value),
-                               dict(name=dialog_type.name))
+            self.upsert_record(DbDialogType, {'dialog_type_id': dialog_type.value}, {'name': dialog_type.name})
         # Проверяем наличие данных в статической таблице с типами файлов и добавляем их при необходимости
         for file_type in MessageFileTypes:
-            self.upsert_record(DbFileType, dict(file_type_id=file_type.type_id),
-                               dict(name=file_type.name, alt_text=file_type.alt_text,
-                                    default_ext=file_type.default_ext, sign=file_type.sign))
+            self.upsert_record(DbFileType, {'file_type_id': file_type.type_id},
+                               {'name': file_type.name, 'alt_text': file_type.alt_text,
+                                'default_ext': file_type.default_ext, 'sign': file_type.sign})
         # Сбрасываем флаг "отмечена" у всех групп сообщений при старте приложения
         stmt = update(DbMessageGroup).values(selected=False)
         self.session.execute(stmt)
@@ -474,14 +489,14 @@ class DatabaseHandler:
         # Получаем текущую группу сообщений по id
         current_message_group = self.session.query(DbMessageGroup).filter(
             DbMessageGroup.grouped_id == message_group_id).one()
-        db_details = dict(dialog_id=current_message_group.dialog_id,
-                          dialog_title=current_message_group.dialog.title,
-                          message_group_id=message_group_id,
-                          date=current_message_group.date,
-                          text=current_message_group.text if current_message_group.text else '',
-                          files=current_message_group.files,
-                          files_report=current_message_group.files_report if current_message_group.files_report else '',
-                          tags=current_message_group.tags if current_message_group.tags else None)
+        db_details = {'dialog_id': current_message_group.dialog_id,
+                      'dialog_title': current_message_group.dialog.title,
+                      'message_group_id': message_group_id,
+                      'date': current_message_group.date,
+                      'text': current_message_group.text if current_message_group.text else '',
+                      'files': current_message_group.files,
+                      'files_report': current_message_group.files_report if current_message_group.files_report else '',
+                      'tags': current_message_group.tags if current_message_group.tags else None}
         db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
         message_date_str = db_details.get('date').strftime(GlobalConst.message_datetime_format)
         status_messages.mess_update(
@@ -513,11 +528,11 @@ class DatabaseHandler:
         query_result = self.session.execute(stmt).scalars().first()
         db_file = None
         if query_result:
-            db_file = dict(dialog_id=query_result.message_group.dialog_id,
-                           message_id=query_result.message_id,
-                           file_path=query_result.file_path,
-                           size=query_result.size,
-                           file_type_id=query_result.file_type_id, )
+            db_file = {'dialog_id': query_result.message_group.dialog_id,
+                       'message_id': query_result.message_id,
+                       'file_path': query_result.file_path,
+                       'size': query_result.size,
+                       'file_type_id': query_result.file_type_id, }
         return db_file
 
     def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:

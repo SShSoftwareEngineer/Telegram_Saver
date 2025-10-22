@@ -26,7 +26,7 @@ class TgDialog:
     title: str
     unread_count: int = 0
     last_message_date: Optional[datetime] = None
-    type: DialogTypes = DialogTypes.Unknown
+    type: DialogTypes = DialogTypes.UNKNOWN
 
     def __init__(self, dialog: Dialog):
         self.dialog_id = dialog.id
@@ -47,13 +47,13 @@ class TgDialog:
         Returns the type name for a given dialog type.
         """
         if is_channel:
-            return DialogTypes.Channel
+            return DialogTypes.CHANNEL
         elif is_group:
-            return DialogTypes.Group
+            return DialogTypes.GROUP
         elif is_user:
-            return DialogTypes.User
+            return DialogTypes.USER
         else:
-            return DialogTypes.Unknown
+            return DialogTypes.UNKNOWN
 
     def get_self_dir(self) -> str:
         """
@@ -100,13 +100,13 @@ class TgDialogSortFilter:
             case '0':
                 self._dialog_type = None
             case '1':
-                self._dialog_type = DialogTypes.Channel
+                self._dialog_type = DialogTypes.CHANNEL
             case '2':
-                self._dialog_type = DialogTypes.Group
+                self._dialog_type = DialogTypes.GROUP
             case '3':
-                self._dialog_type = DialogTypes.User
+                self._dialog_type = DialogTypes.USER
             case _:
-                self._dialog_type = DialogTypes.Unknown
+                self._dialog_type = DialogTypes.UNKNOWN
 
     def title_query(self, value: str):
         """

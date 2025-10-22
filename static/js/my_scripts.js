@@ -1,13 +1,13 @@
 // Функция реализующая переключение между вкладками
 function openTab(evt, tabName) {
     // Скрываем все содержимое вкладок
-    var tabContents = document.getElementsByClassName("tab-content");
-    for (var i = 0; i < tabContents.length; i++) {
+    const tabContents = document.getElementsByClassName("tab-content");
+    for (let i = 0; i < tabContents.length; i++) {
         tabContents[i].style.display = "none";
     }
     // Убираем класс "active" со всех кнопок вкладок
-    var tabButtons = document.getElementsByClassName("tab-button");
-    for (var i = 0; i < tabButtons.length; i++) {
+    const tabButtons = document.getElementsByClassName("tab-button");
+    for (let i = 0; i < tabButtons.length; i++) {
         tabButtons[i].className = tabButtons[i].className.replace(" active", "");
     }
     // Показываем текущую вкладку и добавляем класс "active" к кнопке
