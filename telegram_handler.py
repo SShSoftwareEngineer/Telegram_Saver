@@ -1,20 +1,36 @@
+"""
+The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+
+class TelegramHandler: a class for handling Telegram operations.
+class TgCurrentState: a class to represent the current state of the Telegram client
+class TgDialog: a class to represent a Telegram dialog in this program
+class TgDialogSortFilter: a class to represent sorting and filtering options of Telegram dialogs
+class TgFile: a class to represent a Telegram message file
+class TgMessageGroup: a class to represent a Telegram message group in this program
+class TgMessageSortFilter: a class to represent sorting and filtering of Telegram message groups.
+tg_handler: an object of the TelegramHandler class for working with the Telegram
+loop: the asyncio event loop for working with the Telegram client
+convert_text_hyperlinks: a function for converting text hyperlinks in Markdown format [Text](URL) to HTML format
+cleanup_loop: a function called at application exit to close the event loop if it is open
+"""
+
 import atexit
 from asyncio import new_event_loop, set_event_loop
 from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
+from textwrap import shorten
+from dataclasses import dataclass
+from typing import Optional, Dict, Any, List
+from datetime import datetime, timedelta
+from pathlib import Path
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive, MessageMediaWebPage
-from pathlib import Path
-from textwrap import shorten
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
 from telethon import TelegramClient
+from dotenv import dotenv_values
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
 from utils import parse_date_string, clean_file_path, status_messages
-from dotenv import dotenv_values
 
 
 @dataclass
@@ -48,12 +64,11 @@ class TgDialog:
         """
         if is_channel:
             return DialogTypes.CHANNEL
-        elif is_group:
+        if is_group:
             return DialogTypes.GROUP
-        elif is_user:
+        if is_user:
             return DialogTypes.USER
-        else:
-            return DialogTypes.UNKNOWN
+        return DialogTypes.UNKNOWN
 
     def get_self_dir(self) -> str:
         """
@@ -65,7 +80,7 @@ class TgDialog:
 @dataclass
 class TgDialogSortFilter:
     """
-    A class to represent sorting and filtering of Telegram dialogs.
+    A class to represent sorting and filtering options of Telegram dialogs.
     """
     _sorting_field = None
     _sort_order: bool = False
@@ -90,7 +105,7 @@ class TgDialogSortFilter:
         """
         Устанавливает порядок сортировки
         """
-        self._sort_order = False if value == '0' else True
+        self._sort_order = value != '0'  # False if value == '0' else True
 
     def dialog_type(self, value: str):
         """
@@ -137,7 +152,7 @@ class TgDialogSortFilter:
 
 
 @dataclass
-class TgFile:
+class TgFile:  # pylint: disable=too-many-instance-attributes
     """
     A class to represent a Telegram message file.
     """
@@ -147,21 +162,10 @@ class TgFile:
     message_id: int
     description: str
     file_name: str
+    file_path: str
     alt_text: str
     size: int
-    file_path: str = None
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
-
-    def __init__(self, dialog_id: int, message_grouped_id: str, message: Message,
-                 description: str, alt_text: str, size: int, file_type: MessageFileTypes):
-        self.dialog_id = dialog_id
-        self.message_grouped_id = message_grouped_id
-        self.message = message
-        self.message_id = message.id
-        self.description = description
-        self.alt_text = alt_text
-        self.size = size
-        self.file_type = file_type
 
     def is_exists(self) -> bool:
         """
@@ -181,7 +185,7 @@ class TgFile:
 
 
 @dataclass
-class TgMessageGroup:
+class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     """
     A class to represent a Telegram message group in this program.
     """
@@ -213,6 +217,9 @@ class TgMessageGroup:
             self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
 
     def add_message_file(self, message_file: Optional[TgFile] = None) -> None:
+        """
+        Добавляет файл сообщения в группу сообщений
+        """
         if message_file:
             self.files.append(message_file)
             if message_file.description:
@@ -225,13 +232,12 @@ class TgMessageGroup:
         """
         alt_texts_list = []
         for file in self.files:
-            # Если есть файл с видео, то заменяем в отчете тип файла thumbnail на video
-            # alt_text = MessageFileTypes.VIDEO.alt_text if file.file_type == MessageFileTypes.THUMBNAIL else file.alt_text
             alt_texts_list.append(file.alt_text)
         alt_texts_dict = dict(sorted(Counter(alt_texts_list).items()))
         alt_texts_list.clear()
         for alt_text, count in alt_texts_dict.items():
-            alt_texts_list.append(alt_text) if count == 1 else alt_texts_list.append(f'{alt_text} ({count})')
+            current_report = f'{alt_text} ({count})' if count > 1 else alt_text
+            alt_texts_list.append(current_report)
         self.files_report = ' '.join(sorted(alt_texts_list))
 
     def text_hyperlink_conversion(self) -> None:
@@ -253,6 +259,7 @@ class TgMessageGroup:
             else:
                 self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length + 50,
                                               placeholder='...')
+
             #     hyperlinks = re.findall(r'.*?(<a href.*?>)(.*?)(<\/a>).*?', self.text)
             #     if hyperlinks:
             #         for hyperlink in hyperlinks:
@@ -267,7 +274,8 @@ class TgMessageGroup:
             # if not self.truncated_text:
             #     self.truncated_text = self.text
 
-        # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >«Перезавантаження: розширення можливостей для працевлаштування» </a>
+        # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >
+        # «Перезавантаження: розширення можливостей для працевлаштування» </a>
         # shorten             из             модуля             textwrap
 
     def get_self_dir(self) -> str:
@@ -279,6 +287,9 @@ class TgMessageGroup:
 
 @dataclass
 class TgMessageSortFilter:
+    """
+    A class to represent sorting and filtering of Telegram message groups.
+    """
     _sort_order: bool = True
     _date_from: Optional[datetime] = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
     _date_to: Optional[datetime] = None
@@ -308,7 +319,7 @@ class TgMessageSortFilter:
         """
         Устанавливает порядок сортировки сообщений по дате
         """
-        self._sort_order = True if value == '0' else False
+        self._sort_order = value == '0'  # True if value == '0' else False
 
     @property
     def date_from(self) -> Optional[datetime]:
@@ -519,16 +530,16 @@ class TelegramHandler:
         message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
         status_messages.mess_update(
             f'Loading details of message {message_date_str} in chat {self.get_dialog_by_id(dialog_id).title}', '', True)
-        tg_details = dict(dialog_id=dialog_id,
-                          dialog_title=self.get_dialog_by_id(dialog_id).title,
-                          message_group_id=message_group_id,
-                          date=current_message_group.date,
-                          # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-                          text=convert_text_hyperlinks(
-                              current_message_group.text) if current_message_group.text else '',
-                          files=current_message_group.files,
-                          files_report=current_message_group.files_report if current_message_group.files_report else '',
-                          saved_to_db=current_message_group.saved_to_db)
+        tg_details = {'dialog_id': dialog_id,
+                      'dialog_title': self.get_dialog_by_id(dialog_id).title,
+                      'message_group_id': message_group_id,
+                      'date': current_message_group.date,
+                      # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+                      'text': convert_text_hyperlinks(
+                          current_message_group.text) if current_message_group.text else '',
+                      'files': current_message_group.files,
+                      'files_report': current_message_group.files_report if current_message_group.files_report else '',
+                      'saved_to_db': current_message_group.saved_to_db}
         # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе, кроме видео
         for tg_file in tg_details.get('files'):
             if not tg_file.is_exists():
@@ -605,7 +616,8 @@ class TelegramHandler:
         description = ''
         if file_type == MessageFileTypes.WEBPAGE:
             if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
-                description = f'<a href = "{message.media.webpage.url}" target="_blank" >{message.media.webpage.url}</a>'
+                description = (f'<a href = "{message.media.webpage.url}"'
+                               f' target="_blank" >{message.media.webpage.url}</a>')
             if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
                 description = '\n\n'.join([description,
                                            shorten(message.media.webpage.description,
@@ -614,7 +626,10 @@ class TelegramHandler:
         tg_file = TgFile(dialog_id=dialog_id,
                          message_grouped_id=message_group.grouped_id,
                          message=message,
+                         message_id=message.id,
                          description=description,
+                         file_name='',
+                         file_path='',
                          alt_text=file_type.alt_text,
                          size=file_size,
                          file_type=file_type)
@@ -630,7 +645,7 @@ class TelegramHandler:
         """
         Загрузка файла сообщения
         """
-        downloading_param = dict()
+        downloading_param = {}
         result = None
         # Проверка существования файла
         if not tg_file.is_exists():
@@ -667,11 +682,13 @@ class TelegramHandler:
                 tg_file = TgFile(dialog_id=downloaded_file['dialog_id'],
                                  message_grouped_id='message_grouped_id',
                                  message=message,
+                                 message_id=message.id,
                                  description='description',
+                                 file_name='',
+                                 file_path=downloaded_file['file_path'],
                                  alt_text='alt_text',
                                  size=downloaded_file['size'],
                                  file_type=MessageFileTypes.get_file_type_by_type_id(downloaded_file['file_type_id']))
-                tg_file.file_path = downloaded_file['file_path']
                 # Загружаем файл сообщения
                 status_messages.mess_update('Synchronizing the list of local files with the database',
                                             f'{progress}  Download: {tg_file.file_path}')
@@ -696,8 +713,10 @@ class TelegramHandler:
         return resulting_report
 
 
-def convert_text_hyperlinks(message_text: str) -> Optional[str]:
-    # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+def convert_text_hyperlinks(message_text: Optional[str]) -> Optional[str]:
+    """
+    Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
+    """
     if message_text:
         matches = GlobalConst.text_with_url_pattern.findall(message_text)
         if matches:
@@ -719,10 +738,12 @@ def cleanup_loop():
 
 
 # Создаем и сохраняем цикл событий
+# the asyncio event loop for working with the Telegram client
 loop = new_event_loop()
 set_event_loop(loop)
 atexit.register(cleanup_loop)
 # Создаем экземпляр TelegramHandler()
+# an object of the TelegramHandler class for working with the Telegram client
 tg_handler = TelegramHandler()
 
 if __name__ == "__main__":

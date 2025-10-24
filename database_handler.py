@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Any, Type, Dict, TypeVar, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    text, Boolean, update, delete, event
+    Boolean, update, delete, event, func, Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
 from utils import parse_date_string, status_messages
@@ -294,7 +294,8 @@ class DbCurrentState:
     message_group_list: list[DbMessageGroup] = field(default_factory=list)
     selected_message_group_id: str = ''
     message_details: dict[str, Any] = field(default_factory=dict)
-    all_tags_list_sorting: dict = TagsSorting.name_asc
+    all_tags_list_sorting: dict = field(
+        default_factory=lambda: TagsSorting.NAME_ASC.copy())  # pylint: disable=unnecessary-lambda
 
 
 class DatabaseHandler:
@@ -303,8 +304,8 @@ class DatabaseHandler:
     Класс для представления операций с базой данных.
     """
 
-    all_dialogues_list: list[DbDialog] = field(default_factory=list)
-    all_tags_list: list[DbTag] = field(default_factory=list)
+    all_dialogues_list: Optional[List[DbDialog]] = None
+    all_tags_list: Optional[List[DbTag]] = None
     message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
     current_state: DbCurrentState = DbCurrentState()
 
@@ -366,7 +367,7 @@ class DatabaseHandler:
         # Получаем список сохраненных диалогов из базы данных
         self.all_dialogues_list = self.get_dialog_list()
         # Получаем список всех тегов из базы данных
-        self.current_state.all_tags_list_sorting = TagsSorting.name_asc
+        self.current_state.all_tags_list_sorting = TagsSorting.NAME_ASC
         self.all_tags_list = self.get_all_tag_list()
         # Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
@@ -385,12 +386,12 @@ class DatabaseHandler:
         unused_dialogs_id = all_dialogs_id - referenced_dialogs_id
         # Удаляем неиспользуемые диалоги
         if unused_dialogs_id:
-            stmt = delete(DbDialog).where(DbDialog.dialog_id.in_(unused_dialogs_id))
-            self.session.execute(stmt)
+            delete_stmt = delete(DbDialog).where(DbDialog.dialog_id.in_(unused_dialogs_id))
+            self.session.execute(delete_stmt)
             self.session.commit()
         # Получаем оставшиеся диалоги с учетом фильтров и сортировки
-        stmt = select(DbDialog).order_by(asc(DbDialog.title))
-        query_result = self.session.execute(stmt).scalars().all()
+        select_stmt = select(DbDialog).order_by(asc(DbDialog.title))
+        query_result = self.session.execute(select_stmt).scalars().all()
         # status_messages.mess_update('Loading chat lists',
         #                             f'{len(query_result)} chats loaded from the database')
         return list(query_result)
@@ -400,16 +401,15 @@ class DatabaseHandler:
         Получение списка всех тегов, имеющихся в БД с учетом сортировки, установленной в current_state.sorting_tags
         """
         # Обновляем частоту использования тегов
-        stmt = text("""
-                UPDATE tags 
-                SET usage_count = (
-                    SELECT COUNT(*) 
-                    FROM message_group_tag_links 
-                    WHERE message_group_tag_links.tag_id = tags.id
-                )
-            WHERE tags.id IS NOT NULL
-        """)
-        self.session.execute(stmt)
+        update_stmt = (update(DbTag).values(
+            usage_count=select(func.count())  # pylint: disable=not-callable
+            .select_from(message_group_tag_links)
+            .where(message_group_tag_links.c.tag_id == DbTag.id)  # type: ignore
+            .scalar_subquery()
+        )
+                       .where(DbTag.id.isnot(None))
+                       )
+        self.session.execute(update_stmt)
         # Удаляем теги, которые не используются
         self.session.query(DbTag).filter(DbTag.usage_count == 0).delete()
         # Сохраняем изменения в базе данных
@@ -421,12 +421,12 @@ class DatabaseHandler:
             sort_expr = asc(sort_field)
         else:
             sort_expr = desc(sort_field)
-        stmt = (
+        select_stmt = (
             select(DbTag)
             .group_by(DbTag.name)
             .order_by(sort_expr, DbTag.name)  # Вторичная сортировка по имени
         )
-        query_result = self.session.execute(stmt).scalars().all()
+        query_result = self.session.execute(select_stmt).scalars().all()
         return list(query_result)
 
     def get_message_group_list(self) -> list[DbMessageGroup]:
@@ -434,38 +434,38 @@ class DatabaseHandler:
         Получение списка групп сообщений с учетом фильтров и сортировки
         """
         # Сбрасываем флаг "отмечена" у всех групп сообщений
-        stmt = update(DbMessageGroup).values(selected=False)
-        self.session.execute(stmt)
+        update_stmt = update(DbMessageGroup).values(selected=False)
+        self.session.execute(update_stmt)
         # Сохраняем изменения в базе данных
         self.session.commit()
         # Формируем запрос с учетом фильтров и сортировки
-        stmt = select(DbMessageGroup)
+        select_stmt = select(DbMessageGroup)
         # Фильтр по выбранным диалогам
         if self.message_sort_filter.selected_dialog_list:
-            stmt = stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
+            select_stmt = select_stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
         # Фильтр по дате от и до
         if self.message_sort_filter.date_from:
-            stmt = stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
+            select_stmt = select_stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
         if self.message_sort_filter.date_to:
-            stmt = stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
+            select_stmt = select_stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
         # Фильтр по текстам сообщений
         if self.message_sort_filter.message_query:
-            stmt = stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
+            select_stmt = select_stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
         # Фильтр по тегам сообщений
         if self.message_sort_filter.tag_query:
             # Создаем список выражений с условиями для поиска ключевых фраз в тегах
             tag_conditions = [DbTag.name.ilike(f'%{keyword}%') for keyword in self.message_sort_filter.tag_query]
-            stmt = stmt.where(DbMessageGroup.tags.any(or_(*tag_conditions)))
+            select_stmt = select_stmt.where(DbMessageGroup.tags.any(or_(*tag_conditions)))
         # Сортировка по диалогам
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
-            stmt = stmt.join(DbDialog).order_by(
+            select_stmt = select_stmt.join(DbDialog).order_by(
                 DbDialog.title.desc() if self.message_sort_filter.sort_order else DbDialog.title.asc(),
                 DbMessageGroup.date.desc())
         # Сортировка по дате
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_date:
-            stmt = stmt.order_by(
+            select_stmt = select_stmt.order_by(
                 DbMessageGroup.date.desc() if self.message_sort_filter.sort_order else DbMessageGroup.date.asc())
-        query_result = self.session.execute(stmt).scalars().all()
+        query_result = self.session.execute(select_stmt).scalars().all()
         status_messages.mess_update('Loading chats from the database',
                                     f'{len(query_result)} chats loaded from the database', True)
         return list(query_result)
@@ -497,8 +497,10 @@ class DatabaseHandler:
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'tags': current_message_group.tags if current_message_group.tags else None}
-        db_details['existing_files'] = [db_file for db_file in db_details.get('files') if db_file.is_exists()]
-        message_date_str = db_details.get('date').strftime(GlobalConst.message_datetime_format)
+        db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
+        message_date = db_details.get('date')
+        message_date_str = message_date.strftime(
+            GlobalConst.message_datetime_format) if message_date is not None else ''
         status_messages.mess_update(
             f'Loading details of message "{message_date_str}" in chat "{db_details.get('dialog_title')}"',
             'Message details loaded', True)
@@ -520,20 +522,20 @@ class DatabaseHandler:
         query_result = self.session.execute(stmt).scalars().all()
         return list(query_result)
 
-    def get_file_by_local_path(self, local_path: str) -> Optional[DbFile]:
+    def get_file_by_local_path(self, local_path: str) -> Optional[dict[str, Any]]:
         """
         Получает из базы данных объект файл по локальному пути
         """
         stmt = select(DbFile).filter(DbFile.file_path == local_path)
         query_result = self.session.execute(stmt).scalars().first()
-        db_file = None
+        db_file_info = None
         if query_result:
-            db_file = {'dialog_id': query_result.message_group.dialog_id,
-                       'message_id': query_result.message_id,
-                       'file_path': query_result.file_path,
-                       'size': query_result.size,
-                       'file_type_id': query_result.file_type_id, }
-        return db_file
+            db_file_info = {'dialog_id': query_result.message_group.dialog_id,
+                            'message_id': query_result.message_id,
+                            'file_path': query_result.file_path,
+                            'size': query_result.size,
+                            'file_type_id': query_result.file_type_id, }
+        return db_file_info
 
     def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
         """
@@ -564,7 +566,7 @@ class DatabaseHandler:
         Удаляет тег из заданной группы сообщений
         """
         # Получаем тег и группу сообщений по их идентификаторам
-        stmt = select(DbTag).filter(DbTag.name == tag_name)
+        stmt: Select = select(DbTag).filter(DbTag.name == tag_name)
         tag = self.session.execute(stmt).scalars().first()
         stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
         message_group = self.session.execute(stmt).scalars().one()
@@ -598,7 +600,8 @@ class DatabaseHandler:
         all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
 
-    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[str, str]:
+    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str,
+                              message_group_id: str) -> tuple[Optional[str], str]:
         """
         Обновляет тег во всех группах сообщений, где он используется
         """
@@ -612,7 +615,7 @@ class DatabaseHandler:
             if message_group.grouped_id == message_group_id:
                 # Получаем текущий список тегов для текущего сообщения
                 current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
-        # Получаем обновленный список всех тегов для SELECT
+        # Получаем обновленный список всех тегов для элемента HTML SELECT
         self.all_tags_list = self.get_all_tag_list()
         all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
         return current_tags_select, all_tags_select
