@@ -143,7 +143,7 @@ class MessageFileTypes(Enum):
         return f'{self.__class__.__name__}.{self.name}'
 
 
-@dataclass(frozen=True)
+@dataclass
 class TableNames:
     """
     Database tables names.
@@ -158,7 +158,7 @@ class TableNames:
     message_group_tag_links = 'message_group_tag_links'
 
 
-@dataclass(frozen=True)
+@dataclass
 class FormCfg:
     """
     Form controls configurations in the web interface.
@@ -219,18 +219,18 @@ class FormCfg:
         return result
 
 
-@dataclass(frozen=True)
+@dataclass
 class TagsSorting:
     """
     The class contains tag sorting options.
     Класс содержит опции сортировки тегов.
     """
-    name_asc = {'field': 'name', 'order': 'asc'}
-    name_desc = {'field': 'name', 'order': 'desc'}
-    usage_count_asc = {'field': 'usage_count', 'order': 'asc'}
-    usage_count_desc = {'field': 'usage_count', 'order': 'desc'}
-    updated_at_asc = {'field': 'updated_at', 'order': 'asc'}
-    updated_at_desc = {'field': 'updated_at', 'order': 'desc'}
+    NAME_ASC = {'field': 'name', 'order': 'asc'}
+    NAME_DESC = {'field': 'name', 'order': 'desc'}
+    USAGE_COUNT_ASC = {'field': 'usage_count', 'order': 'asc'}
+    USAGE_COUNT_DESC = {'field': 'usage_count', 'order': 'desc'}
+    UPDATED_AT_ASC = {'field': 'updated_at', 'order': 'asc'}
+    UPDATED_AT_DESC = {'field': 'updated_at', 'order': 'desc'}
 
 
 if __name__ == '__main__':

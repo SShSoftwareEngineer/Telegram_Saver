@@ -157,6 +157,8 @@ def tg_save_selected_message_to_db():
     for tg_message_group in tg_handler.current_state.message_group_list:
         if tg_message_group.grouped_id in selected_messages_ids:
             # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных.
+            if not db_handler.session.in_transaction():
+                db_handler.session.begin()
             # Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
             db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
@@ -482,11 +484,11 @@ def db_all_tag_sorting():
     form_cfg = FormCfg.db_detail_tags
     match request.form.get(form_cfg['tag_sorting_field']):
         case '1':
-            db_handler.current_state.all_tags_list_sorting = TagsSorting.usage_count_desc
+            db_handler.current_state.all_tags_list_sorting = TagsSorting.USAGE_COUNT_DESC
         case '2':
-            db_handler.current_state.all_tags_list_sorting = TagsSorting.updated_at_desc
+            db_handler.current_state.all_tags_list_sorting = TagsSorting.UPDATED_AT_DESC
         case _:
-            db_handler.current_state.all_tags_list_sorting = TagsSorting.name_asc
+            db_handler.current_state.all_tags_list_sorting = TagsSorting.NAME_ASC
     # # Получение списка тегов с сортировкой по текущим установкам
     db_handler.all_tags_list = db_handler.get_all_tag_list()
     return jsonify({form_cfg['all_detail_tags']:

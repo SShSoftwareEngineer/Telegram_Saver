@@ -1,18 +1,20 @@
 // Функция реализующая переключение между вкладками
 function openTab(evt, tabName) {
     // Скрываем все содержимое вкладок
-    const tabContents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < tabContents.length; i++) {
-        tabContents[i].style.display = "none";
-    }
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tab => {
+        tab.style.display = "none";
+    });
     // Убираем класс "active" со всех кнопок вкладок
-    const tabButtons = document.getElementsByClassName("tab-button");
-    for (let i = 0; i < tabButtons.length; i++) {
-        tabButtons[i].className = tabButtons[i].className.replace(" active", "");
-    }
+    const tabButtons = document.querySelectorAll('.tab-button');
+    tabButtons.forEach(button => {
+        button.classList.remove("active");
+    });
     // Показываем текущую вкладку и добавляем класс "active" к кнопке
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
+    /** @type {HTMLElement} */
+    const tabElement = document.getElementById(tabName);
+    tabElement.style.display = "block";
+    evt.currentTarget.classList.add("active");
 }
 
 
@@ -26,14 +28,17 @@ function getRadioValue(identifier) {
     return checked ? checked.value : null;
 }
 
+
 // Получение значения текстового поля или textarea по ID
 function getInputValue(id) {
+    /** @type {HTMLInputElement} */
     const input = document.getElementById(id);
     return input ? input.value.trim() : '';
 }
 
 // Получение значения выбранного в select по ID
 function getSelectValue(id) {
+    /** @type {HTMLSelectElement} */
     const select = document.getElementById(id);
     if (!select) return '';
     // Если select с множественным выбором
@@ -49,8 +54,9 @@ function getSelectValue(id) {
 
 // Получение текста выбранного в select по ID
 function getSelectText(id) {
+    /** @type {HTMLSelectElement} */
     const select = document.getElementById(id);
-    return select.options[select.selectedIndex].text || '';
+    return select?.options[select.selectedIndex]?.text || '';
 }
 
 // Получение значения множественного выбора checkbox группы по ID контейнера
@@ -95,7 +101,8 @@ function submitFormData(config, url) {
         values.forEach(value => formData.append(field.name, value));
     });
     // Обработка списка ID checkbox (не группы), обрабатывает массив ID чекбоксов
-    (config.checkbox_list || []).forEach(field => {
+    const checkboxList = config.checkbox_list || [];
+    checkboxList.forEach(field => {
         const selected = document.querySelectorAll(`${field.selector}:checked`);
         const selectedIds = Array.from(selected).map(cb => cb.id);
         selectedIds.forEach(id => {
@@ -108,7 +115,7 @@ function submitFormData(config, url) {
         .then(r => r.json())
         .catch(err => {
             console.error('Error:', err);
-            console.log('Данные формы:', body);
+            console.log('Form data:', formData);
             throw err;
         });
 }
@@ -117,13 +124,14 @@ function submitFormData(config, url) {
 function updateElementsFromResponse(data) {
     // console.log('updateElementsFromResponse called with:', data);
     Object.keys(data).forEach(key => {
+        /** @type {HTMLElement} */
         const element = document.getElementById(key);
         if (!element) {
             console.warn(`❌ Элемент с ID '${key}' НЕ НАЙДЕН на странице!`);
             return;
         }
         // Для checkbox и radio - обновляем checked
-        if (element.type === 'checkbox' || element.type === 'radio') {
+        if (element instanceof HTMLInputElement && (element.type === 'checkbox' || element.type === 'radio')) {
             element.checked = data[key];
         }
         // Для input/textarea - обновляем value
@@ -223,14 +231,13 @@ function clearFormFields(ids) {
             return;
         }
         // Для input
-        if (element.tagName === 'INPUT') {
+        if (element instanceof HTMLInputElement) {
             if (element.type === 'radio' || element.type === 'checkbox') {
                 element.checked = false;
             } else {
                 element.value = '';
             }
-        }
-        // Для textarea
+        }        // Для textarea
         if (element.tagName === 'TEXTAREA') {
             element.value = '';
         }
@@ -333,6 +340,11 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
 }
 
 // Функция удаления выделенных сообщений с подтверждением
+/**
+ * @param {Object} config
+ * @param {Array} [config.checkbox_list]
+ * @param {string} url
+ */
 function deleteSelectedButton(config, url) {
     // Подсчитываем выделенные через config селектор
     let totalSelected = 0;
