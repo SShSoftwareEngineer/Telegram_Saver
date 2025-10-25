@@ -21,7 +21,7 @@ from mimetypes import guess_extension
 from sys import maxsize
 from textwrap import shorten
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Callable, cast
 from datetime import datetime, timedelta
 from pathlib import Path
 from telethon.tl.custom import Dialog, Message
@@ -51,7 +51,7 @@ class TgDialog:
         elif dialog.name:
             self.title = dialog.name
         else:
-            self.title = 'No title'
+            self.title = GlobalConst.dialog_no_title
         self.unread_count = dialog.unread_count if dialog.unread_count else 0
         self.last_message_date = dialog.date.astimezone() if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
@@ -74,7 +74,7 @@ class TgDialog:
         """
         Возвращает путь к директории диалога
         """
-        return clean_file_path(f'{self.title}_{self.dialog_id}')
+        return clean_file_path(f'{self.title}_{self.dialog_id}') or f'{self.title}_{self.dialog_id}'
 
 
 @dataclass
@@ -82,7 +82,7 @@ class TgDialogSortFilter:
     """
     A class to represent sorting and filtering options of Telegram dialogs.
     """
-    _sorting_field = None
+    _sorting_field: Callable[[Any], Any] | None = None
     _sort_order: bool = False
     _dialog_type: Optional[DialogTypes] = None
     _title_query: Optional[str] = None
@@ -181,7 +181,7 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
         """
         file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
                      f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
-        return clean_file_path(file_name)
+        return clean_file_path(file_name) or file_name
 
 
 @dataclass
@@ -245,7 +245,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
         """
         if self.text:
-            self.text = convert_text_hyperlinks(self.text)
+            self.text = convert_text_hyperlinks(self.text) or ''
 
     def set_truncated_text(self) -> None:
         """
@@ -282,7 +282,9 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         """
         Возвращает путь к директории группы сообщений
         """
-        return clean_file_path(self.date.astimezone().strftime('%Y-%m-%d'))
+        assert self.date is not None
+        date_str = self.date.astimezone().strftime('%Y-%m-%d')
+        return clean_file_path(date_str) or date_str
 
 
 @dataclass
@@ -367,7 +369,7 @@ class TgMessageSortFilter:
         """
         Сортировка списка групп сообщений по дате
         """
-        return sorted(message_group_list, key=lambda group: group.date, reverse=self.sort_order)
+        return sorted(message_group_list, key=lambda group: group.date or datetime.min, reverse=self.sort_order)
 
 
 @dataclass
@@ -375,10 +377,10 @@ class TgCurrentState:
     """
     Текущее состояние клиента Telegram
     """
-    dialog_list: List[TgDialog] = None
-    selected_dialog_id: int = None
-    message_group_list: List[TgMessageGroup] = None
-    message_details: Dict[str, Any] = None
+    dialog_list: Optional[List[TgDialog]] = None
+    selected_dialog_id: Optional[int] = None
+    message_group_list: Optional[List[TgMessageGroup]] = None
+    message_details: Optional[Dict[str, Any]] = None
 
 
 class TelegramHandler:
@@ -386,7 +388,7 @@ class TelegramHandler:
     A class for handling Telegram operations.
     """
 
-    all_dialogues_list: List[TgDialog] = None
+    all_dialogues_list: Optional[List[TgDialog]] = None
     dialog_sort_filter: TgDialogSortFilter = TgDialogSortFilter()
     message_sort_filter: TgMessageSortFilter = TgMessageSortFilter()
     current_state: TgCurrentState = TgCurrentState()
@@ -483,7 +485,7 @@ class TelegramHandler:
         Формирование списка групп сообщений из сообщений заданного чата с учетом фильтров, сортировки и группировки
         """
         # Создание списка групп сообщений с учетом параметра группировки и фильтра по тексту
-        message_group_list = []
+        message_group_list: List[TgMessageGroup] = []
         # Составление списка сообщений с учетом группировки по message.grouped_id
         for message in self.get_message_list(dialog_id):
             # Если message.grouped_id сообщения не установлен, то используем message.id
@@ -527,11 +529,17 @@ class TelegramHandler:
         """
         # Получаем текущую группу сообщений по id
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
+        assert current_message_group is not None and current_message_group.date is not None
         message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
+        current_dialog = self.get_dialog_by_id(dialog_id)
+        # 1. Берем диалог, или None
+        # 2. У диалога берем title, или None (если диалог был None)
+        # 3. Если результат None, используем GlobalConst.dialog_no_title
+        detail_dialog_title = (current_dialog.title if current_dialog else None) or GlobalConst.dialog_no_title
         status_messages.mess_update(
-            f'Loading details of message {message_date_str} in chat {self.get_dialog_by_id(dialog_id).title}', '', True)
+            f'Loading details of message {message_date_str} in chat {detail_dialog_title}', '', True)
         tg_details = {'dialog_id': dialog_id,
-                      'dialog_title': self.get_dialog_by_id(dialog_id).title,
+                      'dialog_title': detail_dialog_title,
                       'message_group_id': message_group_id,
                       'date': current_message_group.date,
                       # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
@@ -541,12 +549,13 @@ class TelegramHandler:
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'saved_to_db': current_message_group.saved_to_db}
         # Скачиваем файлы, содержащиеся в детальном сообщении, если их нет в файловой системе, кроме видео
-        for tg_file in tg_details.get('files'):
+        tg_details_files = cast(list[TgFile], tg_details.get('files', []))
+        for tg_file in tg_details_files:
             if not tg_file.is_exists():
                 if tg_file.file_type != MessageFileTypes.VIDEO:
                     status_messages.mess_update('', f'Downloading file {tg_file.file_path}')
                     self.download_message_file(tg_file)
-        tg_details['existing_files'] = [tg_file for tg_file in tg_details.get('files') if tg_file.is_exists()]
+        tg_details['existing_files'] = [tg_file for tg_file in tg_details_files if tg_file.is_exists()]
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
@@ -565,10 +574,10 @@ class TelegramHandler:
             for image in images:
                 if isinstance(image, PhotoSize):
                     max_image_size = max(image.size, max_image_size)
-                elif isinstance(image, PhotoCachedSize) or isinstance(image, PhotoStrippedSize):
+                elif isinstance(image, (PhotoCachedSize, PhotoStrippedSize)):
                     max_image_size = max(len(image.bytes), max_image_size)
                 elif isinstance(image, PhotoSizeProgressive):
-                    max_image_size = max(max(image.sizes), max_image_size)
+                    max_image_size = max(*image.sizes, max_image_size)
             return max_image_size
 
         if not message.file:

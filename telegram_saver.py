@@ -95,8 +95,8 @@ def tg_get_details(dialog_id: str, message_group_id: str):
     """
     Получение детальной информации о сообщении
     """
-    tg_handler.current_state.message_details = tg_handler.get_message_detail(int(dialog_id),
-                                                                             message_group_id) if message_group_id else None
+    tg_handler.current_state.message_details = (
+        tg_handler.get_message_detail(int(dialog_id), message_group_id)) if message_group_id else None
     return jsonify({'tg_details': render_template('tg_details.html')})
 
 
@@ -196,7 +196,8 @@ def tg_save_selected_message_to_db():
                 # Скачиваем файл, если его нет в заданной директории файловой системы и его размер меньше предельного
                 status_messages.mess_update('Downloading files', tg_file.file_path)
                 downloading_result = tg_handler.download_message_file(tg_file)
-                report_msg = f'{tg_file.file_path} downloaded successfully' if downloading_result else f'Failed to download file {tg_file.file_path}'
+                report_msg = f'{tg_file.file_path} downloaded successfully' \
+                    if downloading_result else f'Failed to download file {tg_file.file_path}'
                 status_messages.mess_update('Downloading files', report_msg)
             db_handler.session.flush()
             # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл.
@@ -258,6 +259,7 @@ def db_database_maintenance():
     5. Удаление неиспользуемых диалогов из таблицы диалогов базы данных
     6. Пересчет количества использований тегов, удаление неиспользуемых из таблицы тегов
     """
+
     # Получаем из БД все файлы с указанными расширениями
     file_ext_to_sync = [MessageFileTypes.IMAGE.default_ext,  # '.jpg' 
                         MessageFileTypes.VIDEO.default_ext,  # '.mp4' 
@@ -296,7 +298,7 @@ def db_database_maintenance():
     # Создаем директории файла, если их нет
     database_backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ProjectDirs.data_base_file, database_backup)
-    status_messages.mess_update('', f'Database backup created')
+    status_messages.mess_update('', 'Database backup created')
     # Обновление списка диалогов в БД с сортировкой по текущим установкам и удалением неиспользуемых
     db_handler.all_dialogues_list = db_handler.get_dialog_list()
     db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
@@ -423,8 +425,8 @@ def db_tag_add():
     current_tags_select = all_tags_select = None
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
-        current_tags_select, all_tags_select = db_handler.add_tag_to_message_group(tag_name,
-                                                                                   db_handler.current_state.selected_message_group_id)
+        current_tags_select, all_tags_select = (
+            db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id))
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -438,8 +440,8 @@ def db_tag_remove():
     current_tags_select = all_tags_select = None
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
-        current_tags_select, all_tags_select = db_handler.remove_tag_from_message_group(tag_name,
-                                                                                        db_handler.current_state.selected_message_group_id)
+        current_tags_select, all_tags_select = (
+            db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id))
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -454,8 +456,9 @@ def db_tag_update():
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
     if all([old_tag_name, new_tag_name, new_tag_name != old_tag_name]):
-        current_tags_select, all_tags_select = db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
-                                                                                        db_handler.current_state.selected_message_group_id)
+        current_tags_select, all_tags_select = (
+            db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
+                                                     db_handler.current_state.selected_message_group_id))
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -470,8 +473,9 @@ def db_tag_update_everywhere():
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
     if all([old_tag_name, new_tag_name, new_tag_name != old_tag_name]):
-        current_tags_select, all_tags_select = db_handler.update_tag_everywhere(old_tag_name, new_tag_name,
-                                                                                db_handler.current_state.selected_message_group_id)
+        current_tags_select, all_tags_select = (
+            db_handler.update_tag_everywhere(old_tag_name, new_tag_name,
+                                             db_handler.current_state.selected_message_group_id))
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -498,7 +502,8 @@ def db_all_tag_sorting():
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-# TODO: проверить на загрузку сообщения с разными типами приложений, почему возвращает ошибку при Unknown, проверить загрузку видео и аудио
+# -*- coding: utf-8 -*-
+# TODO: проверить на загрузку разные типы приложений, загрузку видео и аудио, почему возвращает ошибку при Unknown
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
 # TODO: Сделать тесты
