@@ -63,6 +63,7 @@ class GlobalConst:
     select_in_database = 'select_in_database'  # Key name for message selection in database for HTML templates
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
+    dialog_no_title = '<No Title>'  # Title for dialogs without a title
 
 
 class DialogTypes(Enum):
