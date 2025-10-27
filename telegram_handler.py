@@ -424,7 +424,7 @@ class TelegramHandler:
         """
         Получение диалога по id
         """
-        found_tg_dialog = next((x for x in self.all_dialogues_list if x.dialog_id == dialog_id), None)
+        found_tg_dialog = next((x for x in (self.all_dialogues_list or []) if x.dialog_id == dialog_id), None)
         return found_tg_dialog
 
     @staticmethod
@@ -528,7 +528,8 @@ class TelegramHandler:
         Получение сообщения по id диалога и id группы сообщений
         """
         # Получаем текущую группу сообщений по id
-        current_message_group = self.get_message_group_by_id(self.current_state.message_group_list, message_group_id)
+        current_message_group = self.get_message_group_by_id(self.current_state.message_group_list or [],
+                                                             message_group_id)
         assert current_message_group is not None and current_message_group.date is not None
         message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
         current_dialog = self.get_dialog_by_id(dialog_id)

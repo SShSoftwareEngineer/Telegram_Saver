@@ -1,7 +1,5 @@
 """
-The module contains
-
-model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
 
 HTTP_ERRORS: a dictionary containing descriptions of HTTP request errors
 class Base(DeclarativeBase): a declarative class for creating tables in the database
@@ -12,6 +10,7 @@ class ServiceMessage(Base): a model class for service messages
 def export_data_to_excel(): a function for exporting data from the database to MS Excel file
 session: a session object for working with the database
 """
+
 from typing import Dict, List, Any
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,8 +27,11 @@ PROFILE = '_dev_1'
 @dataclass(frozen=True)
 class ProjectDirs:
     """
-    A class to hold the directory paths for a project. / Класс для хранения путей к директориям проекта.
+    A class to hold the directory paths for a project.
+
+    Класс для хранения путей к директориям проекта.
     """
+
     # Directory for storing downloaded media files from Telegram / Директория для загруженных медиафайлов из Telegram
     media_dir = r'media_storage'
     # Directory for exporting messages to HTML files / Директория для экспорта сообщений в HTML и другие файлы
@@ -45,8 +47,11 @@ class ProjectDirs:
 @dataclass(frozen=True)
 class GlobalConst:
     """
-    A class to hold constant values for the project. / Класс для хранения констант проекта.
+    A class to hold constant values for the project.
+
+    Класс для хранения констант проекта.
     """
+
     max_download_file_size = 50 * 2 ** 20  # 50 MB - Maximum file size for downloading from Telegram
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
@@ -69,8 +74,13 @@ class GlobalConst:
 class DialogTypes(Enum):
     """
     The class holds the IDs and names of the dialog types in Telegram.
+
     Класс содержит ID и названия типов диалогов в Telegram.
+
+    get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
+        Returns the type name for a given dialog type.
     """
+
     CHANNEL = 1
     GROUP = 2
     USER = 3
@@ -98,9 +108,13 @@ class DialogTypes(Enum):
 
 class MessageFileTypes(Enum):
     """
-    The class contains types and other characteristics of message files.
-    Класс содержит типы и другие характеристики файлов сообщений.
+    The class contains the names, types, extensions, and signatures of message files.
+
+    Класс содержит названия, типы, расширения и подписи файлов сообщений.
+
+    get_file_type_by_type_id(type_id: int) -> 'MessageFileTypes': Returns the MessageFileTypes for a given file type_id.
     """
+
     PHOTO = (1, 'Image', '.jpg', 'pho')
     IMAGE = (2, 'Image', '.jpg', 'img')
     VIDEO = (3, 'Video', '.mp4', 'vid')
@@ -130,6 +144,10 @@ class MessageFileTypes(Enum):
         """
         Returns the MessageFileTypes for a given file type_id.
         Возвращает MessageFileTypes для заданного type_id файла.
+        Arguments:
+            type_id (int): The ID of the file type.
+        Returns:
+            MessageFileTypes: The corresponding MessageFileTypes enum member.
         """
         result = MessageFileTypes.UNKNOWN
         for item in cls:
@@ -147,9 +165,11 @@ class MessageFileTypes(Enum):
 @dataclass
 class TableNames:
     """
-    Database tables names.
-    Имена таблиц базы данных.
+    The class contains database tables names.
+
+    Класс содержит имена таблиц базы данных.
     """
+
     dialogs = 'dialogs'
     dialog_types = 'dialog_types'
     message_groups = 'message_groups'
@@ -162,9 +182,23 @@ class TableNames:
 @dataclass
 class FormCfg:
     """
-    Form controls configurations in the web interface.
-    Конфигурации элементов управления форм в веб-интерфейсе.
+    Configurations of form controls in the web interface that allow you to obtain the values of all forms using
+    a single processing function.
+
+    Конфигурации элементов управления форм в веб-интерфейсе, которые позволяют получать значения всех форм с помощью
+    одной функции обработки.
+    Attributes:
+        tg_dialog_filter (dict): Telegram dialog filter form configuration
+        tg_message_filter (dict): Telegram message filter form configuration
+        db_message_filter (dict): Database message filter form configuration
+        db_detail_tags (dict): Database tag control form configuration
+        tg_checkbox_list (dict): Configuration of checkboxes Telegram messages list
+        db_checkbox_list (dict): Configuration of checkboxes database messages list
+    Methods:
+        get_form_cfg(form_cfg: dict) -> dict:
+            Returns the configuration of controls of a given form for the form processing button.
     """
+
     # Telegram dialog filter form configuration / Конфигурация формы фильтра диалогов Telegram
     tg_dialog_filter = {'sorting_field': 'tg_sorting_field', 'sorting_order': 'tg_dial_sort_order',
                         'dialog_type': 'tg_dialog_type', 'dialog_title_query': 'tg_title_query',
@@ -224,8 +258,10 @@ class FormCfg:
 class TagsSorting:
     """
     The class contains tag sorting options.
+
     Класс содержит опции сортировки тегов.
     """
+
     NAME_ASC = {'field': 'name', 'order': 'asc'}
     NAME_DESC = {'field': 'name', 'order': 'desc'}
     USAGE_COUNT_ASC = {'field': 'usage_count', 'order': 'asc'}
