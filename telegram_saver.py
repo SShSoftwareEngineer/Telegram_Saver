@@ -161,21 +161,20 @@ def tg_save_selected_message_to_db():
                 db_handler.session.begin()
             # Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
-            db_dialog = db_handler.upsert_record(DbDialog, dict(dialog_id=tg_dialog.dialog_id),
-                                                 dict(title=tg_dialog.title,
-                                                      dialog_type_id=tg_dialog.type.value))
+            db_dialog = db_handler.upsert_record(DbDialog, {'dialog_id': tg_dialog.dialog_id},
+                                                 {'title': tg_dialog.title, 'dialog_type_id': tg_dialog.type.value})
             # Устанавливаем relationship для диалога, если не установлен
             if db_dialog.dialog_type is None:
                 db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
                     dialog_type_id=tg_dialog.type.value).first()
             # Сохраняем группу сообщений
-            db_message_group = db_handler.upsert_record(DbMessageGroup, dict(grouped_id=tg_message_group.grouped_id),
-                                                        dict(date=tg_message_group.date,
-                                                             text=tg_message_group.text,
-                                                             truncated_text=tg_message_group.truncated_text,
-                                                             files_report=tg_message_group.files_report,
-                                                             from_id=tg_message_group.from_id,
-                                                             dialog_id=tg_dialog.dialog_id))
+            db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
+                                                        {'date': tg_message_group.date,
+                                                         'text': tg_message_group.text,
+                                                         'truncated_text': tg_message_group.truncated_text,
+                                                         'files_report': tg_message_group.files_report,
+                                                         'from_id': tg_message_group.from_id,
+                                                         'dialog_id': tg_dialog.dialog_id})
             # Устанавливаем relationship для группы сообщений, если не установлен
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
@@ -261,9 +260,11 @@ def db_database_maintenance():
     """
 
     # Получаем из БД все файлы с указанными расширениями
-    file_ext_to_sync = [MessageFileTypes.IMAGE.default_ext,  # '.jpg' 
-                        MessageFileTypes.VIDEO.default_ext,  # '.mp4' 
-                        MessageFileTypes.CONTENT.default_ext]  # '.html'                        
+    file_ext_to_sync = [
+        MessageFileTypes.IMAGE.default_ext,  # '.jpg'
+        MessageFileTypes.VIDEO.default_ext,  # '.mp4'
+        MessageFileTypes.CONTENT.default_ext  # '.html'
+    ]
     database_files = set([f'{ProjectDirs.media_dir}/{file}' for file in
                           db_handler.get_file_list_by_extension(file_ext_to_sync)])
     # Находим все локальные файлы с указанными расширениями рекурсивно

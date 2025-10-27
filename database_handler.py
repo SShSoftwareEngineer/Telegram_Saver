@@ -28,17 +28,23 @@ from utils import parse_date_string, status_messages
 
 
 class Base(DeclarativeBase):  # pylint: disable=too-few-public-methods
-    """ A declarative class for creating tables in the database """
+    """
+    A declarative class for creating tables in the database
+    Декларативный класс для создания таблиц в базе данных
+    """
 
 
 # TypeVar for model classes, bound to Base
 ModelType = TypeVar('ModelType', bound=Base)  # pylint: disable=invalid-name
 
-# Relationships Many-to-Many to 'MessageGroup' and 'DbTag' tables
+# Table implementing a many-to-many relationship between the MessageGroup and DbTag tables
+# Таблица, реализующая отношение «многие-ко-многим» к таблицам «MessageGroup» и «DbTag»
 message_group_tag_links = Table(
     TableNames.message_group_tag_links, Base.metadata,
-    Column('message_group_id', String, ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
-    Column('tag_id', Integer, ForeignKey(f'{TableNames.tags}.id'), primary_key=True)
+    Column('message_group_id', String,
+           ForeignKey(f'{TableNames.message_groups}.grouped_id'), primary_key=True),
+    Column('tag_id', Integer,
+           ForeignKey(f'{TableNames.tags}.id'), primary_key=True)
 )
 
 
@@ -48,7 +54,6 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     Класс для представления группы сообщений в базе данных.
     """
     __tablename__ = TableNames.message_groups
-    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
     date: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
