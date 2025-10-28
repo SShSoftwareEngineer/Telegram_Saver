@@ -28,7 +28,6 @@ PROFILE = '_dev_1'
 class ProjectDirs:
     """
     A class to hold the directory paths for a project.
-
     Класс для хранения путей к директориям проекта.
     """
 
@@ -48,7 +47,6 @@ class ProjectDirs:
 class GlobalConst:
     """
     A class to hold constant values for the project.
-
     Класс для хранения констант проекта.
     """
 
@@ -74,9 +72,7 @@ class GlobalConst:
 class DialogTypes(Enum):
     """
     The class holds the IDs and names of the dialog types in Telegram.
-
     Класс содержит ID и названия типов диалогов в Telegram.
-
     get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
         Returns the type name for a given dialog type.
     """
@@ -90,6 +86,7 @@ class DialogTypes(Enum):
     def get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
         """
         Returns the type name for a given dialog type.
+        Возвращает название типа для заданного типа диалога.
         Arguments:
             is_channel (bool): True if the dialog is a channel
             is_group (bool): True if the dialog is a group
@@ -97,6 +94,7 @@ class DialogTypes(Enum):
         Returns:
             str: The type name of the dialog
         """
+
         if is_channel:
             return DialogTypes.CHANNEL.name
         if is_group:
@@ -109,9 +107,7 @@ class DialogTypes(Enum):
 class MessageFileTypes(Enum):
     """
     The class contains the names, types, extensions, and signatures of message files.
-
     Класс содержит названия, типы, расширения и подписи файлов сообщений.
-
     get_file_type_by_type_id(type_id: int) -> 'MessageFileTypes': Returns the MessageFileTypes for a given file type_id.
     """
 
@@ -134,6 +130,7 @@ class MessageFileTypes(Enum):
             default_ext (str): The default file extension for the file type.
             sign (str): The short sign for the file type.
         """
+
         self.type_id = type_id
         self.alt_text = alt_text
         self.default_ext = default_ext
@@ -149,6 +146,7 @@ class MessageFileTypes(Enum):
         Returns:
             MessageFileTypes: The corresponding MessageFileTypes enum member.
         """
+
         result = MessageFileTypes.UNKNOWN
         for item in cls:
             if item.type_id == type_id:
@@ -166,7 +164,6 @@ class MessageFileTypes(Enum):
 class TableNames:
     """
     The class contains database tables names.
-
     Класс содержит имена таблиц базы данных.
     """
 
@@ -184,7 +181,6 @@ class FormCfg:
     """
     Configurations of form controls in the web interface that allow you to obtain the values of all forms using
     a single processing function.
-
     Конфигурации элементов управления форм в веб-интерфейсе, которые позволяют получать значения всех форм с помощью
     одной функции обработки.
     Attributes:
@@ -239,6 +235,7 @@ class FormCfg:
         Returns:
             dict: The button configuration dictionary.
         """
+
         result: Dict[str, List[Any]] = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
                                         'checkbox_list': []}  # Default structure, do not change key names
         for key, value in result.items():
@@ -258,7 +255,6 @@ class FormCfg:
 class TagsSorting:
     """
     The class contains tag sorting options.
-
     Класс содержит опции сортировки тегов.
     """
 

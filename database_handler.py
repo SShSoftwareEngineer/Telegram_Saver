@@ -53,7 +53,8 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     A class to represent a message group in the database.
     Класс для представления группы сообщений в базе данных.
     """
-    __tablename__ = TableNames.message_groups
+
+    __tablename__ = TableNames.message_groups  # Table name in the database / Имя таблицы в базе данных
     grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
     date: Mapped[datetime]
     text: Mapped[str] = mapped_column(Text, nullable=True)
@@ -71,8 +72,10 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
 
     def get_export_data(self) -> dict:
         """
+        Returns message group data as a dictionary for export to HTML or JSON
         Возвращает данные группы сообщений в виде словаря для экспорта в HTML или JSON
         """
+
         export_data = {'dialog_id': self.dialog_id,
                        'dialog_title': self.dialog.title if self.dialog else '',
                        'message_group_id': self.grouped_id,
@@ -93,7 +96,8 @@ class DbTag(Base):  # pylint: disable=too-few-public-methods
     A class to represent a tag associated with a message group in the database.
     Класс для представления тега, связанного с группой сообщений в базе данных.
     """
-    __tablename__ = TableNames.tags
+
+    __tablename__ = TableNames.tags # Table name in the database / Имя таблицы в базе данных
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     name: Mapped[str] = mapped_column(Text, default='', nullable=False)
     usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -108,8 +112,8 @@ class DbDialog(Base):  # pylint: disable=too-few-public-methods
     A class to represent a dialog (chat) in the database.
     Класс для представления диалога (чата) в базе данных.
     """
-    __tablename__ = TableNames.dialogs
-    # id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    __tablename__ = TableNames.dialogs # Table name in the database / Имя таблицы в базе данных
     dialog_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(Text)
     # Relationships to 'DbMessageGroup' table
@@ -124,7 +128,8 @@ class DbDialogType(Base):  # pylint: disable=too-few-public-methods
     A class to represent a type of dialog (chat) in the database.
     Класс для представления типа диалога (чата) в базе данных.
     """
-    __tablename__ = TableNames.dialog_types
+
+    __tablename__ = TableNames.dialog_types # Table name in the database / Имя таблицы в базе данных
     dialog_type_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     # Relationships to 'DbDialog' table
@@ -135,8 +140,10 @@ class DbFile(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a file associated with a message group in the database.
     Класс для представления файла, связанного с группой сообщений в базе данных.
+    is_exists: Check for the existing file in the file system
     """
-    __tablename__ = TableNames.files
+
+    __tablename__ = TableNames.files # Table name in the database / Имя таблицы в базе данных
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     message_id: Mapped[int] = mapped_column(Integer)
     file_path: Mapped[str] = mapped_column(String, unique=True)
@@ -151,7 +158,8 @@ class DbFile(Base):  # pylint: disable=too-few-public-methods
 
     def is_exists(self) -> bool:
         """
-        Проверяет, был ли файл загружен в файловую систему
+        Check for the existing file in the file system
+        Проверка на существование файла в файловой системе
         """
         return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
 
@@ -161,7 +169,8 @@ class DbFileType(Base):  # pylint: disable=too-few-public-methods
     A class to represent a type of file associated with a message group in the database.
     Класс для представления типа файла, связанного с группой сообщений в базе данных.
     """
-    __tablename__ = TableNames.file_types
+
+    __tablename__ = TableNames.file_types # Table name in the database / Имя таблицы в базе данных
     file_type_id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String, unique=True)
     alt_text: Mapped[str] = mapped_column(String)
@@ -176,14 +185,24 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     """
     A class to represent sorting and filtering of message groups in the database.
     Класс для представления параметров сортировки и фильтра для групп сообщений в базе данных.
+    Attributes:
+        selected_dialog_list (Optional[List[int]]): list of selected dialog IDs for filtering messages
+        sorting_field (str): field to sort messages by (date or dialog)
+        sort_order (bool): sort order: descending (True) or ascending (False)
+        date_from (Optional[datetime]): date from which to get messages
+        date_to (Optional[datetime]): date to which to get messages
+        message_query (Optional[str]): filter by message text
+        tag_query (Optional[List[str]]): filter by message tags
     """
-    _selected_dialog_list: Optional[List[int]] = None
+
+
+    _selected_dialog_list: Optional[List[int]] = None # список выбранных диалогов для фильтрации сообщений
     _sorting_field = None  # по дате или по диалогу
-    _sort_order: bool = False
-    _date_from: Optional[datetime] = None
-    _date_to: Optional[datetime] = None
-    _message_query: Optional[str] = None
-    _tag_query: Optional[List[str]] = None
+    _sort_order: bool = False # порядок сортировки: по убыванию (True) или по возрастанию (False)
+    _date_from: Optional[datetime] = None # дата от
+    _date_to: Optional[datetime] = None # дата до
+    _message_query: Optional[str] = None # фильтр по тексту сообщения
+    _tag_query: Optional[List[str]] = None # фильтр по тегам сообщения
     sort_by_date: str = 'by date'
     sort_by_title: str = 'by title'
 

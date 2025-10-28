@@ -18,9 +18,7 @@ from dateutil.parser import parse
 class StatusMessages:
     """
     A class to hold status messages for the web interface.
-
     Класс для хранения статусных сообщений для веб-интерфейса.
-
     Attributes:
         operation (str): Current operation.
         report_list (List[str] | None): Report messages.
@@ -29,18 +27,21 @@ class StatusMessages:
         mess_update(operation: str, report: str, new_list: bool = False):
             Sets the current status messages for the web interface.
     """
-    operation: str = ''  # Current operation
-    report_list: Optional[List[str]] = None  # Report messages
-    messages: dict = field(default_factory=dict)  # Messages for the web interface
+
+    operation: str = ''  # Current operation / Текущая операция
+    report_list: Optional[List[str]] = None  # Report messages / Сообщения отчета
+    messages: dict = field(default_factory=dict)  # Messages for the web interface / Сообщения для веб-интерфейса
 
     def mess_update(self, operation: str, report: str, new_list: bool = False):
         """
         Sets the current status messages for the web interface.
+        Устанавливает текущие статусные сообщения для веб-интерфейса.
         Arguments:
             operation (str): Current operation description
             report (str): Report message to add
             new_list (bool): If True, starts a new report list
         """
+
         if operation:
             self.operation = operation
         current_time = datetime.now().strftime('%H:%M:%S.%f')[:-3]  # Current time with milliseconds
@@ -49,29 +50,33 @@ class StatusMessages:
         if report:
             report_string = f'{current_time} - {report}'
             self.report_list.append(report_string)
+        # Forming a string for a tag in HTML format for the content <select>
         # Формируем строку для тега в HTML формате для содержимого <select>
         select_string = ''
         if self.report_list:
             select_string = '\n'.join(
                 [f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
         self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
-        print(f'{current_time}  {self.operation} - {report}')  # Print the report message to the console
+        # Print the report message to the console
+        # Вывод сообщения отчета в консоль
+        print(f'{current_time}  {self.operation} - {report}')
 
 
-status_messages = StatusMessages()  # Global instance of StatusMessages
+# Global instance of StatusMessages
+# Глобальный экземпляр StatusMessages
+status_messages = StatusMessages()
 
 
 def parse_date_string(date_str: str) -> Optional[datetime]:
     """
     Parses a date string and returns a datetime object.
-
     Парсит строку даты и возвращает объект datetime.
-
     Arguments:
         date_str (str): Date string to parse
     Returns:
         datetime | None: Parsed datetime object or None if parsing fails
     """
+
     if not date_str:
         return None
     try:
@@ -83,14 +88,13 @@ def parse_date_string(date_str: str) -> Optional[datetime]:
 def clean_file_path(file_path: Optional[str]) -> Optional[str]:
     """
     A function to clean a file or directory name from invalid characters
-
-    Очищает имя файла или директории от недопустимых символов
-
+    Функция очищает имя файла или директории от недопустимых символов
     Arguments:
         file_path (str | None): The original file or directory name
     Returns:
         str | None: The cleaned file or directory name
     """
+
     clean_filepath = None
     if file_path:
         # Replace invalid Windows/Linux/URL characters: spaces, apostrophes, parentheses, ampersands, percent signs

@@ -560,8 +560,9 @@ class TelegramHandler:
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
-    def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup, message,
-                              thumbnail: bool) -> Optional[TgFile]:
+    def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup,
+                              # pylint: disable=too-many-statements, too-many-branches
+                              message, thumbnail: bool) -> Optional[TgFile]:
         """
         Получение информации о файле сообщения
         Определение типа файла, его расширения и размера, формирование пути к файлу
@@ -583,27 +584,26 @@ class TelegramHandler:
 
         if not message.file:
             return None
+        mess_doc = message.media.document if isinstance(message.media, MessageMediaDocument) else None
         # Определяем тип файла
-        mess_doc = None
         file_type = MessageFileTypes.UNKNOWN
         if isinstance(message.media, MessageMediaPhoto):
             file_type = MessageFileTypes.PHOTO
         elif isinstance(message.media, MessageMediaWebPage):
             file_type = MessageFileTypes.WEBPAGE
-        elif isinstance(message.media, MessageMediaDocument):
-            mess_doc = message.media.document
+        elif isinstance(message.media, MessageMediaDocument) and mess_doc:
             if mess_doc.mime_type.startswith('image/'):
                 file_type = MessageFileTypes.IMAGE
             elif mess_doc.mime_type.startswith('audio/'):
                 file_type = MessageFileTypes.AUDIO
-            elif not thumbnail and mess_doc.mime_type.startswith('video/'):
+            elif mess_doc.mime_type.startswith('video/') and not thumbnail:
                 file_type = MessageFileTypes.VIDEO
             elif all([thumbnail, hasattr(mess_doc, 'thumbs'), mess_doc.thumbs]):
                 file_type = MessageFileTypes.THUMBNAIL
         # Определяем расширение файла
         if file_type == MessageFileTypes.UNKNOWN:
             file_ext = getattr(message.file, 'ext', None)
-            if file_ext is None:
+            if file_ext is None and mess_doc:
                 file_ext = guess_extension(mess_doc.mime_type)
             if file_ext is None:
                 file_ext = MessageFileTypes.UNKNOWN.default_ext
@@ -646,8 +646,9 @@ class TelegramHandler:
         # Формирование пути к файлу в файловой системе
         tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
                                                       message_group.grouped_id, message.id, file_ext)
-        file_path = Path(
-            self.get_dialog_by_id(dialog_id).get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
+        current_dialog = self.get_dialog_by_id(dialog_id)
+        assert current_dialog is not None
+        file_path = Path(current_dialog.get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
         return tg_file
 

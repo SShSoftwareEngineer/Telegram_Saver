@@ -181,11 +181,11 @@ def tg_save_selected_message_to_db():
             # Сохраняем или обновляем данные о файлах сообщений, входящих в группу.
             status_messages.mess_update('Downloading files', '', new_list=True)
             for tg_file in tg_message_group.files:
-                db_file = db_handler.upsert_record(DbFile, dict(file_path=tg_file.file_path),
-                                                   dict(message_id=tg_file.message_id,
-                                                        size=tg_file.size,
-                                                        grouped_id=tg_message_group.grouped_id,
-                                                        file_type_id=tg_file.file_type.type_id))
+                db_file = db_handler.upsert_record(DbFile, {'file_path': tg_file.file_path},
+                                                   {'message_id': tg_file.message_id,
+                                                    'size': tg_file.size,
+                                                    'grouped_id': tg_message_group.grouped_id,
+                                                    'file_type_id': tg_file.file_type.type_id})
                 # Устанавливаем relationships для файла, если не установлены
                 if db_file.message_group is None:
                     db_file.message_group = db_message_group
@@ -217,11 +217,11 @@ def tg_save_selected_message_to_db():
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
             # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений
-            db_file = db_handler.upsert_record(DbFile, dict(file_path=file_path.as_posix()),
-                                               dict(message_id=0,
-                                                    size=len(html_content.encode('utf-8')),
-                                                    grouped_id=message_group_export_data.get('message_group_id'),
-                                                    file_type_id=MessageFileTypes.CONTENT.type_id))
+            db_file = db_handler.upsert_record(DbFile, {'file_path': file_path.as_posix()},
+                                               {'message_id': 0,
+                                                'size': len(html_content.encode('utf-8')),
+                                                'grouped_id': message_group_export_data.get('message_group_id'),
+                                                'file_type_id': MessageFileTypes.CONTENT.type_id})
             # Устанавливаем relationships для файла, если не установлены
             if db_file.message_group is None:
                 db_file.message_group = db_message_group
