@@ -29,17 +29,18 @@ class ProjectDirs:
     """
     A class to hold the directory paths for a project.
     Класс для хранения путей к директориям проекта.
+    Attributes:
+        media_dir (str): Directory for storing downloaded media files from Telegram
+        export_dir (str): Directory for exporting messages to HTML files
+        telegram_settings_file (Path): Telegram API settings file
+        data_base_dir (Path): Directory for storing the SQLite database file
+        data_base_file (Path): SQLite database file
     """
 
-    # Directory for storing downloaded media files from Telegram / Директория для загруженных медиафайлов из Telegram
     media_dir = r'media_storage'
-    # Directory for exporting messages to HTML files / Директория для экспорта сообщений в HTML и другие файлы
     export_dir = r'exported_messages'
-    # Telegram API settings file / Файл с настройками API Telegram
     telegram_settings_file = Path('configs') / f'.env{PROFILE}'
-    # Directory for storing the SQLite database file / Директория для хранения файла базы данных SQLite
     data_base_dir = Path('database')
-    # SQLite database file / Файл базы данных SQLite
     data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
 
 
@@ -73,8 +74,6 @@ class DialogTypes(Enum):
     """
     The class holds the IDs and names of the dialog types in Telegram.
     Класс содержит ID и названия типов диалогов в Telegram.
-    get_type_name(is_channel: bool, is_group: bool, is_user: bool) -> str:
-        Returns the type name for a given dialog type.
     """
 
     CHANNEL = 1
@@ -108,7 +107,6 @@ class MessageFileTypes(Enum):
     """
     The class contains the names, types, extensions, and signatures of message files.
     Класс содержит названия, типы, расширения и подписи файлов сообщений.
-    get_file_type_by_type_id(type_id: int) -> 'MessageFileTypes': Returns the MessageFileTypes for a given file type_id.
     """
 
     PHOTO = (1, 'Image', '.jpg', 'pho')
@@ -190,9 +188,6 @@ class FormCfg:
         db_detail_tags (dict): Database tag control form configuration
         tg_checkbox_list (dict): Configuration of checkboxes Telegram messages list
         db_checkbox_list (dict): Configuration of checkboxes database messages list
-    Methods:
-        get_form_cfg(form_cfg: dict) -> dict:
-            Returns the configuration of controls of a given form for the form processing button.
     """
 
     # Telegram dialog filter form configuration / Конфигурация формы фильтра диалогов Telegram

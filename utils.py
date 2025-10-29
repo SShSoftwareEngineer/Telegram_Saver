@@ -23,14 +23,11 @@ class StatusMessages:
         operation (str): Current operation.
         report_list (List[str] | None): Report messages.
         messages (dict): Messages for the web interface.
-    Methods:
-        mess_update(operation: str, report: str, new_list: bool = False):
-            Sets the current status messages for the web interface.
     """
 
-    operation: str = ''  # Current operation / Текущая операция
-    report_list: Optional[List[str]] = None  # Report messages / Сообщения отчета
-    messages: dict = field(default_factory=dict)  # Messages for the web interface / Сообщения для веб-интерфейса
+    operation: str = ''
+    report_list: Optional[List[str]] = None
+    messages: dict = field(default_factory=dict)
 
     def mess_update(self, operation: str, report: str, new_list: bool = False):
         """

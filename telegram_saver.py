@@ -265,8 +265,8 @@ def db_database_maintenance():
         MessageFileTypes.VIDEO.default_ext,  # '.mp4'
         MessageFileTypes.CONTENT.default_ext  # '.html'
     ]
-    database_files = set([f'{ProjectDirs.media_dir}/{file}' for file in
-                          db_handler.get_file_list_by_extension(file_ext_to_sync)])
+    database_files = {f'{ProjectDirs.media_dir}/{file}' for file in
+                      db_handler.get_file_list_by_extension(file_ext_to_sync)}
     # Находим все локальные файлы с указанными расширениями рекурсивно
     local_files = []
     for ext in file_ext_to_sync:
