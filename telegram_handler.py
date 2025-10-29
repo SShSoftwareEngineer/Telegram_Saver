@@ -282,7 +282,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         """
         Возвращает путь к директории группы сообщений
         """
-        assert self.date is not None
+        assert self.date is not None, 'The message group must contain the date'
         date_str = self.date.astimezone().strftime('%Y-%m-%d')
         return clean_file_path(date_str) or date_str
 
@@ -530,7 +530,8 @@ class TelegramHandler:
         # Получаем текущую группу сообщений по id
         current_message_group = self.get_message_group_by_id(self.current_state.message_group_list or [],
                                                              message_group_id)
-        assert current_message_group is not None and current_message_group.date is not None
+        assert current_message_group is not None and current_message_group.date is not None, \
+            'The message group must exist and contain the date'
         message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
         current_dialog = self.get_dialog_by_id(dialog_id)
         # 1. Берем диалог, или None
@@ -647,7 +648,7 @@ class TelegramHandler:
         tg_file.file_name = TgFile.get_self_file_name(tg_file.message.date, tg_file.file_type,
                                                       message_group.grouped_id, message.id, file_ext)
         current_dialog = self.get_dialog_by_id(dialog_id)
-        assert current_dialog is not None
+        assert current_dialog is not None, 'The dialog must exist'
         file_path = Path(current_dialog.get_self_dir()) / message_group.get_self_dir() / tg_file.file_name
         tg_file.file_path = file_path.as_posix()
         return tg_file
