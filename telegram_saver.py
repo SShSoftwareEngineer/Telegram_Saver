@@ -1,3 +1,7 @@
+"""
+The module implements the main logic of the program based on Flask.
+"""
+
 import logging
 import shutil
 from datetime import datetime
@@ -49,6 +53,10 @@ def media_dir(filename):
 
 @tg_saver.route('/status_output')
 def status_output():
+    """
+    Updating the status bar
+    Обновление строки статуса
+    """
     return jsonify(status_messages.messages)
 
 
@@ -151,8 +159,7 @@ def tg_save_selected_message_to_db():
     """
     Сохранение отмеченных сообщений в базе данных
     """
-    form_cfg = FormCfg.tg_checkbox_list
-    selected_messages_ids = request.form.getlist(form_cfg['tg_checkbox_list'])
+    selected_messages_ids = request.form.getlist(FormCfg.tg_checkbox_list['tg_checkbox_list'])
     selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip() for x in selected_messages_ids]
     for tg_message_group in tg_handler.current_state.message_group_list:
         if tg_message_group.grouped_id in selected_messages_ids:
@@ -236,15 +243,14 @@ def tg_save_selected_message_to_db():
             db_handler.all_dialogues_list = db_handler.get_dialog_list()
             db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
             # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
+            # noinspection PyAssignmentToLoopOrWithParameter
             for tg_message_group in tg_handler.current_state.message_group_list:
                 tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
-    # Формирование структуры данных для обновления списков диалогов и сообщений
-    data_structure = {'tg_messages': render_template('tg_messages.html'),
-                      'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
-                      FormCfg.db_message_filter.get(
-                          'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
-                                                                                 'dialog_id', 'title')}
-    return jsonify(data_structure)
+    return jsonify({'tg_messages': render_template('tg_messages.html'),
+                    'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                    FormCfg.db_message_filter.get(
+                        'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
+                                                                               'dialog_id', 'title')})
 
 
 @tg_saver.route('/db_database_maintenance', methods=["POST"])
@@ -271,7 +277,7 @@ def db_database_maintenance():
     local_files = []
     for ext in file_ext_to_sync:
         local_files.extend(Path(ProjectDirs.media_dir).rglob(f'**/*{ext}'))
-    local_files = set([x.as_posix() for x in local_files])
+    local_files = {x.as_posix() for x in local_files}
     # Сравниваем списки и находим файлы, какие надо удалить и какие нужно докачать
     files_to_delete = local_files - database_files
     files_to_download = database_files - local_files
@@ -346,8 +352,8 @@ def db_get_details(message_group_id: str):
     db_handler.current_state.selected_message_group_id = message_group_id
     # Формирование структуры данных для обновления списка тегов
     data_structure = {'db_details': render_template('db_details.html'), FormCfg.db_detail_tags.get(
-        'curr_message_tags'): db_handler.get_select_content_string(db_handler.current_state.message_details.get('tags'),
-                                                                   'id', 'name')}
+        'curr_message_tags'): db_handler.get_select_content_string(
+        db_handler.current_state.message_details.get('tags', []), 'id', 'name')}
     return jsonify(data_structure)
 
 
@@ -503,7 +509,7 @@ def db_all_tag_sorting():
 if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
-# -*- coding: utf-8 -*-
+# pylint: disable=fixme
 # TODO: проверить на загрузку разные типы приложений, загрузку видео и аудио, почему возвращает ошибку при Unknown
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм

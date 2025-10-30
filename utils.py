@@ -33,7 +33,7 @@ class StatusMessages:
         """
         Sets the current status messages for the web interface.
         Устанавливает текущие статусные сообщения для веб-интерфейса.
-        Arguments:
+        Attributes:
             operation (str): Current operation description
             report (str): Report message to add
             new_list (bool): If True, starts a new report list
@@ -68,7 +68,7 @@ def parse_date_string(date_str: str) -> Optional[datetime]:
     """
     Parses a date string and returns a datetime object.
     Парсит строку даты и возвращает объект datetime.
-    Arguments:
+    Attributes:
         date_str (str): Date string to parse
     Returns:
         datetime | None: Parsed datetime object or None if parsing fails
@@ -86,7 +86,7 @@ def clean_file_path(file_path: Optional[str]) -> Optional[str]:
     """
     A function to clean a file or directory name from invalid characters
     Функция очищает имя файла или директории от недопустимых символов
-    Arguments:
+    Attributes:
         file_path (str | None): The original file or directory name
     Returns:
         str | None: The cleaned file or directory name

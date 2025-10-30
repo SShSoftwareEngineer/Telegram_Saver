@@ -86,7 +86,7 @@ class DialogTypes(Enum):
         """
         Returns the type name for a given dialog type.
         Возвращает название типа для заданного типа диалога.
-        Arguments:
+        Attributes:
             is_channel (bool): True if the dialog is a channel
             is_group (bool): True if the dialog is a group
             is_user (bool): True if the dialog is a user
@@ -122,7 +122,7 @@ class MessageFileTypes(Enum):
         """
         Initializes the MessageFileTypes enum.
         Инициализация MessageFileTypes enum.
-        Arguments:
+        Attributes:
             type_id (int): The ID of the file type.
             alt_text (str): The alternative text for the file type.
             default_ext (str): The default file extension for the file type.
@@ -139,7 +139,7 @@ class MessageFileTypes(Enum):
         """
         Returns the MessageFileTypes for a given file type_id.
         Возвращает MessageFileTypes для заданного type_id файла.
-        Arguments:
+        Attributes:
             type_id (int): The ID of the file type.
         Returns:
             MessageFileTypes: The corresponding MessageFileTypes enum member.
@@ -225,7 +225,7 @@ class FormCfg:
         """
         Returns the configuration of controls of a given form for the form processing button.
         Возвращает конфигурацию элементов управления заданной формы для кнопки обработки формы.
-        Arguments:
+        Attributes:
             form_cfg (dict): The form configuration dictionary.
         Returns:
             dict: The button configuration dictionary.
