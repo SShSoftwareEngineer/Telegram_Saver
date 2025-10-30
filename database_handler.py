@@ -219,6 +219,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets the list of selected dialogs for filtering messages by dialogs
         Задает список выбранных диалогов для фильтрации сообщений по диалогам
+        Attributes:
+            value (List[int]): selected dialog IDs
         """
         if value:
             self._selected_dialog_list = value
@@ -246,6 +248,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Returns the sort order of messages by a specified field
         Возвращает порядок сортировки сообщений по заданному полю
+        Return:
+            bool: sort order
         """
         return self._sort_order
 
@@ -254,6 +258,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets the order of sorting messages by a specified field
         Устанавливает порядок сортировки сообщений по заданному полю
+        Attributes:
+            value (str): form data
         """
         self._sort_order = value != '0'  # False if value == '0' else True
 
@@ -262,6 +268,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Returns the date from which to receive messages
         Возвращает дату, с которой получать сообщения
+        Return:
+            Optional[datetime]: date from which to receive messages
         """
         return self._date_from
 
@@ -270,6 +278,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets the date from which to receive messages
         Устанавливает дату, с которой получать сообщения
+        Attributes:
+            value (str): form data
         """
         self._date_from = parse_date_string(value)
 
@@ -278,6 +288,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Returns the date until which messages should be received
         Возвращает дату, до которой получать сообщения
+        Return:
+            Optional[datetime]: date until which messages should be received
         """
         return self._date_to
 
@@ -286,6 +298,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets the date until which to receive messages
         Устанавливает дату, до которой получать сообщения
+        Attributes:
+            value (str): form data
         """
         self._date_to = parse_date_string(value)
 
@@ -294,6 +308,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Returns a filter by message text
         Возвращает фильтр по тексту сообщений
+        Return:
+            Optional[str]: message text fragment
         """
         return self._message_query
 
@@ -302,6 +318,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets a filter by message text
         Устанавливает фильтр по тексту сообщений
+        Attributes:
+            value (str): form data
         """
         self._message_query = value if value else None
 
@@ -310,6 +328,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Returns a list of filters by message tags
         Возвращает список фильтров по тегам сообщений
+        Return:
+            Optional[List[str]]: message tag fragments
         """
         return self._tag_query
 
@@ -318,6 +338,8 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         Sets a list of filters by message tags
         Устанавливает список фильтров по тегам сообщений
+        Attributes:
+            value (str): form data
         """
         self._tag_query = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else None
 
@@ -365,7 +387,7 @@ class DatabaseHandler:
         """
         Universal function for searching and updating/creating records in any database model
         Универсальная функция для поиска и обновления/создания записи в любой модели БД
-        Arguments:
+        Attributes:
             model_class (Type[ModelType]): model class in which to search/create a record
             filter_fields (Dict[str, Any]): fields for searching the record
             update_fields (Dict[str, Any]): fields for updating/creating the record
@@ -561,7 +583,7 @@ class DatabaseHandler:
         """
         Getting message by dialog ID and message group ID
         Получение сообщения по id диалога и id группы сообщений
-        Arguments:
+        Attributes:
             message_group_id (str): message group ID
         Returns:
             dict: message details
@@ -591,7 +613,7 @@ class DatabaseHandler:
         """
         Checks whether a group of messages with the specified grouped_id exists
         Проверяет, существует ли группа сообщений с заданным grouped_id
-        Arguments:
+        Attributes:
             grouped_id (str): message group ID
         Returns:
             bool: True if the message group exists, False otherwise
@@ -605,7 +627,7 @@ class DatabaseHandler:
         """
         Gets a list of files with specified extensions from the database
         Получает из базы данных список файлов с заданными расширениями
-        Arguments:
+        Attributes:
             file_ext (list): list of file extensions
         Returns:
             list[str]: list of file paths
@@ -619,7 +641,7 @@ class DatabaseHandler:
         """
         Gets a file object from the database via a local path
         Получает из базы данных объект файл по локальному пути
-        Arguments:
+        Attributes:
             local_path (str): local file path
         Returns:
             Optional[dict[str, Any]]: file information dictionary or None if not found
@@ -640,7 +662,7 @@ class DatabaseHandler:
         """
         Adds a tag to a specified group of messages
         Добавляет тег к заданной группе сообщений
-        Arguments:
+        Attributes:
             tag_name (str): tag name
             message_group_id (str): message group ID
         Returns:
@@ -674,7 +696,7 @@ class DatabaseHandler:
         """
         Removes a tag from a specified group of messages
         Удаляет тег из заданной группы сообщений
-        Arguments:
+        Attributes:
             tag_name (str): tag name
             message_group_id (str): message group ID
         Returns:
@@ -704,7 +726,7 @@ class DatabaseHandler:
         """
         Changes the specified tag from the current group message
         Изменяет заданный тег из текущего группового сообщения
-        Arguments:
+        Attributes:
             old_tag_name (str): old tag name
             new_tag_name (str): new tag name
             message_group_id (str): message group ID
@@ -733,7 +755,7 @@ class DatabaseHandler:
         """
         Updates the tag in all message groups where it is used
         Обновляет тег во всех группах сообщений, где он используется
-        Arguments:
+        Attributes:
             old_tag_name (str): old tag name
             new_tag_name (str): new tag name
             message_group_id (str): message group ID

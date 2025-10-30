@@ -36,8 +36,16 @@ from utils import parse_date_string, clean_file_path, status_messages
 @dataclass
 class TgDialog:
     """
-    A class to represent a Telegram dialog in this program.
+    A class to represent a Telegram dialog
+    Класс диалога (чата) Telegram
+    Attributes:
+        dialog_id (int): dialog ID
+        title (str): title (name) of dialog
+        unread_count (int): number of unread messages
+        last_message_date (Optional[datetime]): date and time of last message
+        type (DialogTypes): dialog type
     """
+
     dialog_id: int
     title: str
     unread_count: int = 0
@@ -45,6 +53,11 @@ class TgDialog:
     type: DialogTypes = DialogTypes.UNKNOWN
 
     def __init__(self, dialog: Dialog):
+        """
+        Initializes the dialog object with the specified parameters.
+        Инициализирует объект диалога с заданными параметрами.
+        """
+
         self.dialog_id = dialog.id
         if dialog.title:
             self.title = dialog.title
@@ -60,8 +73,10 @@ class TgDialog:
     @staticmethod
     def set_type(is_channel: bool, is_group: bool, is_user: bool) -> DialogTypes:
         """
-        Returns the type name for a given dialog type.
+        Returns the name of the dialog type depending on the Telegram dialog type.
+        Возвращает имя типа диалога в зависимости от типа диалога Telegram
         """
+
         if is_channel:
             return DialogTypes.CHANNEL
         if is_group:
@@ -72,7 +87,8 @@ class TgDialog:
 
     def get_self_dir(self) -> str:
         """
-        Возвращает путь к директории диалога
+        Returns the name of the dialog directory
+        Возвращает имя директории диалога
         """
         return clean_file_path(f'{self.title}_{self.dialog_id}') or f'{self.title}_{self.dialog_id}'
 
@@ -81,7 +97,9 @@ class TgDialog:
 class TgDialogSortFilter:
     """
     A class to represent sorting and filtering options of Telegram dialogs.
+    Класс, представляющий текущие параметры фильтра и сортировки диалогов Telegram
     """
+
     _sorting_field: Callable[[Any], Any] | None = None
     _sort_order: bool = False
     _dialog_type: Optional[DialogTypes] = None
@@ -89,28 +107,46 @@ class TgDialogSortFilter:
 
     @staticmethod
     def _sort_by_title(x):
+        """
+        Sort by dialog name function
+        Функция сортировки по названию диалога
+        """
         return x.title
 
     @staticmethod
     def _sort_by_last_message_date(x):
+        """
+        Sort by date of last update
+        Функция сортировки по дате последнего обновления
+        """
         return x.last_message_date
 
     def sort_field(self, value: str):
         """
-        Устанавливает поле сортировки
+        Sets the sorting field
+        Устанавливает поле для сортировки
+        Attributes:
+            value (str): form data
         """
         self._sorting_field = self._sort_by_title if value == '0' else self._sort_by_last_message_date
 
     def sort_order(self, value: str):
         """
+        Sets the sorting order
         Устанавливает порядок сортировки
+        Attributes:
+            value (str): form data
         """
         self._sort_order = value != '0'  # False if value == '0' else True
 
     def dialog_type(self, value: str):
         """
+        Sets a filter by dialog type
         Устанавливает фильтр по типу диалогов
+        Attributes:
+            value (str): form data
         """
+
         match value:
             case '0':
                 self._dialog_type = None
@@ -125,14 +161,23 @@ class TgDialogSortFilter:
 
     def title_query(self, value: str):
         """
+        Sets a filter by dialog name
         Устанавливает фильтр по названию диалогов
+        Attributes:
+            value (str): form data
         """
         self._title_query = value if value else None
 
     def check_filters(self, tg_dialog: TgDialog) -> bool:
         """
+        Checking filters by substring in the name and by type for a specific dialog
         Проверка фильтров по подстроке в названии и по типу для конкретного диалога
+        Attributes:
+            tg_dialog (TgDialog): verification dialog
+        Returns:
+            bool: filter condition match
         """
+
         title_query = True
         if self._title_query:
             title_query = self._title_query.lower() in str(tg_dialog.title).lower()
@@ -143,8 +188,14 @@ class TgDialogSortFilter:
 
     def sort_dialog_list(self, dialog_list: List[TgDialog]) -> List[TgDialog]:
         """
+        Sorting a list of dialogs by a specified field in a specified order
         Сортировка списка диалогов по заданному полю в заданном порядке
+        Attributes:
+            dialog_list (List[TgDialog]): list of dialogs for sorting
+        Returns:
+            List[TgDialog]: sorted dialogue list
         """
+
         if self._sorting_field is None:
             self._sorting_field = self._sort_by_title
         result = sorted(dialog_list, key=self._sorting_field, reverse=self._sort_order)
@@ -155,7 +206,20 @@ class TgDialogSortFilter:
 class TgFile:  # pylint: disable=too-many-instance-attributes
     """
     A class to represent a Telegram message file.
+    Класс, представляющий файл сообщения Telegram.
+    Attributes:
+        dialog_id (int): dialog ID
+        message_grouped_id (str): message group ID
+        message (Message): Telegram message object
+        message_id (int): message ID
+        description (str): description of the reference message
+        file_name (str): file name
+        file_path (str): full file path
+        alt_text (str): alternate text for media file
+        size (int): size of file
+        file_type (MessageFileTypes): file type
     """
+
     dialog_id: int
     message_grouped_id: str
     message: Message
@@ -169,7 +233,8 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
 
     def is_exists(self) -> bool:
         """
-        Проверяет, был ли файл загружен в файловую систему
+        Checks whether a file exists in the file system
+        Проверяет, существует ли файл в файловой системе
         """
         return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
 
@@ -177,8 +242,18 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
     def get_self_file_name(date: datetime, file_type: MessageFileTypes, message_grouped_id: str,
                            message_id: int, file_ext: str) -> str:
         """
-        Возвращает имя файла
+        Return template of file name
+        Возвращает шаблонное имя файла
+        Attributes:
+            date (datetime): date and time of file message
+            file_type (MessageFileTypes): file type
+            message_grouped_id (str): file message group ID
+            message_id (int): file message ID
+            file_ext (str): file extension
+        Returns:
+            str: file name
         """
+
         file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
                      f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
         return clean_file_path(file_name) or file_name
@@ -187,8 +262,12 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
 @dataclass
 class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     """
-    A class to represent a Telegram message group in this program.
+    A class representing a group of Telegram messages with a single grouped_id
+    Класс представляющий группу сообщений Telegram с одним grouped_id
+    Attributes:
+
     """
+
     grouped_id: str
     dialog_id: int
     ids: List[int]
