@@ -19,6 +19,7 @@ tg_saver = Flask(__name__)
 @tg_saver.context_processor
 def inject_field_names():
     """
+    Registering a context processor with field names
     Регистрация контекстного процессора с именами полей
     """
     return {
@@ -37,8 +38,11 @@ def inject_field_names():
     }
 
 
-# Инициализация после создания приложения
 with tg_saver.app_context():
+    """
+    Initializing parameters after creating an application
+    Инициализация параметров после создания приложения
+    """
     logging.getLogger('werkzeug').setLevel(logging.INFO)
 
 
