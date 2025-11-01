@@ -19,7 +19,7 @@ ModelType: a TypeVar for model classes, bound to Base
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any, Type, Dict, TypeVar, Optional
+from typing import List, Any, Type, TypeVar  # , Dict, Optional
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
     Boolean, update, delete, event, func, Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
@@ -376,14 +376,14 @@ class DatabaseHandler:
         current_state (DbCurrentState): current state of the database
     """
 
-    all_dialogues_list: Optional[List[DbDialog]] = None
-    all_tags_list: Optional[List[DbTag]] = None
+    all_dialogues_list: List[DbDialog] | None = None
+    all_tags_list: List[DbTag] | None = None
     message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
     current_state: DbCurrentState = DbCurrentState()
 
     def upsert_record(self, model_class: Type[ModelType],
-                      filter_fields: Dict[str, Any],
-                      update_fields: Dict[str, Any]) -> ModelType:
+                      filter_fields: dict[str, Any],
+                      update_fields: dict[str, Any]) -> ModelType:
         """
         Universal function for searching and updating/creating records in any database model
         Универсальная функция для поиска и обновления/создания записи в любой модели БД
@@ -637,7 +637,7 @@ class DatabaseHandler:
         query_result = self.session.execute(stmt).scalars().all()
         return list(query_result)
 
-    def get_file_by_local_path(self, local_path: str) -> Optional[dict[str, Any]]:
+    def get_file_by_local_path(self, local_path: str) -> dict[str, Any] | None:
         """
         Gets a file object from the database via a local path
         Получает из базы данных объект файл по локальному пути
@@ -751,7 +751,7 @@ class DatabaseHandler:
         return current_tags_select, all_tags_select
 
     def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str,
-                              message_group_id: str) -> tuple[Optional[str], str]:
+                              message_group_id: str) -> tuple[str | None, str]:
         """
         Updates the tag in all message groups where it is used
         Обновляет тег во всех группах сообщений, где он используется
@@ -782,7 +782,7 @@ class DatabaseHandler:
         return current_tags_select, all_tags_select
 
 
-# Creating an instance of DatabaseHandler() / Создаем экземпляр DatabaseHandler()
+# Creating an instance of DatabaseHandler / Создаем экземпляр DatabaseHandler
 db_handler = DatabaseHandler()
 
 if __name__ == '__main__':
