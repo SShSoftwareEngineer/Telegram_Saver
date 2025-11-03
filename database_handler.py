@@ -19,7 +19,7 @@ ModelType: a TypeVar for model classes, bound to Base
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any, Type, TypeVar  # , Dict, Optional
+from typing import List, Any, Type, TypeVar # List - necessary for relationships
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
     Boolean, update, delete, event, func, Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
@@ -187,27 +187,27 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     A class to represent sorting and filtering of message groups in the database.
     Класс для представления параметров сортировки и фильтра для групп сообщений в базе данных.
     Attributes:
-        selected_dialog_list (Optional[List[int]]): list of selected dialog IDs for filtering messages
+        selected_dialog_list (list[int] | None): list of selected dialog IDs for filtering messages
         sorting_field (str): field to sort messages by (date or dialog)
         sort_order (bool): sort order: descending (True) or ascending (False)
-        date_from (Optional[datetime]): date from which to get messages
-        date_to (Optional[datetime]): date to which to get messages
-        message_query (Optional[str]): filter by message text
-        tag_query (Optional[List[str]]): filter by message tags
+        date_from (datetime | None): date from which to get messages
+        date_to (datetime | None): date to which to get messages
+        message_query (str | None): filter by message text
+        tag_query (list[str] | None): filter by message tags
     """
 
-    _selected_dialog_list: Optional[List[int]] = None
+    _selected_dialog_list: list[int] | None = None
     _sorting_field = None
     _sort_order: bool = False
-    _date_from: Optional[datetime] = None
-    _date_to: Optional[datetime] = None
-    _message_query: Optional[str] = None
-    _tag_query: Optional[List[str]] = None
+    _date_from: datetime | None = None
+    _date_to: datetime | None = None
+    _message_query: str | None = None
+    _tag_query: list[str] | None = None
     sort_by_date: str = 'by date'
     sort_by_title: str = 'by title'
 
     @property
-    def selected_dialog_list(self) -> Optional[List[int]]:
+    def selected_dialog_list(self) -> list[int] | None:
         """
         Returns a list of selected dialogs for filtering messages by dialogs
         Возвращает список выбранных диалогов для фильтрации сообщений по диалогам
@@ -215,12 +215,12 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         return self._selected_dialog_list
 
     @selected_dialog_list.setter
-    def selected_dialog_list(self, value: List[int]):
+    def selected_dialog_list(self, value: list[int]):
         """
         Sets the list of selected dialogs for filtering messages by dialogs
         Задает список выбранных диалогов для фильтрации сообщений по диалогам
         Attributes:
-            value (List[int]): selected dialog IDs
+            value (list[int]): selected dialog IDs
         """
         if value:
             self._selected_dialog_list = value
@@ -264,12 +264,12 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         self._sort_order = value != '0'  # False if value == '0' else True
 
     @property
-    def date_from(self) -> Optional[datetime]:
+    def date_from(self) -> datetime | None:
         """
         Returns the date from which to receive messages
         Возвращает дату, с которой получать сообщения
         Return:
-            Optional[datetime]: date from which to receive messages
+            datetime | None: date from which to receive messages
         """
         return self._date_from
 
@@ -284,12 +284,12 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         self._date_from = parse_date_string(value)
 
     @property
-    def date_to(self) -> Optional[datetime]:
+    def date_to(self) -> datetime | None:
         """
         Returns the date until which messages should be received
         Возвращает дату, до которой получать сообщения
         Return:
-            Optional[datetime]: date until which messages should be received
+            datetime | None: date until which messages should be received
         """
         return self._date_to
 
@@ -304,12 +304,12 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         self._date_to = parse_date_string(value)
 
     @property
-    def message_query(self) -> Optional[str]:
+    def message_query(self) -> str | None:
         """
         Returns a filter by message text
         Возвращает фильтр по тексту сообщений
         Return:
-            Optional[str]: message text fragment
+            str | None: message text fragment
         """
         return self._message_query
 
@@ -324,12 +324,12 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         self._message_query = value if value else None
 
     @property
-    def tag_query(self) -> Optional[List[str]]:
+    def tag_query(self) -> list[str] | None:
         """
         Returns a list of filters by message tags
         Возвращает список фильтров по тегам сообщений
         Return:
-            Optional[List[str]]: message tag fragments
+            list[str] | None: message tag fragments
         """
         return self._tag_query
 
@@ -370,14 +370,14 @@ class DatabaseHandler:
     A class to represent handle database operations.
     Класс для представления операций с базой данных.
     Attributes:
-        all_dialogues_list (Optional[List[DbDialog]]): list of all database dialogs
-        all_tags_list (Optional[List[DbTag]]): list of all database tags
+        all_dialogues_list (list[DbDialog] | None): list of all database dialogs
+        all_tags_list (list[DbTag] | None): list of all database tags
         message_sort_filter (DbMessageSortFilter): current message filter
         current_state (DbCurrentState): current state of the database
     """
 
-    all_dialogues_list: List[DbDialog] | None = None
-    all_tags_list: List[DbTag] | None = None
+    all_dialogues_list: list[DbDialog] | None = None
+    all_tags_list: list[DbTag] | None = None
     message_sort_filter: DbMessageSortFilter = DbMessageSortFilter()
     current_state: DbCurrentState = DbCurrentState()
 
@@ -389,8 +389,8 @@ class DatabaseHandler:
         Универсальная функция для поиска и обновления/создания записи в любой модели БД
         Attributes:
             model_class (Type[ModelType]): model class in which to search/create a record
-            filter_fields (Dict[str, Any]): fields for searching the record
-            update_fields (Dict[str, Any]): fields for updating/creating the record
+            filter_fields (dict[str, Any]): fields for searching the record
+            update_fields (dict[str, Any]): fields for updating/creating the record
         Returns:
             ModelType: the found or created/updated record
         """
@@ -460,7 +460,7 @@ class DatabaseHandler:
         self.current_state.all_tags_list = list(self.all_tags_list)
         self.current_state.message_group_list = []
 
-    def get_dialog_list(self) -> List[DbDialog]:
+    def get_dialog_list(self) -> list[DbDialog]:
         """
         Getting a list of dialogs available in the database, taking into account filters and sorting
         Получение списка диалогов, имеющихся в БД с учетом фильтров и сортировки
@@ -486,7 +486,7 @@ class DatabaseHandler:
         #                             f'{len(query_result)} chats loaded from the database')
         return list(query_result)
 
-    def get_all_tag_list(self) -> List[DbTag]:
+    def get_all_tag_list(self) -> list[DbTag]:
         """
         Get a list of all tags available in the database, taking into account the sorting specified in
                                                                                         current_state.sorting_tags
@@ -644,7 +644,7 @@ class DatabaseHandler:
         Attributes:
             local_path (str): local file path
         Returns:
-            Optional[dict[str, Any]]: file information dictionary or None if not found
+            dict[str, Any] | None: file information dictionary or None if not found
         """
 
         stmt = select(DbFile).filter(DbFile.file_path == local_path)
@@ -760,7 +760,7 @@ class DatabaseHandler:
             new_tag_name (str): new tag name
             message_group_id (str): message group ID
         Returns:
-            tuple[Optional[str], str]: updated current message tags select string, updated all tags select string
+            tuple[str | None, str]: updated current message tags select string, updated all tags select string
         """
 
         current_tags_select = None

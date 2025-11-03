@@ -10,7 +10,6 @@ status_messages: a global instance of StatusMessages
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional, List
 from dateutil.parser import parse
 
 
@@ -21,12 +20,12 @@ class StatusMessages:
     Класс для хранения статусных сообщений для веб-интерфейса.
     Attributes:
         operation (str): Current operation.
-        report_list (List[str] | None): Report messages.
+        report_list (list[str] | None): Report messages.
         messages (dict): Messages for the web interface.
     """
 
     operation: str = ''
-    report_list: Optional[List[str]] = None
+    report_list: list[str] | None = None
     messages: dict = field(default_factory=dict)
 
     def mess_update(self, operation: str, report: str, new_list: bool = False):
@@ -64,7 +63,7 @@ class StatusMessages:
 status_messages = StatusMessages()
 
 
-def parse_date_string(date_str: str) -> Optional[datetime]:
+def parse_date_string(date_str: str) -> datetime | None:
     """
     Parses a date string and returns a datetime object.
     Парсит строку даты и возвращает объект datetime.
@@ -82,7 +81,7 @@ def parse_date_string(date_str: str) -> Optional[datetime]:
         return None
 
 
-def clean_file_path(file_path: Optional[str]) -> Optional[str]:
+def clean_file_path(file_path: str | None) -> str | None:
     """
     A function to clean a file or directory name from invalid characters
     Функция очищает имя файла или директории от недопустимых символов

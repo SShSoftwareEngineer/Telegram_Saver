@@ -11,7 +11,7 @@ def export_data_to_excel(): a function for exporting data from the database to M
 session: a session object for working with the database
 """
 
-from typing import Dict, List, Any
+from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
 from enum import Enum
@@ -231,7 +231,7 @@ class FormCfg:
             dict: The button configuration dictionary.
         """
 
-        result: Dict[str, List[Any]] = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
+        result: dict[str, list[Any]] = {'radio': [], 'input': [], 'select': [], 'checkbox': [],
                                         'checkbox_list': []}  # Default structure, do not change key names
         for key, value in result.items():
             if key == 'checkbox_list':
