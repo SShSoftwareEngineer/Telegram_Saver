@@ -49,8 +49,8 @@ with tg_saver.app_context():
 @tg_saver.route(f'/{ProjectDirs.media_dir}/<path:filename>')
 def media_dir(filename):
     """
-    Регистрация пути для хранения кэшированных изображений.
-    Принимает полный путь включая ProjectDirs.media_dir
+    Register the full path (including ProjectDirs.media_dir) for storing cached images.
+    Регистрация полного пути (включая ProjectDirs.media_dir) для хранения кэшированных изображений.
     """
     return send_from_directory(ProjectDirs.media_dir, filename)
 
@@ -67,19 +67,25 @@ def status_output():
 @tg_saver.route("/")
 def index():
     """
+    Application home page
     Главная страница приложения
     """
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
     chats_count = f'({len(tg_handler.current_state.dialog_list)})' if tg_handler.current_state.dialog_list else ''
+    # Rendering the main page template with displaying the number of Telegram chats
+    # Рендеринг шаблона главной страницы с отображением количества чатов Telegram
     return render_template("index.html", chats_count=chats_count)
 
 
 @tg_saver.route("/tg_dialogs")
 def tg_get_dialogs():
     """
+    Getting a list of Telegram dialogs
     Получение списка диалогов Telegram
     """
     tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
+    # Updating the list of dialogs and the dialog count counter
+    # Обновление списка диалогов и счетчика количества диалогов
     return jsonify({'tg_dialogs': render_template('tg_dialogs.html'),
                     'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})', })
 
@@ -87,16 +93,24 @@ def tg_get_dialogs():
 @tg_saver.route("/tg_messages/<string:dialog_id>")
 def tg_get_messages(dialog_id):
     """
-    Получение списка сообщений при обновлении текущего диалога
+    Getting a list of messages when the current dialog changes
+    Получение списка сообщений при изменении текущего диалога
+    Attributes:
+        dialog_id (str): ID of the selected dialog / ID выбранного диалога
     """
-    # Получаем список групп сообщений для выбранного диалога
+
+    # Get a list of message groups for the selected dialogue / Получаем список групп сообщений для выбранного диалога
     tg_message_groups = tg_handler.get_message_group_list(int(dialog_id))
-    # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
+    # Check which message groups are already saved in the database
+    # Проверяем, какие группы сообщений уже сохранены в базе данных
     for tg_message_group in tg_message_groups:
         tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
-    # Устанавливаем текущее состояние диалога и списка групп сообщений
+    # Set the Telegram ID of the current dialogue and the list of message groups in the current state of the client
+    # Устанавливаем в текущем состоянии клиента Telegram ID текущего диалога и список групп сообщений
     tg_handler.current_state.selected_dialog_id = int(dialog_id)
     tg_handler.current_state.message_group_list = tg_message_groups
+    # Refresh message list, message counter, and clear current message details
+    # Обновление списка сообщений, счетчика сообщений и очистка деталей текущего сообщения
     return jsonify({'tg_messages': render_template('tg_messages.html'),
                     'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
                     'tg_details': '', })
@@ -105,19 +119,27 @@ def tg_get_messages(dialog_id):
 @tg_saver.route('/tg_details/<string:dialog_id>/<string:message_group_id>')
 def tg_get_details(dialog_id: str, message_group_id: str):
     """
-    Получение детальной информации о сообщении
+    Getting detailed information from a Telegram message
+    Получение детальной информации сообщения Telegram
+    Attributes:
+        dialog_id (str): ID of the selected dialog / ID выбранного диалога
+        message_group_id (str): ID of the selected message group / ID выбранной группы сообщений
     """
     tg_handler.current_state.message_details = (
         tg_handler.get_message_detail(int(dialog_id), message_group_id)) if message_group_id else None
+    # Updating message details / Обновление деталей сообщения
     return jsonify({'tg_details': render_template('tg_details.html')})
 
 
 @tg_saver.route('/tg_dialog_apply_filters', methods=['POST'])
 def tg_dialog_apply_filters():
     """
+    Getting a list of Telegram chats using filters
     Получение списка диалогов Telegram с применением фильтров
     """
-    # Установка фильтров диалогов Telegram по значениям из формы
+
+    # Setting Telegram dialog filter values based on values from the form
+    # Установка значений фильтров диалогов Telegram по значениям из формы
     form_cfg = FormCfg.tg_dialog_filter
     form = request.form
     dial_filter = tg_handler.dialog_sort_filter
@@ -125,11 +147,14 @@ def tg_dialog_apply_filters():
     dial_filter.sort_order(form.get(form_cfg['sorting_order']))
     dial_filter.dialog_type(form.get(form_cfg['dialog_type']))
     dial_filter.title_query(form.get(form_cfg['dialog_title_query']))
-    # Получение списка диалогов с применением фильтров
+    # Getting a list of dialogs using filters / Получение списка диалогов с применением фильтров
     tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
-    # Очистка списка сообщений и деталей сообщений
+    # Clearing the message list and message details in the current state of the client
+    # Очистка списка сообщений и деталей сообщений в текущем состоянии клиента
     tg_handler.current_state.message_group_list = []
     tg_handler.current_state.message_details = None
+    # Update list of dialogs and the dialog counter, clear list of messages, message details, and the message counter
+    # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения и счетчика сообщений
     return jsonify({'tg_dialogs': render_template('tg_dialogs.html'),
                     'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
                     'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })
@@ -138,9 +163,12 @@ def tg_dialog_apply_filters():
 @tg_saver.route('/tg_message_apply_filters', methods=['POST'])
 def tg_message_apply_filters():
     """
-    Получение списка сообщений диалога Telegram с применением фильтров
+    Getting a list of messages from the current Telegram chat using filters
+    Получение списка сообщений текущего диалога Telegram с применением фильтров
     """
-    # Установка фильтров списка сообщений Telegram по значениям из формы
+
+    # Setting current dialog Telegram message list filter values based on values from the form
+    # Установка значений фильтров списка сообщений текущего диалога Telegram по значениям из формы
     form_cfg = FormCfg.tg_message_filter
     form = request.form
     mess_filter = tg_handler.message_sort_filter
@@ -148,11 +176,13 @@ def tg_message_apply_filters():
     mess_filter.date_from = form.get(form_cfg['date_from'])
     mess_filter.date_to = form.get(form_cfg['date_to'])
     mess_filter.message_query = form.get(form_cfg['message_query'])
-    # Получение списка сообщений с применением фильтров
+    # Getting a list of messages using filters / Получение списка сообщений с применением фильтров
     tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
         tg_handler.current_state.selected_dialog_id)
-    # Очистка деталей сообщений
+    # Clearing the message details window / Очистка окна деталей сообщения
     tg_handler.current_state.message_details = None
+    # Updating the message list, message counter, and clearing the message details
+    # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения
     return jsonify({'tg_messages': render_template('tg_messages.html'),
                     'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
                     'tg_details': '', })
@@ -161,24 +191,32 @@ def tg_message_apply_filters():
 @tg_saver.route('/tg_save_selected_message_to_db', methods=["POST"])
 def tg_save_selected_message_to_db():
     """
+    Saving marked messages in the database
     Сохранение отмеченных сообщений в базе данных
     """
+
+    # Getting a list of IDs of message groups marked for saving from the form
+    # Получение из формы списка ID групп сообщений, отмеченных для сохранения
     selected_messages_ids = request.form.getlist(FormCfg.tg_checkbox_list['tg_checkbox_list'])
     selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip() for x in selected_messages_ids]
+    # Processing the list of message groups in the current state of the client
+    # Обработка списка групп сообщений в текущего состояния клиента
     for tg_message_group in tg_handler.current_state.message_group_list:
         if tg_message_group.grouped_id in selected_messages_ids:
-            # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных.
+            # If the message group ID is in the list marked for saving, save it to the database.
+            # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных
             if not db_handler.session.in_transaction():
                 db_handler.session.begin()
-            # Сохраняем или обновляем диалог
+            # Save or update the dialog / Сохраняем или обновляем диалог
             tg_dialog = tg_handler.get_dialog_by_id(tg_message_group.dialog_id)
             db_dialog = db_handler.upsert_record(DbDialog, {'dialog_id': tg_dialog.dialog_id},
                                                  {'title': tg_dialog.title, 'dialog_type_id': tg_dialog.type.value})
+            # Set the relationship for the dialog if it is not already set
             # Устанавливаем relationship для диалога, если не установлен
             if db_dialog.dialog_type is None:
                 db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
                     dialog_type_id=tg_dialog.type.value).first()
-            # Сохраняем группу сообщений
+            # Saving a group of messages / Сохраняем группу сообщений
             db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
                                                         {'date': tg_message_group.date,
                                                          'text': tg_message_group.text,
@@ -186,10 +224,12 @@ def tg_save_selected_message_to_db():
                                                          'files_report': tg_message_group.files_report,
                                                          'from_id': tg_message_group.from_id,
                                                          'dialog_id': tg_dialog.dialog_id})
+            # Set the relationship for the message group, if not already set
             # Устанавливаем relationship для группы сообщений, если не установлен
             if db_message_group.dialog is None:
                 db_message_group.dialog = db_dialog
-            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу.
+            # Save or update data about message files belonging to the group
+            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
             status_messages.mess_update('Downloading files', '', new_list=True)
             for tg_file in tg_message_group.files:
                 db_file = db_handler.upsert_record(DbFile, {'file_path': tg_file.file_path},
@@ -197,12 +237,14 @@ def tg_save_selected_message_to_db():
                                                     'size': tg_file.size,
                                                     'grouped_id': tg_message_group.grouped_id,
                                                     'file_type_id': tg_file.file_type.type_id})
-                # Устанавливаем relationships для файла, если не установлены
+                # Set relationships for the file, if not already set
+                # Устанавливаем relationships для файла, если не установлено
                 if db_file.message_group is None:
                     db_file.message_group = db_message_group
                 if db_file.file_type is None:
                     db_file.file_type = db_handler.session.query(DbFileType).filter_by(
                         file_type_id=tg_file.file_type.type_id).first()
+                # Download file if it is not in specified directory of the file system and its size is less than limit
                 # Скачиваем файл, если его нет в заданной директории файловой системы и его размер меньше предельного
                 status_messages.mess_update('Downloading files', tg_file.file_path)
                 downloading_result = tg_handler.download_message_file(tg_file)
@@ -210,46 +252,56 @@ def tg_save_selected_message_to_db():
                     if downloading_result else f'Failed to download file {tg_file.file_path}'
                 status_messages.mess_update('Downloading files', report_msg)
             db_handler.session.flush()
-            # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл.
+            # Get and save the HTML template with the message group content to save to a file
+            # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
             message_group_export_data = db_message_group.get_export_data()
             message_group_export_data.update({'files_report': tg_message_group.files_report})
+            # Correcting file paths so that they can be opened from an HTML file in the same directory
             # Корректируем пути к файлам для возможности открытия из HTML файла в той же директории
             for file in message_group_export_data.get('files', []):
                 file['file_name'] = Path(file['file_path']).name
+            # Generating paths to files and subdirectories in the file system
             # Формирование пути к файлу и вложенных директорий в файловой системе
             file_name = TgFile.get_self_file_name(tg_message_group.date, MessageFileTypes.CONTENT,
                                                   tg_message_group.grouped_id, 0, MessageFileTypes.CONTENT.default_ext)
             file_path = Path(
                 ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir() / file_name
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            # Генерируем HTML контент для файла
+            # Rendering HTML content for a file / Рендеринг HTML контента для файла
             html_content = render_template('export_message.html', **message_group_export_data)
+            # Save the HTML file with the message content in the file system
             # Сохраняем HTML файл с контентом сообщения в файловой системе
             with open(file_path, 'w', encoding='utf-8') as cf:
                 cf.write(html_content)
+            # Create a record about the HTML file in the database for the corresponding message group
             # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений
             db_file = db_handler.upsert_record(DbFile, {'file_path': file_path.as_posix()},
                                                {'message_id': 0,
                                                 'size': len(html_content.encode('utf-8')),
                                                 'grouped_id': message_group_export_data.get('message_group_id'),
                                                 'file_type_id': MessageFileTypes.CONTENT.type_id})
-            # Устанавливаем relationships для файла, если не установлены
+            # Set relationships for the file, if not already set
+            # Устанавливаем relationships для файла, если не установлено
             if db_file.message_group is None:
                 db_file.message_group = db_message_group
             if db_file.file_type is None:
                 db_file.file_type = db_handler.session.query(DbFileType).filter_by(
                     file_type_id=MessageFileTypes.CONTENT.type_id).first()
-            # Сохраняем изменения в базе данных
+            # Save changes to the database / Сохраняем изменения в базе данных
             db_handler.session.commit()
-            # После сохранения в БД устанавливаем признак "сохранено"
+            # After saving to the database, set the save flag for the message group
+            # После сохранения в БД устанавливаем признак сохранения для группы сообщений
             tg_message_group.saved_to_db = True
-            # Обновляем список диалогов, сохраненных в базе данных
+            # Updating the list of dialogs stored in the database / Обновляем список диалогов, сохраненных в базе данных
             db_handler.all_dialogues_list = db_handler.get_dialog_list()
             db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
+            # Set the save flag for message groups that are already saved in the database
             # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных
             # noinspection PyAssignmentToLoopOrWithParameter
             for tg_message_group in tg_handler.current_state.message_group_list:
                 tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
+    # Update the message list, message counter, and dialogue list in the database dialogue filter
+    # Обновление списка сообщений, счетчика сообщений и списка диалогов в фильтре диалогов базы данных
     return jsonify({'tg_messages': render_template('tg_messages.html'),
                     'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
                     FormCfg.db_message_filter.get(
@@ -260,16 +312,18 @@ def tg_save_selected_message_to_db():
 @tg_saver.route('/db_database_maintenance', methods=["POST"])
 def db_database_maintenance():
     """
+    Database and file system maintenance
     Сервисное обслуживание базы данных и файловой системы
-    1. Удаление из локальной файловой системы файлов, на которые нет ссылок в базе данных
-    2. Удаление пустых директорий в локальной файловой системе
-    3. Скачивание файлов, на которые есть ссылки в базе данных, но их нет в локальной файловой системе
-    4. Резервное копирование базы данных
-    5. Удаление неиспользуемых диалогов из таблицы диалогов базы данных
-    6. Пересчет количества использований тегов, удаление неиспользуемых из таблицы тегов
+        1. Deleting files from the local file system that are not referenced in the database
+        2. Deleting empty directories from the local file system
+        3. Downloading files that are referenced in the database but are not present in the local file system
+        4. Backing up the database
+        5. Deleting unused dialogs from the database dialog table
+        6. Recalculating the number of tag uses, deleting unused tags from the tag table
     """
 
-    # Получаем из БД все файлы с указанными расширениями
+    # Fetch all files with specified extensions from the database
+    # Получаем из базы данных все файлы с указанными расширениями
     file_ext_to_sync = [
         MessageFileTypes.IMAGE.default_ext,  # '.jpg'
         MessageFileTypes.VIDEO.default_ext,  # '.mp4'
@@ -277,58 +331,69 @@ def db_database_maintenance():
     ]
     database_files = {f'{ProjectDirs.media_dir}/{file}' for file in
                       db_handler.get_file_list_by_extension(file_ext_to_sync)}
-    # Находим все локальные файлы с указанными расширениями рекурсивно
+    # Recursively find all local files with the specified extensions
+    # Находим рекурсивно все локальные файлы с указанными расширениями
     local_files = []
     for ext in file_ext_to_sync:
         local_files.extend(Path(ProjectDirs.media_dir).rglob(f'**/*{ext}'))
     local_files = {x.as_posix() for x in local_files}
+    # Compare the lists and find the files that need to be deleted and those that need to be downloaded
     # Сравниваем списки и находим файлы, какие надо удалить и какие нужно докачать
     files_to_delete = local_files - database_files
     files_to_download = database_files - local_files
+    # Delete files that exist in the local file system but have no references in the database
     # Удаляем файлы, которые есть в локальной файловой системе, но на которые отсутствуют ссылки в базе данных
     files_deleted_count = len([Path(x).unlink() for x in files_to_delete if Path(x).exists()])
     status_messages.mess_update('Synchronizing the list of local files with the database',
                                 f'Files deleted from local storage: {files_deleted_count}', True)
-    # Удаляем пустые директории
+    # Delete empty directories / Удаляем пустые директории
     dir_tree = sorted(Path.walk(Path(ProjectDirs.media_dir)), key=lambda x: len(x[0].as_posix()), reverse=True)
     dir_deleted_count = len([x[0].rmdir() for x in dir_tree if
                              not x[1] and not x[2] and (not x[0].samefile(Path(ProjectDirs.media_dir)))])
     status_messages.mess_update('', f'Empty directories deleted from local storage: {dir_deleted_count}')
+    # Download files that are in the database but are not in the local file system, excluding HTML files.
     # Скачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе, кроме HTML файлов
     downloaded_file_list = []
     for file_path in files_to_download:
-        # Получаем информацию о файле из базы данных
+        # Getting file info from the database / Получаем информацию о файле из базы данных
         downloaded_file = db_handler.get_file_by_local_path(file_path)
         if downloaded_file and Path(file_path).suffix != MessageFileTypes.CONTENT.default_ext:
             downloaded_file_list.append(downloaded_file)
     tg_handler.download_message_file_from_list(downloaded_file_list)
-    # Резервное копирование базы данных
+    # Database backup / Резервное копирование базы данных
     database_backup = (Path(ProjectDirs.data_base_dir) / 'backup' /
                        f'{Path(ProjectDirs.data_base_file).stem}_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}'
                        f'{Path(ProjectDirs.data_base_file).suffix}')
-    # Создаем директории файла, если их нет
+    # Create backup file directories if they do not exist / Создаем директории резервного файла, если их нет
     database_backup.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ProjectDirs.data_base_file, database_backup)
     status_messages.mess_update('', 'Database backup created')
-    # Обновление списка диалогов в БД с сортировкой по текущим установкам и удалением неиспользуемых
+    # Update the list of dialogs in the database, sorting them according to current settings and removing unused ones
+    # Обновление списка диалогов в базе данных с сортировкой по текущим установкам и удалением неиспользуемых
     db_handler.all_dialogues_list = db_handler.get_dialog_list()
     db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
-    # Обновление списка тегов в БД с сортировкой по текущим установкам и пересчетом количества использований
+    # Update list of tags in database, sorting them according to current settings and recalculating the number of uses
+    # Обновление списка тегов в базе данных с сортировкой по текущим установкам и пересчетом количества использований
     db_handler.all_tags_list = db_handler.get_all_tag_list()
+    # Creating a data structure for updating dialogue lists and tags in a database form
     # Формирование структуры данных для обновления списков диалогов и тегов в форме базы данных
     data_structure = {FormCfg.db_message_filter.get('dialog_select'): db_handler.get_select_content_string(
         db_handler.current_state.dialog_list, 'dialog_id', 'title'),
         FormCfg.db_detail_tags.get('all_detail_tags'): db_handler.get_select_content_string(
             db_handler.all_tags_list, 'id', 'name')}
+    # Updating dialogue lists and tags in the database form / Обновление списков диалогов и тегов в форме базы данных
     return jsonify(data_structure)
 
 
 @tg_saver.route('/db_message_apply_filters', methods=['POST'])
 def db_message_apply_filters():
     """
+    Getting a list of messages from the database using filters
     Получение списка сообщений из базы данных с применением фильтров
     """
-    # Установка фильтров списка сообщений из базы данных по значениям из формы
+
+    # Setting filter values for the message list from the database based on values from the form
+    # Установка значений фильтра списка сообщений из базы данных по значениям из формы
     form_cfg = FormCfg.db_message_filter
     form = request.form
     mess_filter = db_handler.message_sort_filter
@@ -339,9 +404,11 @@ def db_message_apply_filters():
     mess_filter.date_to = form.get(form_cfg['date_to'])
     mess_filter.message_query = form.get(form_cfg['message_query'])
     mess_filter.tag_query = form.get(form_cfg['tag_query'])
-    # Получение списка сообщений с применением фильтров
+    # Getting list of messages based on filters and sorting / Получение списка сообщений с учетом фильтров и сортировки
     db_handler.current_state.message_group_list = db_handler.get_message_group_list()
     db_handler.current_state.message_details = None
+    # Updating the message list, message counter, and clearing the message details
+    # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения
     return jsonify({'db_messages': render_template('db_messages.html'),
                     'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
                     'db_details': '', })
@@ -350,11 +417,13 @@ def db_message_apply_filters():
 @tg_saver.route('/db_details/<string:message_group_id>')
 def db_get_details(message_group_id: str):
     """
+    Getting detailed information about a message from the database
     Получение детальной информации о сообщении из базы данных
     """
+
     db_handler.current_state.message_details = db_handler.get_message_detail(message_group_id)
     db_handler.current_state.selected_message_group_id = message_group_id
-    # Формирование структуры данных для обновления списка тегов
+    # Creating a data structure for updating the tag list / Формирование структуры данных для обновления списка тегов
     data_structure = {'db_details': render_template('db_details.html'), FormCfg.db_detail_tags.get(
         'curr_message_tags'): db_handler.get_select_content_string(
         db_handler.current_state.message_details.get('tags', []), 'id', 'name')}
@@ -364,23 +433,33 @@ def db_get_details(message_group_id: str):
 @tg_saver.route('/db_export_selected_message_to_html', methods=["POST"])
 def db_export_selected_message_to_html():
     """
+    Export marked messages from the database to an HTML file
     Экспорт отмеченных сообщений из базы данных в HTML файл
     """
+
     form_cfg = FormCfg.db_checkbox_list
+    # Getting a list of IDs of message groups marked for export from the form
+    # Получение из формы списка ID групп сообщений, отмеченных для экспорта
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     export_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
     data_structure = {}
     if export_messages_id:
+        # Status bar update / Обновление строки статуса
         status_messages.mess_update(f'Export selected {len(export_messages_id)} messages to HTML file', '',
                                     new_list=True)
+        # Querying the database for message groups to be exported
+        # Запрос в базу данных групп сообщений, подлежащих экспорту
         stmt = (select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(export_messages_id)).order_by(
             DbMessageGroup.date))
         query_result = db_handler.session.execute(stmt).scalars().all()
         exported_messages = []
+        # Generating a subdirectory name based on the current date and time for exporting files
+        # Формирование названия вложенной директории по текущей дате и времени для экспорта файлов
         export_date_time = clean_file_path(datetime.now().strftime(GlobalConst.message_datetime_format))
         for counter, result in enumerate(query_result, start=1):
             export_data = result.get_export_data()
-            # Корректируем пути к файлам для возможности открытия из экспортированного HTML файла
+            # Correcting file paths so they can be opened from an exported HTML file
+            # Коррекция путей к файлам для возможности открытия из экспортированного HTML файла
             for file in export_data.get('files', []):
                 if Path(Path(ProjectDirs.media_dir) / file.get('file_path')).exists():
                     new_file_path = Path(ProjectDirs.export_dir) / export_date_time / Path(file['file_path']).name
@@ -389,15 +468,20 @@ def db_export_selected_message_to_html():
                     file['file_path'] = (Path(export_date_time) / Path(file['file_path']).name).as_posix()
             exported_messages.append(export_data)
             status_messages.mess_update('', f'Export message {counter} of {len(export_messages_id)}')
+        # Rendering a page with exported messages and saving it to a file
+        # Рендеринг страницы с экспортированными сообщениями и сохранение её в файл
         html_content = render_template('export_multiple_messages.html',
                                        exported_messages=exported_messages,
                                        export_date=datetime.now().strftime(GlobalConst.message_datetime_format))
         with open(Path(ProjectDirs.export_dir) / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
                   encoding='utf-8') as cf:
             cf.write(html_content)
+        # Status bar update / Обновление строки статуса
         status_messages.mess_update('', f'{len(export_messages_id)} messages exported to HTML file')
         # Формирование структуры данных для снятия выделения с экспортированных сообщений
         data_structure = {x: False for x in selected_messages_id}
+        # Updating the form to uncheck the exported messages
+        # Обновление формы для снятия выделения с экспортированных сообщений
     return jsonify(data_structure)
 
 

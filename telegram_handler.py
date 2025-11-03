@@ -21,7 +21,7 @@ from mimetypes import guess_extension
 from sys import maxsize
 from textwrap import shorten
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, List, Callable, cast
+from typing import Any, Callable, cast
 from datetime import datetime, timedelta
 from pathlib import Path
 from telethon.tl.custom import Dialog, Message
@@ -42,14 +42,14 @@ class TgDialog:
         dialog_id (int): dialog ID
         title (str): title (name) of dialog
         unread_count (int): number of unread messages
-        last_message_date (Optional[datetime]): date and time of last message
+        last_message_date (datetime | None): date and time of last message
         type (DialogTypes): dialog type
     """
 
     dialog_id: int
     title: str
     unread_count: int = 0
-    last_message_date: Optional[datetime] = None
+    last_message_date: datetime | None = None
     type: DialogTypes = DialogTypes.UNKNOWN
 
     def __init__(self, dialog: Dialog):
@@ -102,8 +102,8 @@ class TgDialogSortFilter:
 
     _sorting_field: Callable[[Any], Any] | None = None
     _sort_order: bool = False
-    _dialog_type: Optional[DialogTypes] = None
-    _title_query: Optional[str] = None
+    _dialog_type: DialogTypes | None = None
+    _title_query: str | None = None
 
     @staticmethod
     def _sort_by_title(x):
@@ -186,14 +186,14 @@ class TgDialogSortFilter:
             dialog_type = tg_dialog.type == self._dialog_type
         return all([title_query, dialog_type])
 
-    def sort_dialog_list(self, dialog_list: List[TgDialog]) -> List[TgDialog]:
+    def sort_dialog_list(self, dialog_list: list[TgDialog]) -> list[TgDialog]:
         """
         Sorting a list of dialogs by a specified field in a specified order
         Сортировка списка диалогов по заданному полю в заданном порядке
         Attributes:
-            dialog_list (List[TgDialog]): list of dialogs for sorting
+            dialog_list (list[TgDialog]): list of dialogs for sorting
         Returns:
-            List[TgDialog]: sorted dialogue list
+            list[TgDialog]: sorted dialogue list
         """
 
         if self._sorting_field is None:
@@ -267,25 +267,25 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     Attributes:
         grouped_id (str): common grouped ID for a group of messages
         dialog_id (int): group message dialogue ID
-        ids (List[int]): ID of messages contained in the message group
-        files (List[TgFile]): message files contained in a message group
-        date (Optional[datetime]): date of message group
+        ids (list[int]): ID of messages contained in the message group
+        files (list[TgFile]): message files contained in a message group
+        date (datetime | None): date of message group
         text (str): text of message group
         truncated_text (str): truncated text of message group for HTML templates
-        from_id (Optional[int]): message sender ID
-        files_report (Optional[str]): summary of message group files
+        from_id (int | None): message sender ID
+        files_report (str | None): summary of message group files
         saved_to_db (bool): database saving status
     """
 
     grouped_id: str
     dialog_id: int
-    ids: List[int]
-    files: List[TgFile]
-    date: Optional[datetime] = None
+    ids: list[int]
+    files: list[TgFile]
+    date: datetime | None = None
     text: str = ''
     truncated_text: str = ''
-    from_id: Optional[int] = None
-    files_report: Optional[str] = ''
+    from_id: int | None = None
+    files_report: str | None = ''
     saved_to_db: bool = False
 
     def __init__(self, grouped_id: str, dialog_id: int):
@@ -315,12 +315,12 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         if message.text:
             self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
 
-    def add_message_file(self, message_file: Optional[TgFile] = None) -> None:
+    def add_message_file(self, message_file: TgFile | None = None) -> None:
         """
         Adds the message file to the message group, if it exists
         Добавляет файл сообщения в группу сообщений, если он есть
         Attributes:
-            message_file (Optional[TgFile]): added file
+            message_file (TgFile | None): added file
         """
         if message_file:
             self.files.append(message_file)
@@ -405,10 +405,10 @@ class TgMessageSortFilter:
     """
 
     _sort_order: bool = True
-    _date_from: Optional[datetime] = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
-    _date_to: Optional[datetime] = None
-    _message_query: Optional[str] = None
-    date_from_default: Optional[str] = (datetime.now() - timedelta(
+    _date_from: datetime | None = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
+    _date_to: datetime | None = None
+    _message_query: str | None = None
+    date_from_default: str | None = (datetime.now() - timedelta(
         days=GlobalConst.last_days_by_default)).strftime("%Y-%m-%d")
 
     def set_default_filters(self):
@@ -442,7 +442,7 @@ class TgMessageSortFilter:
         self._sort_order = value == '0'  # True if value == '0' else False
 
     @property
-    def date_from(self) -> Optional[datetime]:
+    def date_from(self) -> datetime | None:
         """
         Returns the date from which to receive messages
         Возвращает дату, с которой получать сообщения
@@ -460,7 +460,7 @@ class TgMessageSortFilter:
         self._date_from = parse_date_string(value)
 
     @property
-    def date_to(self) -> Optional[datetime]:
+    def date_to(self) -> datetime | None:
         """
         Returns the date until which messages should be received
         Возвращает дату, до которой получать сообщения
@@ -478,7 +478,7 @@ class TgMessageSortFilter:
         self._date_to = parse_date_string(value)
 
     @property
-    def message_query(self) -> Optional[str]:
+    def message_query(self) -> str | None:
         """
         Returns a filter by dialog title
         Возвращает фильтр по названию диалогов
@@ -495,14 +495,14 @@ class TgMessageSortFilter:
         """
         self._message_query = value if value else None
 
-    def sort_message_group_list(self, message_group_list: List[TgMessageGroup]) -> List[TgMessageGroup]:
+    def sort_message_group_list(self, message_group_list: list[TgMessageGroup]) -> list[TgMessageGroup]:
         """
         Sorting the list of message groups by date
         Сортировка списка групп сообщений по дате
         Attributes:
-            message_group_list (List[TgMessageGroup]):
+            message_group_list (list[TgMessageGroup]):
         Returns:
-            List[TgMessageGroup]: sorted list of message groups
+            list[TgMessageGroup]: sorted list of message groups
         """
         return sorted(message_group_list, key=lambda group: group.date or datetime.min, reverse=self.sort_order)
 
@@ -513,16 +513,16 @@ class TgCurrentState:
     Current state of the Telegram client
     Текущее состояние клиента Telegram
     Attributes:
-        dialog_list (Optional[List[TgDialog]]): current dialog list
-        selected_dialog_id (Optional[int]): selected dialog ID
-        message_group_list (Optional[List[TgMessageGroup]]): current message group list
-        message_details (Optional[Dict[str, Any]]): selected message details
+        dialog_list (list[TgDialog] | None): current dialog list
+        selected_dialog_id (int | None): selected dialog ID
+        message_group_list (list[TgMessageGroup] | None): current message group list
+        message_details (dict[str, Any] | None): selected message details
     """
 
-    dialog_list: Optional[List[TgDialog]] = None
-    selected_dialog_id: Optional[int] = None
-    message_group_list: Optional[List[TgMessageGroup]] = None
-    message_details: Optional[Dict[str, Any]] = None
+    dialog_list: list[TgDialog] | None = None
+    selected_dialog_id: int | None = None
+    message_group_list: list[TgMessageGroup] | None = None
+    message_details: dict[str, Any] | None = None
 
 
 class TelegramHandler:
@@ -530,13 +530,13 @@ class TelegramHandler:
     Класс для представления операций с клиентом Telegram
     A class for handling Telegram client operations
     Attributes:
-        all_dialogues_list (Optional[List[TgDialog]]): list of all dialogs
+        all_dialogues_list (list[TgDialog] | None): list of all dialogs
         dialog_sort_filter (TgDialogSortFilter): current dialog filter
         message_sort_filter (TgMessageSortFilter): current message filter
         current_state (TgCurrentState): current state of the Telegram client
     """
 
-    all_dialogues_list: Optional[List[TgDialog]] = None
+    all_dialogues_list: list[TgDialog] | None = None
     dialog_sort_filter: TgDialogSortFilter = TgDialogSortFilter()
     message_sort_filter: TgMessageSortFilter = TgMessageSortFilter()
     current_state: TgCurrentState = TgCurrentState()
@@ -578,20 +578,20 @@ class TelegramHandler:
         entity = loop.run_until_complete(self.client.get_entity(entity_id))
         return entity
 
-    def get_dialog_by_id(self, dialog_id: int) -> Optional[TgDialog]:
+    def get_dialog_by_id(self, dialog_id: int) -> TgDialog | None:
         """
         Getting a dialog by its ID
         Получение диалога по его ID
         Attributes:
             dialog_id (int): dialog ID
         Returns:
-            Optional[TgDialog]: Telegram dialog object
+            TgDialog | None: Telegram dialog object
         """
         found_tg_dialog = next((x for x in (self.all_dialogues_list or []) if x.dialog_id == dialog_id), None)
         return found_tg_dialog
 
     @staticmethod
-    def get_message_group_by_id(message_group_list: list, grouped_id: str) -> Optional[TgMessageGroup]:
+    def get_message_group_by_id(message_group_list: list, grouped_id: str) -> TgMessageGroup | None:
         """
         Retrieving a group of messages from the message list with the same grouped_id
         Получение группы сообщений из списка сообщений с одинаковым grouped_id
@@ -599,12 +599,12 @@ class TelegramHandler:
             message_group_list (list): list of message groups
             grouped_id (str): grouped ID of the message group
         Returns:
-            Optional[TgMessageGroup]: message group object
+            TgMessageGroup | None: message group object
         """
         found_tg_message_group = next((x for x in message_group_list if x.grouped_id == grouped_id), None)
         return found_tg_message_group
 
-    def get_dialog_list(self) -> List[TgDialog]:
+    def get_dialog_list(self) -> list[TgDialog]:
         """
         Getting a list of all Telegram dialogs with filters and sorting
         Получение списка всех диалогов Telegram с учетом фильтров и сортировки
@@ -622,14 +622,14 @@ class TelegramHandler:
         status_messages.mess_update('Loading chat lists', f'{len(dialog_list)} chats loaded from Telegram')
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
 
-    def get_message_list(self, dialog_id: int) -> List[Message]:
+    def get_message_list(self, dialog_id: int) -> list[Message]:
         """
         Getting a list of messages from a specified chat, taking into account filters and sorting
         Получение списка сообщений из заданного чата с учетом фильтров и сортировки
         Attributes:
             dialog_id (int): dialog ID
         Returns:
-            List[Message]: list of Telegram messages
+            list[Message]: list of Telegram messages
         """
 
         current_tg_dialog = self.get_dialog_by_id(dialog_id)
@@ -659,19 +659,19 @@ class TelegramHandler:
         status_messages.mess_update('', f'{len(message_list)} messages loaded')
         return message_list
 
-    def get_message_group_list(self, dialog_id: int) -> List[TgMessageGroup]:
+    def get_message_group_list(self, dialog_id: int) -> list[TgMessageGroup]:
         """
         Create list of message groups from messages in specified chat, taking in accordance filters, sorting, grouping.
         Формирование списка групп сообщений из сообщений заданного чата с учетом фильтров, сортировки и группировки
         Attributes:
             dialog_id (int): dialog ID
         Returns:
-            List[TgMessageGroup]: list of message groups
+            list[TgMessageGroup]: list of message groups
         """
 
         # Creating a list of message groups based on grouping parameters and text filters
         # Создание списка групп сообщений с учетом параметра группировки и фильтра по тексту
-        message_group_list: List[TgMessageGroup] = []
+        message_group_list: list[TgMessageGroup] = []
         # Creating a list of messages based on grouping by message.grouped_id
         # Составление списка сообщений с учетом группировки по message.grouped_id
         for message in self.get_message_list(dialog_id):
@@ -769,7 +769,7 @@ class TelegramHandler:
 
     def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup,
                               # pylint: disable=too-many-statements, too-many-branches
-                              message, thumbnail: bool) -> Optional[TgFile]:
+                              message, thumbnail: bool) -> TgFile | None:
         """
         Defining the message file type, its extension and size, creating a path to the file
         Определение типа файла сообщения, его расширения и размера, формирование пути к файлу
@@ -779,7 +779,7 @@ class TelegramHandler:
             message (Message): Telegram message object
             thumbnail (bool): flag for getting thumbnail information
         Returns:
-            Optional[TgFile]: message file object
+            TgFile | None: message file object
         """
 
         def get_image_size(images: list) -> int:
@@ -869,14 +869,14 @@ class TelegramHandler:
         tg_file.file_path = file_path.as_posix()
         return tg_file
 
-    def download_message_file(self, tg_file: TgFile) -> Optional[str]:
+    def download_message_file(self, tg_file: TgFile) -> str | None:
         """
         Downloading a message file
         Загрузка файла сообщения
         Attributes:
             tg_file (TgFile): message file object
         Returns:
-            Optional[str]: message file path if downloaded, else None
+            str | None: message file path if downloaded, else None
         """
 
         downloading_param = {}
@@ -954,14 +954,14 @@ class TelegramHandler:
         return resulting_report
 
 
-def convert_text_hyperlinks(message_text: Optional[str]) -> Optional[str]:
+def convert_text_hyperlinks(message_text: str | None) -> str | None:
     """
     Converting text hyperlinks of the form [Text](URL) to HTML format
     Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
     Attributes:
-        message_text (Optional[str]): message text
+        message_text (str | None): message text
     Returns:
-        Optional[str]: converted message text
+        str | None: converted message text
     """
 
     if message_text:
