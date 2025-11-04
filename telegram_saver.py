@@ -39,10 +39,8 @@ def inject_field_names():
 
 
 with tg_saver.app_context():
-    """
-    Initializing parameters after creating an application
-    Инициализация параметров после создания приложения
-    """
+    # Initializing parameters after creating an application
+    # Инициализация параметров после создания приложения
     logging.getLogger('werkzeug').setLevel(logging.INFO)
 
 
@@ -488,34 +486,48 @@ def db_export_selected_message_to_html():
 @tg_saver.route('/db_delete_selected_from_database', methods=["POST"])
 def db_delete_selected_from_database():
     """
+    Delete marked messages from the database
     Удаление отмеченных сообщений из базы данных
     """
+
     form_cfg = FormCfg.db_checkbox_list
+    # Getting a list of IDs of message groups marked for export from the form
+    # Получение из формы списка ID групп сообщений, отмеченных для экспорта
     selected_messages_id = request.form.getlist(form_cfg['db_checkbox_list'])
     selected_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
+    # Deleting selected message groups from the database
+    # Удаление отмеченных групп сообщений из базы данных
     stmt = delete(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id))
     db_handler.session.execute(stmt)
     db_handler.session.commit()
+    # Updating the message list after deletion from the database
+    # Обновление списка сообщений после удаления из базы данных
     db_handler.current_state.message_group_list = db_handler.get_message_group_list()
     db_handler.current_state.message_details = None
-    # Обновляем список диалогов, сохраненных в базе данных
+    # Updating the list of dialogs stored in the database
+    # Обновление списка диалогов, сохраненных в базе данных
     db_handler.all_dialogues_list = db_handler.get_dialog_list()
     db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
-    # Формирование структуры данных для обновления списков диалогов
+    # Creating a data structure for updating interface elements after deleting messages
+    # Формирование структуры данных для обновления элементов интерфейса после удаления сообщений
     data_structure = {'db_messages': render_template('db_messages.html'),
                       'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
                       'db_details': '',
                       FormCfg.db_message_filter.get(
                           'dialog_select'): db_handler.get_select_content_string(db_handler.current_state.dialog_list,
                                                                                  'dialog_id', 'title')}
+    # Update the list of messages, message counter, message details, and list of dialogs in the database dialog filter
+    # Обновление списка сообщений, счетчика сообщений, деталей сообщения, списка диалогов в фильтре диалогов базы данных
     return jsonify(data_structure)
 
 
 @tg_saver.route('/db_tag_add', methods=['POST'])
 def db_tag_add():
     """
+    Adding a tag to a message
     Добавление тега к сообщению
     """
+
     form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
     tag_name = request.form.get(form_cfg['edit_tag_name'])
