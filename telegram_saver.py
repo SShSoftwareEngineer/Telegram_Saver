@@ -530,10 +530,15 @@ def db_tag_add():
 
     form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
+    # Getting the tag name from the form / Получение имени тега из формы
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
+        # If the tag is specified, add it to the current message and return lists of all tags and the current message
+        # Если тег указан, добавляем его к текущему сообщению и возвращаем списки всех тегов и текущего сообщения
         current_tags_select, all_tags_select = (
             db_handler.add_tag_to_message_group(tag_name, db_handler.current_state.selected_message_group_id))
+    # Update the list of tags for the current message and all tags in the database form
+    # Обновление списка тегов текущего сообщения и всех тегов в форме базы данных
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -541,14 +546,21 @@ def db_tag_add():
 @tg_saver.route('/db_tag_remove', methods=['POST'])
 def db_tag_remove():
     """
-    Удаление тега сообщения
+    Removing a tag from a message
+    Удаление тега у сообщения
     """
+
     form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
+    # Getting the tag name from the form / Получение имени тега из формы
     tag_name = request.form.get(form_cfg['edit_tag_name'])
     if tag_name:
+        # If the tag is specified, remove it from the current message and return lists of all tags and current message
+        # Если тег указан, удаляем его у текущего сообщению и возвращаем списки всех тегов и текущего сообщения
         current_tags_select, all_tags_select = (
             db_handler.remove_tag_from_message_group(tag_name, db_handler.current_state.selected_message_group_id))
+    # Update the list of tags for the current message and all tags in the database form
+    # Обновление списка тегов текущего сообщения и всех тегов в форме базы данных
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -556,16 +568,23 @@ def db_tag_remove():
 @tg_saver.route('/db_tag_update', methods=['POST'])
 def db_tag_update():
     """
-    Изменение тега сообщения
+    Changing the tag of the current message
+    Изменение тега текущего сообщения
     """
+
     form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
+    # Getting the old and new tag names from the form / Получение старого и нового имени тега из формы
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
     if all([old_tag_name, new_tag_name, new_tag_name != old_tag_name]):
+        # Change the tag for the current message and return lists of all tags and the current message
+        # Изменяем тег у текущего сообщения и возвращаем списки всех тегов и текущего сообщения
         current_tags_select, all_tags_select = (
             db_handler.update_tag_from_message_group(old_tag_name, new_tag_name,
                                                      db_handler.current_state.selected_message_group_id))
+    # Update the list of tags for the current message and all tags in the database form
+    # Обновление списка тегов текущего сообщения и всех тегов в форме базы данных
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -573,16 +592,23 @@ def db_tag_update():
 @tg_saver.route('/db_tag_update_everywhere', methods=['POST'])
 def db_tag_update_everywhere():
     """
-    Изменение тега сообщения и такого же тега всех сообщений
+    Changing the tag of the current message and the same tag for all messages
+    Изменение тега текущего сообщения и такого же тега у всех сообщений
     """
+
     form_cfg = FormCfg.db_detail_tags
     current_tags_select = all_tags_select = None
+    # Getting the old and new tag names from the form / Получение старого и нового имени тега из формы
     old_tag_name = request.form.get(form_cfg['old_tag_name'])
     new_tag_name = request.form.get(form_cfg['edit_tag_name'])
     if all([old_tag_name, new_tag_name, new_tag_name != old_tag_name]):
+        # Change the tag for the current message and all messages, and return lists of all tags and the current message
+        # Изменяем тег у текущего сообщения, всех сообщений и возвращаем списки всех тегов и текущего сообщения
         current_tags_select, all_tags_select = (
             db_handler.update_tag_everywhere(old_tag_name, new_tag_name,
                                              db_handler.current_state.selected_message_group_id))
+    # Update the list of tags for the current message and all tags in the database form
+    # Обновление списка тегов текущего сообщения и всех тегов в форме базы данных
     return jsonify({form_cfg['curr_message_tags']: current_tags_select,
                     form_cfg['all_detail_tags']: all_tags_select})
 
@@ -590,9 +616,13 @@ def db_tag_update_everywhere():
 @tg_saver.route('/db_all_tag_sorting', methods=['POST'])
 def db_all_tag_sorting():
     """
-    Сортировка всех тегов базы данных в поле выбора тегов
+    Sorting all database tags in the select all tags field
+    Сортировка всех тегов базы данных в поле выбора всех тегов
     """
+
     form_cfg = FormCfg.db_detail_tags
+    # Setting the sorting method for all tags based on the value from the form
+    # Установка метода сортировки для всех тегов по значению из формы
     match request.form.get(form_cfg['tag_sorting_field']):
         case '1':
             db_handler.current_state.all_tags_list_sorting = TagsSorting.USAGE_COUNT_DESC
@@ -600,8 +630,11 @@ def db_all_tag_sorting():
             db_handler.current_state.all_tags_list_sorting = TagsSorting.UPDATED_AT_DESC
         case _:
             db_handler.current_state.all_tags_list_sorting = TagsSorting.NAME_ASC
-    # # Получение списка тегов с сортировкой по текущим установкам
+    # Get a list of tags sorted by the current sorting method settings
+    # Получение списка тегов с сортировкой по текущим установкам метода сортировки
     db_handler.all_tags_list = db_handler.get_all_tag_list()
+    # Update the list of all tags in the database form
+    # Обновление списка всех тегов в форме базы данных
     return jsonify({form_cfg['all_detail_tags']:
                         db_handler.get_select_content_string(db_handler.all_tags_list, 'id', 'name')})
 
@@ -610,6 +643,8 @@ if __name__ == '__main__':
     tg_saver.run(debug=True, use_reloader=False)
 
 # pylint: disable=fixme
+# TODO: сделать выбор по диалогам-источникам для Избранного
+# TODO: проверить на кросс-браузерность, чтобы одинаково выгледело и работало в основных браузерах
 # TODO: проверить на загрузку разные типы приложений, загрузку видео и аудио, почему возвращает ошибку при Unknown
 # TODO: проверить превращение файловой-статусной строки в ссылку в Message_Group
 # TODO: Добавить инструкцию по получению своих параметров Телеграм
