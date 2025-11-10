@@ -383,7 +383,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
             #     self.truncated_text = self.text
 
         # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >
-        # «Перезавантаження: розширення можливостей для працевлаштування» </a>
+        # «Перезавантаження: розширення для працевлаштування» </a>
         # shorten             из             модуля             textwrap
 
     def get_self_dir(self) -> str:
