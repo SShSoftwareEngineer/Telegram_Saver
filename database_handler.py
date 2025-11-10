@@ -397,7 +397,7 @@ class DatabaseHandler:
 
         # Checking the record for existence / Проверяем запись на существование
         existing = self.session.query(model_class).filter_by(**filter_fields).first()
-        if existing:
+        if filter_fields and existing:
             # Updating an existing record / Обновляем существующую запись
             for key, value in update_fields.items():
                 setattr(existing, key, value)
