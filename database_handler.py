@@ -418,7 +418,11 @@ class DatabaseHandler:
         @event.listens_for(self.engine, "connect")
         def set_sqlite_pragma(dbapi_conn, _):  # _ используется вместо необязательного параметра connection_record
             cursor = dbapi_conn.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA foreign_keys=ON") # Enabling foreign key constraints
+            cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
+            cursor.execute("PRAGMA synchronous=NORMAL")  # Быстрее записи
+            cursor.execute("PRAGMA cache_size=-64000")  # 64MB кеша
+            cursor.execute("PRAGMA temp_store=MEMORY")  # Временные данные в RAM
             cursor.close()
 
     def __init__(self):
