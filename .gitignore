@@ -184,3 +184,4 @@ media_storage/
 /database/telegram_archive_dev_2.db
 /configs/.env_prod
 /database/backup/
+/Notes/Перевод проекта с Flask на FastApi, какие плюсы и минусы.docx

@@ -19,7 +19,7 @@ ModelType: a TypeVar for model classes, bound to Base
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any, Type, TypeVar # List - necessary for relationships
+from typing import List, Any, Type, TypeVar  # List - necessary for relationships
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
     Boolean, update, delete, event, func, Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
@@ -400,7 +400,8 @@ class DatabaseHandler:
         if filter_fields and existing:
             # Updating an existing record / Обновляем существующую запись
             for key, value in update_fields.items():
-                setattr(existing, key, value)
+                if hasattr(existing, key):
+                    setattr(existing, key, value)
         else:
             # Create a new record / Создаем новую запись
             existing = model_class(**{**filter_fields, **update_fields})
@@ -418,7 +419,7 @@ class DatabaseHandler:
         @event.listens_for(self.engine, "connect")
         def set_sqlite_pragma(dbapi_conn, _):  # _ используется вместо необязательного параметра connection_record
             cursor = dbapi_conn.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON") # Enabling foreign key constraints
+            cursor.execute("PRAGMA foreign_keys=ON")  # Enabling foreign key constraints
             cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
             cursor.execute("PRAGMA synchronous=NORMAL")  # Быстрее записи
             cursor.execute("PRAGMA cache_size=-64000")  # 64MB кеша
