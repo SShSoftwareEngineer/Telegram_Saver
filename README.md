@@ -54,11 +54,11 @@ handling and SQLAlchemy for database flexibility.
    (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
 3. Install the dependencies:  
    poetry install
-3. Set up your Telegram API credentials in a .env file:    
+4. Set up your Telegram API credentials in a .env file:    
    - Create a new application on [my.telegram.org](https://my.telegram.org)
    - Create a ".env" file in the project root  
    Add your API_ID, API_HASH and params to the .env file.
-4. Run the script:  
+5. Run the script:  
    python telegram_saver.py  
    Navigate to `http://localhost:5000` in your browser.
 
@@ -76,16 +76,13 @@ The script automatically analyzes new vacancies and saves the information in a s
 
 #### PostgreSQL Migration Ready
 
-The database schema is designed with SQLAlchemy ORM for easy migration:
-```python
-# Simply change connection string in config:
+The database schema is designed with SQLAlchemy ORM for easy migration:  
+Simply change connection string in config:  
 DATABASE_URL = "postgresql://user:password@localhost/telegram_archive"
-```
 
 Schema includes:
 - Normalized structure for messages, users, media
 - Foreign key relationships
-- Indexes for common queries
 
 ### Roadmap
 
@@ -104,7 +101,7 @@ Schema includes:
 
 ### License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ### Contact
 
