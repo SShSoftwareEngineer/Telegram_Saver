@@ -2,79 +2,80 @@
 
 Flexible data extraction and storage system for Telegram content with manual and automated retrieval.
 
-### Overview
+## Overview
 Personal archive tool for selective Telegram content preservation. Built with async Python for efficient data 
 handling and SQLAlchemy for database flexibility.
 
-### Features
+## Features
 - **Flexible extraction**: Manual selection via "saved messages" + optional automatic channel monitoring
 - **Multi-type content**: Messages, media files, documents, forward chains, user metadata
 - **Database abstraction**: SQLAlchemy ORM with SQLite (easily portable to PostgreSQL)
 - **Web interface**: Flask + Vanilla JavaScript for browsing and searching archived content
 - **Async operations**: AsyncIO for non-blocking data retrieval
 
-### Architecture
+## Architecture
 - **Backend**: Python, Telethon (Telegram API), AsyncIO
 - **Database**: SQLite via SQLAlchemy ORM (PostgreSQL-ready schema)
 - **Web UI**: Flask, Jinja2, Vanilla JavaScript
 - **Data flow**: Telegram API → AsyncIO handlers → SQLAlchemy → Database → Flask views
 
-### Use Cases
+## Use Cases
 - Personal message archive (selective saving via Telegram "saved messages")
 - Media library management with metadata
 - Content backup with easy search and export
 - Advanced search functionality
 - Data analysis of saved conversations
 
-### Project Stats
+## Project Stats
 - 1,000+ messages archived
 - 500+ media files organized
 - Multiple content types supported
 - Database schema ready for PostgreSQL migration
 
-### Tech Highlights
+## Tech Highlights
 - **Database design**: Normalized schema supporting easy PostgreSQL migration
 - **Async architecture**: Non-blocking I/O for media downloads
 - **ORM flexibility**: Single codebase supports SQLite (dev) and PostgreSQL (production)
 
-### Future Enhancements
+## Future Enhancements
 - PostgreSQL deployment for larger datasets
 - Export to common formats (JSON, CSV, HTML)
 - Automated scheduled backups
 
-### Installation
+## Installation
 
-1. Clone the repository:  
+1. **Clone the repository:**  
    git clone https://github.com/SShSoftwareEngineer/Telegram_Saver.git  
    cd Telegram_Saver
-2. Install Poetry (if not already installed):
-   ##### On Linux/macOS
+2. **Install Poetry (if not already installed):**
+   ### On Linux/macOS
    curl -sSL https://install.python-poetry.org | python3 -
-   #### On Windows (PowerShell)
+   ### On Windows (PowerShell)
    (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
-3. Install the dependencies:  
-   poetry install
-4. Set up your Telegram API credentials in a .env file:    
+3. **Install the dependencies:**  
+   poetry install    
+   poetry shell
+4. **Set up your Telegram API credentials in a .env file:**    
    - Create a new application on [my.telegram.org](https://my.telegram.org)
    - Create a ".env" file in the project root  
    Add your API_ID, API_HASH and params to the .env file.
-5. Run the script:  
+5. **Run the script:**  
    python telegram_saver.py  
    Navigate to `http://localhost:5000` in your browser.
 
-### Usage
+## Usage
 
 Run the script to start parsing job postings from Telegram channels.
 The script automatically analyzes new vacancies and saves the information in a structured form in the database.
 
-### Database
+## Database
 
-#### Current: SQLite
+### Current: SQLite
 
 - **Pros**: Zero configuration, single file, perfect for personal use
 - **Current capacity**: Handles 10K+ messages efficiently
 
-#### PostgreSQL Migration Ready
+### PostgreSQL Migration Ready
 
 The database schema is designed with SQLAlchemy ORM for easy migration:  
 Simply change connection string in config:  
@@ -84,7 +85,7 @@ Schema includes:
 - Normalized structure for messages, users, media
 - Foreign key relationships
 
-### Roadmap
+## Roadmap
 
 - [ ] PostgreSQL deployment for larger datasets
 - [ ] Export to common formats (JSON, CSV, PDF)
@@ -93,17 +94,17 @@ Schema includes:
 - [ ] Multi-language support
 - [ ] Docker containerization
 
-### Under Consideration
+## Under Consideration
 
 - Integration with Apache Airflow for ETL automation
 - REST API for programmatic access
 - Cloud storage integration (S3, Google Drive)
 
-### License
+## License
 
 This project is licensed under the MIT License.
 
-### Contact
+## Contact
 
 **Sergiy Shypulin**
 
