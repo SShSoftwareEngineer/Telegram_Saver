@@ -120,7 +120,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-config/.env
+configs/.env
 .venv
 env/
 venv/
@@ -182,6 +182,7 @@ media_storage/
 /configs/.env_dev_2
 /database/telegram_archive_dev_1.db
 /database/telegram_archive_dev_2.db
+/database/*.db
 /configs/.env_prod
 /database/backup/
 /Notes/Перевод проекта с Flask на FastApi, какие плюсы и минусы.docx
