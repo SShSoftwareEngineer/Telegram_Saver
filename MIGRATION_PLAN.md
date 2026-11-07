@@ -27,7 +27,8 @@
 - Критерий: `git status` чист, ветка создана.
 - Коммит (master): `chore: update pyproject metadata and fix TODO typo`
 
-### [ ] 1. Git и секреты (репозиторий публичный - срочно)
+### [x] 1. Git и секреты (репозиторий публичный - срочно)
+> Выполнено: `.gitignore`, `git rm --cached`. Очистку истории (`filter-repo` + force push) выполняет пользователь.
 - `.gitignore`: исправить `config/.env` → `configs/.env`; добавить `database/*.db`, `database/backup/`.
 - `git rm --cached configs/.env database/telegram_archive.db`; убедиться, что `.env.example` остаётся.
 - Очистка истории от этих файлов: `git filter-repo --invert-paths` + force push. Команды даёт Claude,
@@ -40,6 +41,7 @@
 - `pyproject.toml`: добавить `fastapi`, `uvicorn`, `jinja2`, `python-multipart`, `python-dateutil`, `cryptg`;
   dev: `httpx`, `pytest`. Flask пока оставить. Решить судьбу `requirements.txt` (удалить или генерировать
   из poetry; в нём лишние `Flask-SocketIO` и пакет `dotenv`).
+- Заодно (согласовано на шаге 0): `[tool.mypy] python_version = ">=3.14"` → `"3.14"` (mypy не принимает диапазон).
 - Критерий: `poetry install` проходит, `python -c "import fastapi, uvicorn, dateutil"` работает.
 - Коммит: `build: add fastapi stack and missing dependencies`
 
