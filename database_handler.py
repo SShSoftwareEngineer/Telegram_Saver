@@ -16,10 +16,12 @@ message_group_tag_links: a relationship table for many-to-many relationship betw
 ModelType: a TypeVar for model classes, bound to Base
 """
 
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import List, Any, Type, TypeVar  # List - necessary for relationships
+from threading import Lock
+from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
     Boolean, update, delete, event, func, Select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
@@ -409,6 +411,24 @@ class DatabaseHandler:
             self.session.flush()  # Flush to get the ID if it's an autoincrement field
         return existing
 
+    @contextmanager
+    def transaction(self) -> Iterator[Session]:
+        """
+        Context manager for a transaction: commit on success, rollback and re-raise on any exception.
+        Контекстный менеджер транзакции: commit при успехе, rollback и повторный выброс при любом исключении.
+        Yields:
+            Session: the shared database session
+        """
+
+        try:
+            yield self.session
+            self.session.commit()
+        except Exception:
+            # Without a rollback the shared session stays in a failed state for all later requests
+            # Без отката общая сессия остается в неработоспособном состоянии для всех следующих запросов
+            self.session.rollback()
+            raise
+
     def setup_database_connection(self):
         """
         Configuring SQLite database connection settings
@@ -433,7 +453,12 @@ class DatabaseHandler:
         """
 
         # Creating database engine and session
-        self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}')
+        # check_same_thread=False: the session is created in one thread but used from the web server's thread pool;
+        # access is serialized by a shared lock outside this class.
+        # check_same_thread=False: сессия создается в одном потоке, а используется из пула потоков веб-сервера;
+        # доступ сериализуется общим замком вне этого класса.
+        self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}',
+                                    connect_args={'check_same_thread': False})
         self.setup_database_connection()
         self.session = Session(self.engine)
         # Creating tables in the database if they do not exist
@@ -787,8 +812,31 @@ class DatabaseHandler:
         return current_tags_select, all_tags_select
 
 
-# Creating an instance of DatabaseHandler / Создаем экземпляр DatabaseHandler
-db_handler = DatabaseHandler()
+# The DatabaseHandler instance is created lazily on the first get_db_handler() call, not on module import:
+# the constructor opens the database, creates tables and writes reference data.
+# Экземпляр DatabaseHandler создается лениво, при первом вызове get_db_handler(), а не при импорте модуля:
+# конструктор открывает базу данных, создает таблицы и записывает справочные данные.
+_db_handler: DatabaseHandler | None = None
+_db_handler_lock = Lock()
+
+
+def get_db_handler() -> DatabaseHandler:
+    """
+    Returns the shared DatabaseHandler, creating it on the first call.
+    Возвращает общий DatabaseHandler, создавая его при первом вызове.
+    Returns:
+        DatabaseHandler: the single instance for working with the database
+    """
+
+    global _db_handler
+    if _db_handler is None:
+        # The lock prevents two threads from creating two handlers at the same time
+        # Замок не дает двум потокам одновременно создать два обработчика
+        with _db_handler_lock:
+            if _db_handler is None:
+                _db_handler = DatabaseHandler()
+    return _db_handler
+
 
 if __name__ == '__main__':
     pass

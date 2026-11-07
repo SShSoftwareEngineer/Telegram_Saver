@@ -19,6 +19,7 @@ from asyncio import new_event_loop, set_event_loop
 from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
+from threading import Lock
 from textwrap import shorten
 from dataclasses import dataclass
 from typing import Any, Callable, cast
@@ -991,9 +992,32 @@ def cleanup_loop():
 loop = new_event_loop()
 set_event_loop(loop)
 atexit.register(cleanup_loop)
-# Создаем экземпляр TelegramHandler для работы с клиентом Telegram
-# Create an object of the TelegramHandler class for working with the Telegram client
-tg_handler = TelegramHandler()
+
+# Экземпляр TelegramHandler создается лениво, при первом вызове get_tg_handler(), а не при импорте модуля:
+# конструктор подключается к Telegram и может запросить код входа.
+# The TelegramHandler instance is created lazily on the first get_tg_handler() call, not on module import:
+# the constructor connects to Telegram and may ask for a login code.
+_tg_handler: TelegramHandler | None = None
+_tg_handler_lock = Lock()
+
+
+def get_tg_handler() -> TelegramHandler:
+    """
+    Returns the shared TelegramHandler, creating it on the first call.
+    Возвращает общий TelegramHandler, создавая его при первом вызове.
+    Returns:
+        TelegramHandler: the single instance for working with the Telegram client
+    """
+
+    global _tg_handler
+    if _tg_handler is None:
+        # The lock prevents two threads from creating two clients at the same time
+        # Замок не дает двум потокам одновременно создать два клиента
+        with _tg_handler_lock:
+            if _tg_handler is None:
+                _tg_handler = TelegramHandler()
+    return _tg_handler
+
 
 if __name__ == "__main__":
     pass

@@ -10,8 +10,13 @@ from flask import Flask, render_template, request, send_from_directory, jsonify
 from sqlalchemy import delete, select
 from configs.config import GlobalConst, MessageFileTypes, ProjectDirs, FormCfg, TagsSorting
 from utils import clean_file_path, status_messages
-from telegram_handler import tg_handler, TgFile
-from database_handler import db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
+from telegram_handler import get_tg_handler, TgFile
+from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
+
+# The Flask version works with ready-made handlers as before; they are created here, not on module import.
+# Flask-версия работает с готовыми обработчиками, как и раньше; они создаются здесь, а не при импорте модулей.
+tg_handler = get_tg_handler()
+db_handler = get_db_handler()
 
 tg_saver = Flask(__name__)
 
