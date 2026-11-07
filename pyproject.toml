@@ -1,8 +1,34 @@
+[project]
+name = "telegram-saver"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "SShSoftwareEngineer",email = "126820296+SShSoftwareEngineer@users.noreply.github.com"}
+]
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "flask (>=3.1.3,<4.0.0)",
+    "sqlalchemy (>=2.1.8,<3.0.0)",
+    "telethon (>=1.45.0,<2.0.0)",
+    "python-dotenv (>=1.2.4,<2.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.2.0,<10.0.0)",
+    "mypy (>=2.4.1,<3.0.0)"
+]
+
 [tool.pylint.format]
 max-line-length = 120
 
 [tool.mypy]
-python_version = "3.12"
+python_version = ">=3.14"
 
 [[tool.mypy.overrides]]
 module = "telethon.*"
