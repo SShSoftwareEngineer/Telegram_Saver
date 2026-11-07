@@ -37,7 +37,9 @@
   в БД - данные сообщений.
 - Коммит: `chore: stop tracking .env and sqlite database, fix .gitignore`
 
-### [ ] 2. Зависимости
+### [x] 2. Зависимости
+> Выполнено: зависимости добавлены (верхние границы `<1.0.0`), `requirements.txt` удалён (README описывает только Poetry),
+> mypy исправлен. `poetry.lock` в `.gitignore` - в коммит не попадает.
 - `pyproject.toml`: добавить `fastapi`, `uvicorn`, `jinja2`, `python-multipart`, `python-dateutil`, `cryptg`;
   dev: `httpx`, `pytest`. Flask пока оставить. Решить судьбу `requirements.txt` (удалить или генерировать
   из poetry; в нём лишние `Flask-SocketIO` и пакет `dotenv`).
