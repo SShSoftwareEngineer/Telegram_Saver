@@ -4,9 +4,13 @@
 отмечает его `[x]`, выдаёт текст коммита. Коммитит пользователь в PyCharm. Ветка: `fastapi-migration`.
 
 ## Принятые решения
-- **Telethon: sync-роуты (`def`) + общий замок** (`threading.Lock`) вокруг всех вызовов Telethon и БД.
-  `telegram_handler.py` не переписываем; меняется только момент создания `tg_handler`/`db_handler`
-  (из импорта в `lifespan`). Async-версия `TelegramHandler` - в перспективных работах (см. конец файла).
+- **Telethon: sync-роуты (`def`) + общий замок** (`threading.Lock`) вокруг вызовов БД и глобального состояния
+  (на первых порах и вокруг Telethon). Замок - временное решение, его замена - в перспективных работах.
+- **`telegram_handler.py`**: бизнес-логику не меняем, но работу с Telethon оптимизируем: ленивое создание
+  `tg_handler`/`db_handler` (шаг 3) и event loop Telethon в фоновом потоке (шаг 3.5). Каждый такой случай
+  согласуется заранее. Полностью async-версия `TelegramHandler` - в перспективных работах (см. конец файла).
+- **Транзакции БД**: хелпер `transaction()` с `rollback` (шаг 3); применяется в обработчике ошибок (шаг 5)
+  и в роутах с составной записью (шаги 7-9). Существующие `commit()` в `database_handler.py` не переписываем.
 - Однопользовательское приложение: глобальное состояние (`current_state`, фильтры) сохраняем как есть.
 - Новый код живёт в пакете `web/` (`main.py`, `deps.py`, `routers/`). Старый Flask в `telegram_saver.py`
   остаётся эталоном до шага 13; после него `telegram_saver.py` - тонкий запускатель uvicorn,
@@ -47,13 +51,36 @@
 - Критерий: `poetry install` проходит, `python -c "import fastapi, uvicorn, dateutil"` работает.
 - Коммит: `build: add fastapi stack and missing dependencies`
 
-### [ ] 3. Ленивая инициализация Telethon и БД
-- `tg_handler = TelegramHandler()` и `db_handler = DatabaseHandler()` при импорте заменить на создание
-  по требованию (`get_tg_handler()`/`get_db_handler()` или `init()` для `lifespan`). Логику Telethon не менять.
-  Старый Flask-код должен продолжать работать.
-- БД: `check_same_thread=False`, helper с `rollback` при исключении.
-- Критерий: `import telegram_handler` не подключается к Telegram и не запрашивает код; Flask-версия работает.
+### [x] 3. Ленивая инициализация Telethon и БД
+> Выполнено: фабрики `get_tg_handler()`/`get_db_handler()` (с замком от гонки при создании), `check_same_thread=False`,
+> `DatabaseHandler.transaction()`. Проверено одноразовым скриптом без сети; ручной прогон Flask - за пользователем.
+- `tg_handler = TelegramHandler()` и `db_handler = DatabaseHandler()` при импорте заменить на фабрики с кэшем
+  `get_tg_handler()`/`get_db_handler()` (первый вызов создаёт объект, дальше возвращается он же; создание
+  защищено от гонки). В `lifespan` (шаг 4) - по одному вызову каждой. Логику Telethon не менять.
+- Старый Flask-код продолжает работать: в `telegram_saver.py` вместо импорта готовых объектов -
+  `tg_handler = get_tg_handler()` и `db_handler = get_db_handler()` в начале модуля (остальные ~97 обращений
+  не меняются).
+- БД: `connect_args={"check_same_thread": False}` в `create_engine` (сессия создаётся в одном потоке, используется
+  в потоках пула; защищает её общий замок); хелпер `DatabaseHandler.transaction()` - контекстный менеджер
+  (`commit` при успехе, `rollback` при исключении, исключение пробрасывается). Только добавить, не применять.
+- Критерий: `import telegram_handler, database_handler` не подключается к Telegram, не запрашивает код и не
+  создаёт БД; одноразовый скрипт с замоканными `TelegramClient` и БД во временной папке подтверждает, что
+  повторный вызов `get_*_handler()` возвращает тот же объект; Flask-версия работает (ручной прогон пользователем).
 - Коммит: `refactor: initialize telegram and database handlers lazily`
+
+### [ ] 3.5. Event loop Telethon в фоновом потоке
+> Согласовано отдельным шагом (после 3): другой риск и другой набор правок, чем в шаге 3.
+- Сейчас loop Telethon не крутится между вызовами `run_until_complete` (нет keepalive и фонового переподключения),
+  а вызовы из разных потоков конфликтуют («event loop is already running»).
+- Loop запускается один раз при создании `TelegramHandler` через `run_forever()` в отдельном потоке (daemon).
+  ~10 вызовов `loop.run_until_complete(coro)` заменить на хелпер `_run(coro)` =
+  `asyncio.run_coroutine_threadsafe(coro, loop).result()`. Логика Telethon не меняется.
+- Остановка: корректное закрытие клиента и loop при завершении (в `lifespan` на шаге 4, в Flask - `atexit`).
+- Замок остаётся вокруг БД и состояния; вокруг Telethon он больше не обязателен, но снимается только отдельным
+  решением (перспективные работы).
+- Критерий: Flask-версия работает, как раньше (ручной прогон пользователем); параллельные запросы не дают
+  «loop already running».
+- Коммит: `refactor: run telethon event loop in a background thread`
 
 ### [ ] 4. Каркас FastAPI
 - `web/main.py`: `FastAPI(lifespan=...)`, инициализация обработчиков в `lifespan`, общий замок в `web/deps.py`.
@@ -65,6 +92,8 @@
 
 ### [ ] 5. Обработка ошибок и тестовая инфраструктура
 - Exception handlers: ошибки возвращают JSON (JS ждёт JSON), статусы и логирование вместо `print`.
+  Обработчик вызывает `db_handler.session.rollback()`, чтобы одна ошибка не оставляла сессию в состоянии
+  `PendingRollbackError` до перезапуска.
 - `tests/conftest.py`: TestClient, замоканные `TelegramHandler` и тестовая SQLite-БД в памяти/tmp.
 - Тесты для `/`, `/status_output`, `/media_storage/...`.
 - Критерий: `pytest` зелёный без сети и без Telegram.
@@ -79,7 +108,7 @@
 
 ### [ ] 7. Сохранение сообщений в БД
 - `/tg_save_selected_message_to_db` (самый большой роут): повторяющееся поле формы,
-  рендер `export_message.html` вне запроса, транзакция с откатом при ошибке.
+  рендер `export_message.html` вне запроса, транзакция с откатом при ошибке (`db_handler.transaction()`).
 - Тест с замоканным скачиванием файлов.
 - Коммит: `feat: migrate save-to-database route to FastAPI`
 
@@ -124,8 +153,11 @@
   `tg_message_group` в сохранении.
 
 ## Перспективные работы
-- Асинхронный `TelegramHandler` (`async def` + `await`, без `run_until_complete`) и async-сессии SQLAlchemy -
-  заменит замок и sync-роуты.
+- Асинхронный `TelegramHandler` (`async def` + `await`, без `run_until_complete` и отдельного потока loop) и
+  async-сессии SQLAlchemy - заменит замок и sync-роуты. Делать после завершения миграции (шаг 13).
+- Отказ от глобального `threading.Lock`: сессия SQLAlchemy на запрос (`Depends` с `yield`) и состояние, не
+  хранящее ORM-объекты между запросами (иначе `DetachedInstanceError`); для Telethon - сериализация через loop.
+  Связано с пунктом выше.
 - Миграция на PostgreSQL, Alembic.
 - Экспорт в JSON/CSV/PDF, резервное копирование по расписанию, Docker.
 - Многопользовательский режим (состояние в сессии, а не глобально).
