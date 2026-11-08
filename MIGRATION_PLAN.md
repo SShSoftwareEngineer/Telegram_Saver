@@ -86,7 +86,13 @@
   «loop already running».
 - Коммит: `refactor: run telethon event loop in a background thread`
 
-### [ ] 4. Каркас FastAPI
+### [x] 4. Каркас FastAPI
+> Выполнено: пакет `web/` (`main.py`, `deps.py`, `routers/service.py`). Глобальный `url_for` подтверждён, значения
+> путей кодируются как во Flask. `/status_output` без замка (страница опрашивает его во время долгих операций).
+> Временные заглушки (501) `tg_get_messages`, `tg_get_details` (`routers/telegram.py`) и `db_get_details`
+> (`routers/database.py`) нужны только для `url_for` в шаблонах - заменить реальными роутами на шагах 6 и 8.
+> Запускать `uvicorn` с одним воркером и без `--reload`. Проверено одноразовыми скриптами без сети (HTML `/` с данными
+> и без, JSON `/status_output`, статика, `lifespan`); ручной запуск `uvicorn web.main:app` - за пользователем.
 - `web/main.py`: `FastAPI(lifespan=...)`, инициализация обработчиков в `lifespan`, общий замок в `web/deps.py`.
 - Jinja2Templates, `StaticFiles` для `/static` и `/media_storage` (папка создаётся при старте),
   контекстный процессор (12 переменных из `inject_field_names`), глобальный `url_for` (см. решения).
