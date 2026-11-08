@@ -2,6 +2,7 @@
 The module implements the main logic of the program based on Flask.
 """
 
+import atexit
 import logging
 import shutil
 from datetime import datetime
@@ -17,6 +18,9 @@ from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, D
 # Flask-версия работает с готовыми обработчиками, как и раньше; они создаются здесь, а не при импорте модулей.
 tg_handler = get_tg_handler()
 db_handler = get_db_handler()
+# Disconnect the Telegram client and stop its event loop thread on exit
+# Отключаем клиент Telegram и останавливаем поток его цикла событий при выходе
+atexit.register(tg_handler.close)
 
 tg_saver = Flask(__name__)
 
