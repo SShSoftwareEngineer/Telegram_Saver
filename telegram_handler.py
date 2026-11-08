@@ -8,17 +8,18 @@ class TgDialogSortFilter: a class to represent sorting and filtering options of 
 class TgFile: a class to represent a Telegram message file
 class TgMessageGroup: a class to represent a Telegram message group in this program
 class TgMessageSortFilter: a class to represent sorting and filtering of Telegram message groups.
-tg_handler: an object of the TelegramHandler class for working with the Telegram
-loop: the asyncio event loop for working with the Telegram client
+get_tg_handler: a function returning the shared TelegramHandler (created lazily on the first call)
 convert_text_hyperlinks: a function for converting text hyperlinks in Markdown format [Text](URL) to HTML format
-cleanup_loop: a function called at application exit to close the event loop if it is open
+
+The asyncio event loop of the Telegram client runs in a background daemon thread owned by TelegramHandler
+(see TelegramHandler._run and TelegramHandler.close).
 """
 
-import atexit
-from asyncio import new_event_loop, set_event_loop
+from asyncio import new_event_loop, run_coroutine_threadsafe
 from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
+from threading import Event, Lock, Thread, current_thread
 from textwrap import shorten
 from dataclasses import dataclass
 from typing import Any, Callable, cast
@@ -549,22 +550,88 @@ class TelegramHandler:
 
         # Load Telegram connection settings from file / Загружаем настройки подключения к Telegram из файла
         self._connection_settings = dotenv_values(ProjectDirs.telegram_settings_file)
-        # Creating and launching a Telegram client / Создаем и запускаем клиент Telegram
-        self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
-                                     int(self._connection_settings['API_ID']),
-                                     self._connection_settings['API_HASH'], loop=loop)
-        self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
-        # Get your Telegram username / Получаем имя пользователя Telegram
-        self.me = loop.run_until_complete(self.client.get_me())
-        # Get a list of all Telegram account dialogues / Получаем список всех диалогов аккаунта Telegram
-        self.all_dialogues_list = self.get_dialog_list()
-        # Set the current status of the Telegram client / Устанавливаем текущее состояние клиента Telegram
-        self.current_state.dialog_list = list(self.all_dialogues_list)
-        if self.current_state.dialog_list:
-            # Get the first dialog ID / Получаем ID первого диалога
-            self.current_state.selected_dialog_id = self.current_state.dialog_list[0].dialog_id
-        self.current_state.message_group_list = []
-        self.current_state.message_details = None
+        # Start the event loop of the Telegram client in a background daemon thread
+        # Запускаем цикл событий клиента Telegram в фоновом потоке (daemon)
+        self._loop = new_event_loop()
+        loop_started = Event()
+        # The callback runs only when the loop is actually running: Telethon checks loop.is_running() in start()
+        # Колбэк выполнится, только когда loop реально запущен: Telethon проверяет loop.is_running() в start()
+        self._loop.call_soon_threadsafe(loop_started.set)
+        self._loop_thread = Thread(target=self._loop.run_forever, name='telethon-loop', daemon=True)
+        self._loop_thread.start()
+        loop_started.wait()
+        try:
+            # Creating and launching a Telegram client / Создаем и запускаем клиент Telegram
+            # Telethon ignores the loop argument: client.loop is the loop running in the calling thread,
+            # so every call that touches client.loop must be made from inside our loop thread
+            # Telethon игнорирует аргумент loop: client.loop - это loop, запущенный в вызывающем потоке,
+            # поэтому все вызовы, которые обращаются к client.loop, делаем из потока нашего loop
+            self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
+                                         int(self._connection_settings['API_ID']),
+                                         self._connection_settings['API_HASH'])
+
+            async def start_client():
+                await self.client.start(self._connection_settings['PHONE'], self._connection_settings['PASSWORD'])
+
+            self._run(start_client())
+            # Get your Telegram username / Получаем имя пользователя Telegram
+            self.me = self._run(self.client.get_me())
+            # Get a list of all Telegram account dialogues / Получаем список всех диалогов аккаунта Telegram
+            self.all_dialogues_list = self.get_dialog_list()
+            # Set the current status of the Telegram client / Устанавливаем текущее состояние клиента Telegram
+            self.current_state.dialog_list = list(self.all_dialogues_list)
+            if self.current_state.dialog_list:
+                # Get the first dialog ID / Получаем ID первого диалога
+                self.current_state.selected_dialog_id = self.current_state.dialog_list[0].dialog_id
+            self.current_state.message_group_list = []
+            self.current_state.message_details = None
+        except BaseException:
+            # Do not leave the loop thread running if the login failed or was interrupted
+            # Не оставляем поток loop работать, если вход не удался или был прерван
+            self.close()
+            raise
+
+    def _run(self, coro):
+        """
+        Runs a coroutine in the Telethon event loop thread and waits for its result (no timeout).
+        Выполняет корутину в потоке цикла событий Telethon и ждет результат (без таймаута).
+        Args:
+            coro: the coroutine to run
+        Returns:
+            the result of the coroutine
+        """
+
+        if current_thread() is self._loop_thread:
+            # Waiting for the loop from inside the loop would block it forever
+            # Ожидание loop из самого loop заблокировало бы его навсегда
+            coro.close()
+            raise RuntimeError('TelegramHandler._run() must not be called from the Telethon loop thread')
+        return run_coroutine_threadsafe(coro, self._loop).result()
+
+    def close(self):
+        """
+        Disconnects the Telegram client and stops the event loop thread. Safe to call more than once.
+        Отключает клиент Telegram и останавливает поток цикла событий. Можно вызывать повторно.
+        """
+
+        if self._loop.is_closed():
+            return
+        if self._loop_thread.is_alive():
+            client = getattr(self, 'client', None)
+            if client is not None:
+                # disconnect() creates a task in the loop, so it must be called from inside the loop thread
+                # disconnect() создает задачу в loop, поэтому его нужно вызывать из потока loop
+                async def disconnect_client():
+                    await client.disconnect()
+
+                try:
+                    self._run(disconnect_client())
+                except Exception as error:
+                    print(f'Telegram client disconnect error: {error}')
+            self._loop.call_soon_threadsafe(self._loop.stop)
+            self._loop_thread.join(timeout=5)
+        if not self._loop.is_running():
+            self._loop.close()
 
     def get_entity(self, entity_id: int) -> Any:
         """
@@ -575,7 +642,7 @@ class TelegramHandler:
         Returns:
             Any: Telegram entity
         """
-        entity = loop.run_until_complete(self.client.get_entity(entity_id))
+        entity = self._run(self.client.get_entity(entity_id))
         return entity
 
     def get_dialog_by_id(self, dialog_id: int) -> TgDialog | None:
@@ -611,7 +678,7 @@ class TelegramHandler:
         """
 
         status_messages.mess_update('Loading chat list from Telegram', '', True)
-        dialogs = loop.run_until_complete(self.client.get_dialogs())
+        dialogs = self._run(self.client.get_dialogs())
         dialog_list = []
         for dialog in dialogs:
             tg_dialog = TgDialog(dialog)
@@ -642,20 +709,20 @@ class TelegramHandler:
         # Set filter parameters by minimum date via message ID
         # Устанавливаем параметры фильтрации по минимальной дате через ID сообщений
         if self.message_sort_filter.date_from:
-            message_from = loop.run_until_complete(
+            message_from = self._run(
                 self.client.get_messages(entity=dialog, offset_date=self.message_sort_filter.date_from, limit=1))
             message_filters['min_id'] = message_from[0].id if message_from else 0
         # Set filter parameters by maximum date via message ID
         # Устанавливаем параметры фильтрации по максимальной дате через id сообщений
         if self.message_sort_filter.date_to:
-            message_to = loop.run_until_complete(
+            message_to = self._run(
                 self.client.get_messages(entity=dialog, offset_date=self.message_sort_filter.date_to, limit=1,
                                          reverse=True))
             message_filters['max_id'] = message_to[0].id if message_to else maxsize
         # Setting the sort order parameter by date / Установка параметра порядка сортировки по дате
         message_filters['reverse'] = self.message_sort_filter.sort_order
         # Getting a list of messages according to filters / Получение списка сообщений в соответствии с фильтрами
-        message_list = loop.run_until_complete(self.client.get_messages(**message_filters))
+        message_list = self._run(self.client.get_messages(**message_filters))
         status_messages.mess_update('', f'{len(message_list)} messages loaded')
         return message_list
 
@@ -893,7 +960,7 @@ class TelegramHandler:
                 downloading_param['file'] = Path(ProjectDirs.media_dir) / tg_file.file_path
                 if tg_file.file_type == MessageFileTypes.THUMBNAIL:
                     downloading_param['thumb'] = -1
-                result = loop.run_until_complete(self.client.download_media(**downloading_param))
+                result = self._run(self.client.download_media(**downloading_param))
         else:
             # If the file already exists, return its full path / Если файл уже существует, то возвращаем его полный путь
             result = tg_file.file_path
@@ -917,7 +984,7 @@ class TelegramHandler:
         for counter, downloaded_file in enumerate(downloaded_file_list, 1):
             progress = f'{counter} / {len(downloaded_file_list)}'
             dialog = self.get_entity(downloaded_file['dialog_id'])
-            message = loop.run_until_complete(
+            message = self._run(
                 self.client.get_messages(entity=dialog, ids=downloaded_file['message_id']))
             if message:
                 # If the message is found, create a TgFile object and load the file
@@ -973,27 +1040,31 @@ def convert_text_hyperlinks(message_text: str | None) -> str | None:
     return message_text
 
 
-def cleanup_loop():
+# Экземпляр TelegramHandler создается лениво, при первом вызове get_tg_handler(), а не при импорте модуля:
+# конструктор подключается к Telegram и может запросить код входа.
+# The TelegramHandler instance is created lazily on the first get_tg_handler() call, not on module import:
+# the constructor connects to Telegram and may ask for a login code.
+_tg_handler: TelegramHandler | None = None
+_tg_handler_lock = Lock()
+
+
+def get_tg_handler() -> TelegramHandler:
     """
-    Called when the application terminates and closes the event loop if it is open.
-    Вызывается при завершении приложения и закрывает цикл событий, если он открыт
+    Returns the shared TelegramHandler, creating it on the first call.
+    Возвращает общий TelegramHandler, создавая его при первом вызове.
+    Returns:
+        TelegramHandler: the single instance for working with the Telegram client
     """
 
-    if loop.is_running():
-        loop.stop()
-    if not loop.is_closed():
-        loop.close()
-    set_event_loop(None)
+    global _tg_handler
+    if _tg_handler is None:
+        # The lock prevents two threads from creating two clients at the same time
+        # Замок не дает двум потокам одновременно создать два клиента
+        with _tg_handler_lock:
+            if _tg_handler is None:
+                _tg_handler = TelegramHandler()
+    return _tg_handler
 
-
-# Создаем и сохраняем цикл событий для работы с клиентом Telegram
-# Create and save the asyncio event loop for working with the Telegram client
-loop = new_event_loop()
-set_event_loop(loop)
-atexit.register(cleanup_loop)
-# Создаем экземпляр TelegramHandler для работы с клиентом Telegram
-# Create an object of the TelegramHandler class for working with the Telegram client
-tg_handler = TelegramHandler()
 
 if __name__ == "__main__":
     pass
