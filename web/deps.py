@@ -5,11 +5,12 @@ Shared objects of the web layer: the global state lock, Jinja2 templates, templa
 
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import quote
-from fastapi import Request
+from fastapi import Depends, Request
 from jinja2 import pass_context
 from jinja2.runtime import Context
+from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
 from configs.config import GlobalConst, MessageFileTypes, FormCfg
 from telegram_handler import get_tg_handler
@@ -73,3 +74,42 @@ templates = Jinja2Templates(directory=BASE_DIR / 'templates', context_processors
 # Replace the built-in Starlette url_for (it always returns absolute URLs)
 # Заменяем встроенный url_for Starlette (он всегда возвращает абсолютные URL)
 templates.env.globals['url_for'] = url_for
+
+
+def render_fragment(request: Request, name: str) -> str:
+    """
+    Renders a template to an HTML string (the Flask `render_template` equivalent) for the JSON responses: the page
+    scripts put these fragments into the page elements. `TemplateResponse` returns a whole response, not a string, and
+    `Template.render` does not call the context processors, so the context is built here.
+    Рендерит шаблон в HTML-строку (аналог Flask `render_template`) для JSON-ответов: скрипты страницы вставляют эти
+    фрагменты в элементы страницы. `TemplateResponse` возвращает целый ответ, а не строку, а `Template.render` не
+    вызывает контекстные процессоры, поэтому контекст собирается здесь.
+    """
+    context = {'request': request, **inject_field_names(request)}
+    return templates.get_template(name).render(context)
+
+
+async def read_form(request: Request) -> FormData:
+    """
+    Reads the submitted form. The field names are dynamic (see `FormCfg`), so `Form(...)` parameters do not fit.
+    The dependency is async, so a route that uses it can stay a regular `def` (it runs in a thread).
+    Читает отправленную форму. Имена полей динамические (см. `FormCfg`), поэтому параметры `Form(...)` не подходят.
+    Зависимость асинхронная, поэтому использующий ее роут может остаться обычным `def` (он выполняется в потоке).
+    """
+    return await request.form()
+
+
+FormDep = Annotated[FormData, Depends(read_form)]
+
+
+def form_str(form: FormData, key: Any) -> Any:
+    """
+    Value of a text form field, or None if the field is absent (like `request.form.get` in Flask). It is typed `Any`
+    on purpose: the `FormCfg` dictionaries mix strings and lists, and the handler methods are annotated `str`
+    although they receive None for a missing field, as in Flask.
+    Значение текстового поля формы или None, если поля нет (как `request.form.get` во Flask). Тип `Any` намеренный:
+    словари `FormCfg` смешивают строки и списки, а методы обработчика аннотированы `str`, хотя получают None для
+    отсутствующего поля, как во Flask.
+    """
+    value = form.get(key)
+    return value if isinstance(value, str) else None

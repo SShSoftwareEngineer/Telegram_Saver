@@ -45,7 +45,13 @@ def tg_handler(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     fake = SimpleNamespace(
         me=SimpleNamespace(id=1),
         message_sort_filter=SimpleNamespace(date_from_default='2026-01-01'),
+        dialog_sort_filter=MagicMock(),
         current_state=TgCurrentState(),
+        # Reading methods: the tests set the return values they need
+        # Методы чтения: тесты задают нужные им возвращаемые значения
+        get_dialog_list=MagicMock(return_value=[]),
+        get_message_group_list=MagicMock(return_value=[]),
+        get_message_detail=MagicMock(return_value=None),
         close=MagicMock(),
     )
     monkeypatch.setattr(telegram_handler, '_tg_handler', fake)

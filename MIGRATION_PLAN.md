@@ -117,7 +117,16 @@
 - Критерий: `pytest` зелёный без сети и без Telegram.
 - Коммит: `feat: add JSON error handlers and test infrastructure`
 
-### [ ] 6. Роуты Telegram (чтение и фильтры)
+### [x] 6. Роуты Telegram (чтение и фильтры)
+> Выполнено: 5 роутов в `web/routers/telegram.py` (заглушки 501 заменены), все `def` под `state_lock` на весь запрос
+> (включая вызовы Telethon). В `web/deps.py`: `render_fragment(request, name)` (аналог `render_template`: строка для
+> JSON, с контекстным процессором), `FormDep` (`Annotated` + async-зависимость `read_form`: форма читается через
+> `await request.form()`, роут остается `def`), `form_str` (None для отсутствующего поля, как `request.form.get`).
+> Отличия от Flask (согласованы): `dialog_id: int` - нечисловой ID дает 422 в JSON вместо 500 (отрицательные ID
+> каналов и групп проходят); убрана недостижимая ветка `if message_group_id else None` в `tg_get_details`.
+> Тесты: `tests/test_telegram_routes.py` (статус, ключи JSON, отрицательные ID, 422, фильтры, ошибка Telegram) и
+> ВРЕМЕННЫЙ `tests/test_flask_parity.py` - сравнение JSON и HTML с Flask на одном состоянии-заглушке (удалить на шаге 12).
+> Узкие замки (сеть вне замка) и `db_handler` как зависимость - в перспективных работах.
 - `web/routers/telegram.py`: `/tg_dialogs`, `/tg_messages/{dialog_id}`, `/tg_details/{dialog_id}/{message_group_id}`,
   `/tg_dialog_apply_filters`, `/tg_message_apply_filters`. Учесть отрицательные `dialog_id`.
 - Тесты каждого роута: ответ, статус, ключи JSON.
@@ -152,7 +161,7 @@
 - Коммит: `feat: run application via uvicorn`
 
 ### [ ] 12. Удаление Flask
-- Удалить Flask-код и зависимость, `requirements.txt`, неиспользуемое.
+- Удалить Flask-код и зависимость, `requirements.txt`, неиспользуемое, а также временный `tests/test_flask_parity.py`.
 - Критерий: `grep -ri flask` по проекту чист, тесты и ручной прогон проходят.
 - Коммит: `refactor: remove Flask code and dependency`
 
@@ -176,11 +185,18 @@
 - Отказ от глобального `threading.Lock`: сессия SQLAlchemy на запрос (`Depends` с `yield`) и состояние, не
   хранящее ORM-объекты между запросами (иначе `DetachedInstanceError`); для Telethon - сериализация через loop.
   Связано с пунктом выше.
+  Сейчас роуты держат замок на весь запрос, включая сетевые вызовы Telethon (`/` ждёт, пока идёт долгий роут).
+  Узкие замки (сеть вне замка, под замком только запись состояния) требуют копии фильтров на запрос: методы
+  `get_dialog_list`/`get_message_group_list`/`get_message_detail` читают общее состояние и фильтры.
 - Тесты при переходе на async: ресурсы с привязкой к event loop (async-движок/сессии SQLAlchemy, async Telethon)
   создавать в `lifespan`, а не лениво; `TestClient` держать в `with` (иначе каждый запрос идёт в новом loop и
   второй падает «another operation is in progress»); для async-тестов - `httpx.AsyncClient` + `ASGITransport` +
   `asgi-lifespan` (`ASGITransport` сам `lifespan` не запускает).
 - Тесты: заменить `httpx` на `httpx2` (Starlette считает `httpx` в `TestClient` устаревшим, pytest выдаёт предупреждение).
+- Оптимизация фронтенда (не обязательно через HTMX): сейчас роуты отдают JSON с HTML-фрагментами, ключи которого
+  совпадают с `id` элементов (`updateElementsFromResponse` в `static/js/my_scripts.js`). Рассмотреть явный контракт
+  вместо неявного соответствия `id`, меньше знания сервера о вёрстке, частичные обновления, индикаторы загрузки,
+  обработку ошибок. Делать после миграции, поведение при этом меняется.
 - Миграция на PostgreSQL, Alembic.
 - Экспорт в JSON/CSV/PDF, резервное копирование по расписанию, Docker.
 - Многопользовательский режим (состояние в сессии, а не глобально).
