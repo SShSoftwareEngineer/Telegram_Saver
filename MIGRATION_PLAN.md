@@ -9,8 +9,8 @@
 - **`telegram_handler.py`**: бизнес-логику не меняем, но работу с Telethon оптимизируем: ленивое создание
   `tg_handler`/`db_handler` (шаг 3) и event loop Telethon в фоновом потоке (шаг 3.5). Каждый такой случай
   согласуется заранее. Полностью async-версия `TelegramHandler` - в перспективных работах (см. конец файла).
-- **Транзакции БД**: хелпер `transaction()` с `rollback` (шаг 3); применяется в обработчике ошибок (шаг 5)
-  и в роутах с составной записью (шаги 7-9). Существующие `commit()` в `database_handler.py` не переписываем.
+- **Транзакции БД**: хелпер `transaction()` с `rollback` (шаг 3); применяется в роутах с составной
+  записью (шаги 7-9), а обработчик ошибок (шаг 5) только вызывает `rollback()`. Существующие `commit()` в `database_handler.py` не переписываем.
 - Однопользовательское приложение: глобальное состояние (`current_state`, фильтры) сохраняем как есть.
 - Новый код живёт в пакете `web/` (`main.py`, `deps.py`, `routers/`). Старый Flask в `telegram_saver.py`
   остаётся эталоном до шага 13; после него `telegram_saver.py` - тонкий запускатель uvicorn,
@@ -100,7 +100,15 @@
 - Критерий: `uvicorn web.main:app` стартует, `/` отдаёт ту же страницу, что Flask, `/status_output` - тот же JSON.
 - Коммит: `feat: add FastAPI app skeleton with lifespan, templates and static files`
 
-### [ ] 5. Обработка ошибок и тестовая инфраструктура
+### [x] 5. Обработка ошибок и тестовая инфраструктура
+> Выполнено: `web/errors.py` (`register_error_handlers`): ошибки отдаются как `{"error": ...}` (404/405/422/500).
+> Обработчик 500 - обычная `def` (Starlette запускает её в потоке): под `state_lock` делает `rollback()`, пишет ошибку
+> в статус-бар (с `html.escape`, т.к. строка идёт в `innerHTML`). `tests/`: autouse-фикстура `chdir` во временную папку
+> (пути `ProjectDirs` относительные - после P4 заменить на подмену путей), заглушка `TelegramHandler`, настоящий
+> `DatabaseHandler` на временном SQLite, подмены через `monkeypatch`. `client` (`with TestClient`, исключения
+> пробрасываются) и `error_client` (`raise_server_exceptions=False`). 11 тестов зелёные без сети.
+> `transaction()` в обработчике не применяется (там нужен только `rollback()`) - он для шагов 7-9.
+> Предупреждение pytest: `httpx` с `starlette.testclient` устарел, рекомендуется `httpx2` - вынесено в перспективные работы.
 - Exception handlers: ошибки возвращают JSON (JS ждёт JSON), статусы и логирование вместо `print`.
   Обработчик вызывает `db_handler.session.rollback()`, чтобы одна ошибка не оставляла сессию в состоянии
   `PendingRollbackError` до перезапуска.
@@ -168,6 +176,11 @@
 - Отказ от глобального `threading.Lock`: сессия SQLAlchemy на запрос (`Depends` с `yield`) и состояние, не
   хранящее ORM-объекты между запросами (иначе `DetachedInstanceError`); для Telethon - сериализация через loop.
   Связано с пунктом выше.
+- Тесты при переходе на async: ресурсы с привязкой к event loop (async-движок/сессии SQLAlchemy, async Telethon)
+  создавать в `lifespan`, а не лениво; `TestClient` держать в `with` (иначе каждый запрос идёт в новом loop и
+  второй падает «another operation is in progress»); для async-тестов - `httpx.AsyncClient` + `ASGITransport` +
+  `asgi-lifespan` (`ASGITransport` сам `lifespan` не запускает).
+- Тесты: заменить `httpx` на `httpx2` (Starlette считает `httpx` в `TestClient` устаревшим, pytest выдаёт предупреждение).
 - Миграция на PostgreSQL, Alembic.
 - Экспорт в JSON/CSV/PDF, резервное копирование по расписанию, Docker.
 - Многопользовательский режим (состояние в сессии, а не глобально).
