@@ -74,6 +74,15 @@ def test_get_messages_highlights_own_messages(client: TestClient, tg_handler: Si
     assert response.json()['tg_messages'].count('my-message-in-list') == 1
 
 
+def test_get_messages_files_report_on_its_own_line(client: TestClient, tg_handler: SimpleNamespace):
+    """The files report is a block, so it stays on its own line also for a message without text"""
+    group = make_message_group()
+    group.text = ''
+    tg_handler.get_message_group_list.return_value = [group]
+    response = client.get(f'/tg_messages/{CHANNEL_ID}')
+    assert '<div><b>1 photo</b></div>' in response.json()['tg_messages']
+
+
 def test_get_messages_marks_saved(client: TestClient, tg_handler: SimpleNamespace, monkeypatch: pytest.MonkeyPatch):
     """A message group that is already in the database is marked as saved / Сохраненная группа помечается"""
     group = make_message_group()

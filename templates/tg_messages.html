@@ -54,7 +54,7 @@ Variables:
 
             {# Displaying information about files in a message group / Вывод строки информации о файлах в группе сообщений #}
             {% if tg_message.files_report %}
-                <b>{{ tg_message.files_report }}</b>
+                <div><b>{{ tg_message.files_report }}</b></div>
             {% endif %}
         </li>
     {% endfor %}
