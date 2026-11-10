@@ -76,17 +76,19 @@ templates = Jinja2Templates(directory=BASE_DIR / 'templates', context_processors
 templates.env.globals['url_for'] = url_for
 
 
-def render_fragment(request: Request, name: str) -> str:
+def render_fragment(request: Request, name: str, **context: Any) -> str:
     """
     Renders a template to an HTML string (the Flask `render_template` equivalent) for the JSON responses: the page
     scripts put these fragments into the page elements. `TemplateResponse` returns a whole response, not a string, and
-    `Template.render` does not call the context processors, so the context is built here.
+    `Template.render` does not call the context processors, so the context is built here. The explicit `context`
+    values override the context processor ones (as in Flask).
     Рендерит шаблон в HTML-строку (аналог Flask `render_template`) для JSON-ответов: скрипты страницы вставляют эти
     фрагменты в элементы страницы. `TemplateResponse` возвращает целый ответ, а не строку, а `Template.render` не
-    вызывает контекстные процессоры, поэтому контекст собирается здесь.
+    вызывает контекстные процессоры, поэтому контекст собирается здесь. Явно переданные значения `context`
+    перекрывают значения контекстного процессора (как во Flask).
     """
-    context = {'request': request, **inject_field_names(request)}
-    return templates.get_template(name).render(context)
+    full_context = {'request': request, **inject_field_names(request), **context}
+    return templates.get_template(name).render(full_context)
 
 
 async def read_form(request: Request) -> FormData:
@@ -113,3 +115,13 @@ def form_str(form: FormData, key: Any) -> Any:
     """
     value = form.get(key)
     return value if isinstance(value, str) else None
+
+
+def form_list(form: FormData, key: Any) -> list[str]:
+    """
+    All values of a repeated text form field (like `request.form.getlist` in Flask). Starlette types them as
+    `str | UploadFile`; the fields here are text only, so uploaded files are skipped.
+    Все значения повторяющегося текстового поля формы (как `request.form.getlist` во Flask). Starlette типизирует их как
+    `str | UploadFile`; здесь поля только текстовые, поэтому загруженные файлы пропускаются.
+    """
+    return [value for value in form.getlist(key) if isinstance(value, str)]
