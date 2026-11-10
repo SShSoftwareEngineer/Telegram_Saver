@@ -18,11 +18,11 @@ def make_dialog(dialog_id: int = CHANNEL_ID, title: str = 'Test chat') -> Simple
     return SimpleNamespace(dialog_id=dialog_id, title=title)
 
 
-def make_message_group(dialog_id: int = CHANNEL_ID, number: int = 1) -> SimpleNamespace:
-    """Fake message group with the attributes `tg_messages.html` uses / Заглушка группы сообщений"""
+def make_message_group(dialog_id: int = CHANNEL_ID, number: int = 1, sender_id: int | None = 1) -> SimpleNamespace:
+    """Fake message group with the attributes `tg_messages.html` uses (sender 1 is the fake account `tg_me`)
+    Заглушка группы сообщений (отправитель 1 - заглушка аккаунта `tg_me`)"""
     return SimpleNamespace(grouped_id=f'{dialog_id}_{number}', dialog_id=dialog_id, date=datetime(2026, 1, 2, 3, 4, 5),
-                           text='Hello\nworld', from_id=SimpleNamespace(user_id=1), files_report='1 photo',
-                           saved_to_db=False)
+                           text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
 
 
 def make_details(message_group_id: str = f'{CHANNEL_ID}_1') -> dict:
@@ -61,6 +61,17 @@ def test_get_messages(client: TestClient, tg_handler: SimpleNamespace, dialog_id
     tg_handler.get_message_group_list.assert_called_once_with(dialog_id)
     assert tg_handler.current_state.selected_dialog_id == dialog_id
     assert len(tg_handler.current_state.message_group_list) == 2
+
+
+def test_get_messages_highlights_own_messages(client: TestClient, tg_handler: SimpleNamespace):
+    """Only the messages of the logged-in account (sender ID equals `tg_me.id`) get the own-message style; messages
+    of others, of channels (negative ID) and without a sender do not / Подсветка только своих сообщений"""
+    tg_handler.get_message_group_list.return_value = [
+        make_message_group(number=1, sender_id=1), make_message_group(number=2, sender_id=2),
+        make_message_group(number=3, sender_id=-1001234567891), make_message_group(number=4, sender_id=None)]
+    response = client.get(f'/tg_messages/{CHANNEL_ID}')
+    assert response.status_code == 200
+    assert response.json()['tg_messages'].count('my-message-in-list') == 1
 
 
 def test_get_messages_marks_saved(client: TestClient, tg_handler: SimpleNamespace, monkeypatch: pytest.MonkeyPatch):

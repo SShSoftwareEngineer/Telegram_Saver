@@ -62,7 +62,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
-    from_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
@@ -83,7 +83,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
                        'message_group_id': self.grouped_id,
                        'date': self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
                        'text': self.text if self.text else '',
-                       'from_id': self.from_id,
+                       'sender_id': self.sender_id,
                        'files': [{'file_path': db_file.file_path,
                                   'alt_text': db_file.file_type.alt_text,
                                   'type_name': db_file.file_type.name if db_file.file_type else ''}

@@ -273,7 +273,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         date (datetime | None): date of message group
         text (str): text of message group
         truncated_text (str): truncated text of message group for HTML templates
-        from_id (int | None): message sender ID
+        sender_id (int | None): message sender ID (the number `message.sender_id`, not the raw `Peer` object)
         files_report (str | None): summary of message group files
         saved_to_db (bool): database saving status
     """
@@ -285,7 +285,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     date: datetime | None = None
     text: str = ''
     truncated_text: str = ''
-    from_id: int | None = None
+    sender_id: int | None = None
     files_report: str | None = ''
     saved_to_db: bool = False
 
@@ -310,7 +310,11 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         Attributes:
             message (Message): added message
         """
-        self.from_id = message.from_id if self.from_id is None else self.from_id
+        # `sender_id` is a number (the marked ID); `message.from_id` is a raw `Peer` object that the database and the
+        # templates cannot use. It can be None, e.g. for own outgoing messages in a private chat.
+        # `sender_id` - число (маркированный ID); `message.from_id` - сырой объект `Peer`, который не подходит для БД и
+        # шаблонов. Может быть None, например у собственных исходящих сообщений в личном чате.
+        self.sender_id = message.sender_id if self.sender_id is None else self.sender_id
         self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
         self.ids.append(message.id)
         if message.text:

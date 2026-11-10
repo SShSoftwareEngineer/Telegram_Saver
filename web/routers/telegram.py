@@ -183,7 +183,7 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                                                              'text': tg_message_group.text,
                                                              'truncated_text': tg_message_group.truncated_text,
                                                              'files_report': tg_message_group.files_report,
-                                                             'from_id': tg_message_group.from_id,
+                                                             'sender_id': tg_message_group.sender_id,
                                                              'dialog_id': tg_dialog.dialog_id})
                 # Set the relationship for the message group, if not already set
                 # Устанавливаем relationship для группы сообщений, если не установлен
