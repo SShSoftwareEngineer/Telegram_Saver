@@ -1,9 +1,13 @@
 """
-Tests of `DatabaseHandler.transaction()` without the web layer: commit on success, rollback and re-raise on an error.
-Тесты `DatabaseHandler.transaction()` без веб-слоя: commit при успехе, rollback и повторный выброс при ошибке.
+Tests of `DatabaseHandler` without the web layer: `transaction()` (commit on success, rollback and re-raise on an
+error) and the creation of the database folder.
+Тесты `DatabaseHandler` без веб-слоя: `transaction()` (commit при успехе, rollback и повторный выброс при ошибке) и
+создание папки базы данных.
 """
 
+from pathlib import Path
 import pytest
+from configs.config import ProjectDirs
 from database_handler import DatabaseHandler, DbDialog
 
 
@@ -46,3 +50,15 @@ def test_transaction_rolls_back_after_database_error(db_handler: DatabaseHandler
     with db_handler.transaction():
         db_handler.upsert_record(DbDialog, {'dialog_id': 6}, {'title': 'After error', 'dialog_type_id': 1})
     assert dialog_titles(db_handler) == ['After error']
+
+
+def test_database_folder_is_created(work_dir: Path):
+    """On a fresh clone there is no `database/` folder: the handler creates it instead of failing with
+    "unable to open database file" / В свежем клоне нет папки `database/`: обработчик создает ее, а не падает"""
+    (work_dir / ProjectDirs.data_base_dir).rmdir()
+    handler = DatabaseHandler()
+    try:
+        assert (work_dir / ProjectDirs.data_base_file).exists()
+    finally:
+        handler.session.close()
+        handler.engine.dispose()

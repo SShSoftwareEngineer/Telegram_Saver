@@ -452,6 +452,9 @@ class DatabaseHandler:
         Инициализирует обработчик базы данных, создавая движок, сессию и необходимые таблицы.
         """
 
+        # SQLite creates the database file but not its folder (a fresh clone has no `database/`)
+        # SQLite создает файл базы данных, но не его папку (в свежем клоне нет `database/`)
+        Path(ProjectDirs.data_base_dir).mkdir(parents=True, exist_ok=True)
         # Creating database engine and session
         # check_same_thread=False: the session is created in one thread but used from the web server's thread pool;
         # access is serialized by a shared lock outside this class.
