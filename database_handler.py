@@ -632,7 +632,7 @@ class DatabaseHandler:
                       'text': current_message_group.text if current_message_group.text else '',
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
-                      'tags': current_message_group.tags if current_message_group.tags else None}
+                      'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
         message_date = db_details.get('date')
         message_date_str = message_date.strftime(
