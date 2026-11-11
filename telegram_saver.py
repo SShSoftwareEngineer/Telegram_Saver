@@ -623,7 +623,7 @@ def db_tag_update_everywhere():
 
 
 @tg_saver.route('/db_all_tag_sorting', methods=['POST'])
-def db_all_tag_sorting():
+def db_tag_all_sorting():
     """
     Sorting all database tags in the select all tags field
     Сортировка всех тегов базы данных в поле выбора всех тегов

@@ -69,7 +69,7 @@
 - Коммит: `refactor: initialize telegram and database handlers lazily`
 
 ### [x] 3.5. Event loop Telethon в фоновом потоке
-> Выполнено: loop и daemon-поток создаются в `TelegramHandler.__init__`, хелпер `_run(coro)` (без таймаута, с защитой
+> Выполнено: loop и daemon-поток создаются в `TelegramHandler.__init__`, хелпер `_run(coro)` (без тайм-аута, с защитой
 > от вызова из потока loop), `close()` (отключение клиента через корутину внутри loop, остановка и закрытие loop).
 > Telethon 1.45 игнорирует `loop=`: `client.loop` - loop, запущенный в вызывающем потоке. Поэтому `start()` и
 > `disconnect()` вызываются внутри корутин в потоке loop (иначе вход идёт на чужом loop). В Flask - `atexit`.
@@ -154,14 +154,30 @@
 - Тест с замоканным скачиванием файлов.
 - Коммит: `feat: migrate save-to-database route to FastAPI`
 
-### [ ] 8. Роуты БД
+### [x] 8. Роуты БД
+> Выполнено: 4 роута в `web/routers/database.py` (заглушка 501 заменена), все `def` под `state_lock`. Отличия от Flask
+> (согласованы): (1) удаление сообщений через ORM (`session.delete`) в `db_handler.transaction()`: массовый
+> `DELETE` во Flask падал с `IntegrityError` на группах с тегами (у связи с тегами нет `ondelete`); (2) после удаления
+> вызывается `get_all_tag_list()` (тег без сообщений удаляется автоматически), а в ответ добавлены списки
+> `db_all_detail_tags` и очищенное `db_current_message_tags` (раньше тег висел до следующей операции с тегами); (3) папка
+> экспорта создается перед записью HTML (во Flask первый экспорт без файлов падал с `FileNotFoundError`). Случай `None`:
+> теги сообщения без тегов теперь `[]` (отдельный коммит `82b5886`). Несуществующий ID в `/db_details` - 500 в JSON, как во
+> Flask. Flask-эталон не менялся: баг удаления остается в нем до шага 12. Тесты: `tests/test_database_routes.py`
+> (12 тестов, без сравнения с Flask: роуты пишут в БД и на диск). Замеченное (поведение Flask, исправление перенесено
+> на шаг 9): при применении фильтров поле «Message Tags» (`db_current_message_tags`) не очищается, хотя детали
+> сообщения очищаются.
 - `/db_message_apply_filters`, `/db_details/{message_group_id}` (случай `None`),
   `/db_export_selected_message_to_html`, `/db_delete_selected_from_database`.
 - Коммит: `feat: migrate database message routes to FastAPI`
 
 ### [ ] 9. Роуты тегов
 - `/db_tag_add`, `/db_tag_remove`, `/db_tag_update`, `/db_tag_update_everywhere`, `/db_all_tag_sorting`;
-  общий хелпер вместо пяти копий разбора формы. Случай `selected_message_group_id is None`.
+  общий хелпер вместо пяти копий разбора формы. Случай `selected_message_group_id is None`: `add_tag_to_message_group`
+  падает на `.one()` с `NoResultFound` (воспроизведено в консоли Flask). Заодно (согласовано): URL
+  `/db_all_tag_sorting` → `/db_tag_all_sorting` (в роуте и в `templates/db_detail_tags.html`); функция во Flask уже
+  переименована в `db_tag_all_sorting`. Также (согласовано): `/db_message_apply_filters` очищает поле «Message Tags»
+  (`'db_current_message_tags': ''`) вместе с деталями (+ тест); решить, сбрасывать ли `selected_message_group_id`
+  при закрытии деталей.
 - Коммит: `feat: migrate tag routes to FastAPI`
 
 ### [ ] 10. Сервисное обслуживание
