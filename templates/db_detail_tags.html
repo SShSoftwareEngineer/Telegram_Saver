@@ -79,7 +79,7 @@ Variables:
 {# All tags list sorting / Сортировка списка всех тегов #}
 <label for="{{ form_cfg.all_detail_tags }}" class="group-label vertical-spread-detail-tags">All tags</label>
 
-<form onchange="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_all_tag_sorting')">
+<form onchange="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_all_sorting')">
     <div id="{{ form_cfg.tag_sorting_field }}">
         <input type="radio" id="db_tag_sort_field_0" name="{{ form_cfg.tag_sorting_field }}" value="0" checked>
         <label for="db_tag_sort_field_0">Sort by name</label><br>

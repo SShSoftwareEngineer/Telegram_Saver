@@ -622,7 +622,7 @@ def db_tag_update_everywhere():
                     form_cfg['all_detail_tags']: all_tags_select})
 
 
-@tg_saver.route('/db_all_tag_sorting', methods=['POST'])
+@tg_saver.route('/db_tag_all_sorting', methods=['POST'])
 def db_tag_all_sorting():
     """
     Sorting all database tags in the select all tags field

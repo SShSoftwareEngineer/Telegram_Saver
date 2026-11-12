@@ -41,12 +41,16 @@ def db_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         # Getting list of messages based on filters and sorting
         # Получение списка сообщений с учетом фильтров и сортировки
         db_handler.current_state.message_group_list = db_handler.get_message_group_list()
+        # The details are closed: the selected message is reset too, so the tag buttons do not act on a closed message
+        # Детали закрыты: выбранное сообщение тоже сбрасывается, чтобы кнопки тегов не действовали на закрытое сообщение
         db_handler.current_state.message_details = None  # type: ignore[assignment]
-        # Updating the message list, message counter, and clearing the message details
-        # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения
+        db_handler.current_state.selected_message_group_id = ''
+        # Updating the message list, message counter, and clearing the message details and its tags
+        # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения и его тегов
         return JSONResponse({'db_messages': render_fragment(request, 'db_messages.html'),
                              'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
-                             'db_details': '', })
+                             'db_details': '',
+                             FormCfg.db_detail_tags['curr_message_tags']: '', })
 
 
 @router.get('/db_details/{message_group_id}')
@@ -155,6 +159,7 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
         # Обновление списка сообщений после удаления из базы данных
         db_handler.current_state.message_group_list = db_handler.get_message_group_list()
         db_handler.current_state.message_details = None  # type: ignore[assignment]
+        db_handler.current_state.selected_message_group_id = ''
         # Updating the list of dialogs stored in the database
         # Обновление списка диалогов, сохраненных в базе данных
         db_handler.all_dialogues_list = db_handler.get_dialog_list()

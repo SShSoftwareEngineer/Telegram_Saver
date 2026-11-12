@@ -170,8 +170,22 @@
   `/db_export_selected_message_to_html`, `/db_delete_selected_from_database`.
 - Коммит: `feat: migrate database message routes to FastAPI`
 
-### [ ] 9. Роуты тегов
-- `/db_tag_add`, `/db_tag_remove`, `/db_tag_update`, `/db_tag_update_everywhere`, `/db_all_tag_sorting`;
+### [x] 9. Роуты тегов
+> Выполнено: 5 роутов в `web/routers/tags.py` (все `def` под `state_lock`); общий хелпер `run_tag_action(form, method,
+> *, rename)` вместо пяти копий разбора формы (метод обработчика передается несвязанным, например
+> `DatabaseHandler.add_tag_to_message_group`). Отличия от Flask (согласованы): (1) пустой `selected_message_group_id`
+> (детали закрыты): вместо 500 (`NoResultFound`) роут ничего не делает (оба списка `null`) и пишет в статус-бар
+> «No message selected. Select a message first.»; ID несуществующего сообщения остается 500 в JSON (после сброса ID
+> получить его нечем); (2) `selected_message_group_id` сбрасывается в `''` при закрытии деталей: в
+> `/db_message_apply_filters` и `/db_delete_selected_from_database`; (3) `/db_message_apply_filters` очищает поле
+> «Message Tags» (`db_current_message_tags: ''`); (4) URL `/db_all_tag_sorting` → `/db_tag_all_sorting` (роут, шаблон и
+> Flask-эталон). В `database_handler.py` (по просьбе, поведение прежнее, проверено тестами до и после): методы тегов
+> разложены на приватные `_get_message_group`, `_attach_tag`, `_detach_tag`, `_tag_selects` без `commit()`, а публичные
+> методы выполняются одной транзакцией `transaction()`: `update` и `update_everywhere` стали атомарными (раньше
+> несколько коммитов подряд). Это касается и Flask-эталона. Тесты: `tests/test_tag_methods.py` (16, в т.ч. откат при
+> сбое), `tests/test_tag_routes.py` (24), обновлены `tests/test_database_routes.py`.
+> Проверено без сети; ручной прогон тегов в браузере - за пользователем (на шаге 11).
+- `/db_tag_add`, `/db_tag_remove`, `/db_tag_update`, `/db_tag_update_everywhere`, `/db_tag_all_sorting`;
   общий хелпер вместо пяти копий разбора формы. Случай `selected_message_group_id is None`: `add_tag_to_message_group`
   падает на `.one()` с `NoResultFound` (воспроизведено в консоли Flask). Заодно (согласовано): URL
   `/db_all_tag_sorting` → `/db_tag_all_sorting` (в роуте и в `templates/db_detail_tags.html`); функция во Flask уже
@@ -209,6 +223,8 @@
 - [ ] P4. Конфигурация: `PROFILE` из переменной окружения, абсолютные пути от корня проекта.
 - [ ] P5. Мелочи: `logging` вместо `print`, побочные эффекты в list comprehension. (Переменная цикла
   `tg_message_group` в сохранении исправлена на шаге 7 в FastAPI-версии; во Flask-эталоне остается до шага 12.)
+  Также: `tg_get_messages` (смена диалога) очищает детали только в JSON, но не `tg_handler.current_state.message_details`
+  (после перезагрузки страницы видны детали сообщения из прежнего диалога): добавить `message_details = None` и тест.
 - [ ] P6. Кнопка «Сохранить в БД» (`tg_action_bar.html`) недоступна, пока нет открытого диалога и отмеченных
   сообщений (сейчас роут при этом ничего не делает, но кнопка нажимается).
 - [x] P7. БАГ (найден до миграции на Flask-версии, запуск из PyCharm; исправлен отдельным коммитом `fix:`): сохранение
@@ -255,5 +271,11 @@
   `message.fwd_from`: по документации Telegram `saved_from_peer` - чат, откуда сообщение переслано в Избранное, а
   `from_id`/`from_name` - исходный автор (может быть скрыт). Проверить на реальных сообщениях. Потребуются новые поля
   `TgMessageGroup` и столбцы БД (ID и название чата-источника), поэтому делать вместе с Alembic.
+- Удаление сообщения на вкладке Telegram вместе с удалением его из самого Telegram (`client.delete_messages`):
+  необратимое действие, нужно подтверждение в интерфейсе и проверка прав (в чужих чатах и каналах удалить можно не всё).
+  Потребуется `selected_message_group_id` в `TgCurrentState` (сейчас ID группы живет только в URL деталей) и сброс его
+  при закрытии деталей, как в БД-части (шаг 9); после удаления обновить список сообщений и флаги `saved_to_db`.
+  Копию сообщения в БД не трогаем (смысл - очистить Избранное, сохранив архив); после удаления в Telegram флаг
+  `saved_to_db` у такого сообщения уже не нужен, так как оно пропадает из списка.
 - Экспорт в JSON/CSV/PDF, резервное копирование по расписанию, Docker.
 - Многопользовательский режим (состояние в сессии, а не глобально).

@@ -72,18 +72,20 @@ def test_apply_filters(client: TestClient, db_handler: DatabaseHandler):
     add_group(session, 2, 2, 'alpha other')
     add_group(session, 3, 2, 'beta text')
     db_handler.current_state.message_details = {'text': 'old'}
+    db_handler.current_state.selected_message_group_id = '1_1'
     form = {DIALOG_SELECT: ['2'], FormCfg.db_message_filter['message_query']: 'alpha',
             FormCfg.db_message_filter['sorting_field']: '0', FormCfg.db_message_filter['sorting_order']: '0'}
     response = client.post('/db_message_apply_filters', data=form)
 
     assert response.status_code == 200
     data = response.json()
-    assert set(data) == {'db_messages', 'db-messages-count', 'db_details'}
+    assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS}
     assert data['db-messages-count'] == '(1)'
-    assert data['db_details'] == ''
+    assert data['db_details'] == '' and data[CURR_TAGS] == ''
     assert 'alpha other' in data['db_messages'] and 'alpha text' not in data['db_messages']
     assert [g.grouped_id for g in db_handler.current_state.message_group_list] == ['2_2']
     assert db_handler.current_state.message_details is None
+    assert db_handler.current_state.selected_message_group_id == ''
 
 
 def test_apply_filters_empty_form_shows_all(client: TestClient, db_handler: DatabaseHandler):
@@ -222,6 +224,7 @@ def test_delete_selected_group_with_tags(client: TestClient, db_handler: Databas
     is left without messages disappears, the dialog without messages disappears, the response refreshes the lists"""
     first, second = two_groups
     db_handler.current_state.message_details = {'text': 'old'}
+    db_handler.current_state.selected_message_group_id = first
     response = client.post('/db_delete_selected_from_database', data=checkbox(first))
 
     assert response.status_code == 200
@@ -242,6 +245,7 @@ def test_delete_selected_group_with_tags(client: TestClient, db_handler: Databas
     assert '>Second chat</option>' in data[DIALOG_SELECT] and 'First chat' not in data[DIALOG_SELECT]
     assert [d.dialog_id for d in db_handler.current_state.dialog_list] == [2]
     assert db_handler.current_state.message_details is None
+    assert db_handler.current_state.selected_message_group_id == ''
 
 
 def test_delete_nothing_selected(client: TestClient, db_handler: DatabaseHandler, two_groups: tuple[str, str]):
