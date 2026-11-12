@@ -7,6 +7,7 @@ the rollback). The Telegram handler is a fake object, the database is real (a te
 
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +16,8 @@ from sqlalchemy.orm import Session
 from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import (DatabaseHandler, DbCurrentState, DbDialog, DbFile, DbMessageGroup, DbMessageSortFilter,
                               DbTag, message_group_tag_links)
+from utils import status_messages
+from web.routers import database as database_routes
 
 DIALOG_SELECT = FormCfg.db_message_filter['dialog_select']
 CURR_TAGS = FormCfg.db_detail_tags['curr_message_tags']
@@ -258,10 +261,12 @@ def test_delete_nothing_selected(client: TestClient, db_handler: DatabaseHandler
 
 
 def test_delete_error_rolls_back_everything(error_client: TestClient, db_handler: DatabaseHandler,
-                                            two_groups: tuple[str, str], monkeypatch: pytest.MonkeyPatch):
-    """An error on the second group: 500 in JSON, the first deletion is rolled back (one transaction), the session
-    is usable afterwards (the lock is free)"""
+                                            two_groups: tuple[str, str], monkeypatch: pytest.MonkeyPatch,
+                                            work_dir: Path):
+    """An error on the second group: 500 in JSON, the first deletion is rolled back (one transaction) and its file
+    stays on the disk, the session is usable afterwards (the lock is free)"""
     session = db_handler.session
+    media_file = make_media_file(work_dir, 'chat/photo1.jpg')
     real_delete = session.delete
     calls = MagicMock(side_effect=[None, RuntimeError('delete failed')])
 
@@ -276,7 +281,112 @@ def test_delete_error_rolls_back_everything(error_client: TestClient, db_handler
     assert response.json() == {'error': 'RuntimeError: delete failed'}
     assert session.query(DbMessageGroup).count() == 2
     assert session.query(DbFile).count() == 1
+    assert media_file.is_file()
     # The next request works / Следующий запрос работает
     monkeypatch.setattr(session, 'delete', real_delete)
     assert error_client.post('/db_delete_selected_from_database', data=checkbox(*two_groups)).status_code == 200
     assert session.query(DbMessageGroup).count() == 0
+    assert not media_file.exists()
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Deletion of the files / Удаление файлов
+# ----------------------------------------------------------------------------------------------------------------------
+
+def make_media_file(work_dir: Path, file_path: str) -> Path:
+    """Creates a media file by its path relative to the media directory / Создает файл медиа по относительному пути"""
+    path = work_dir / ProjectDirs.media_dir / file_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'image')
+    return path
+
+
+@pytest.fixture
+def three_groups_with_files(db_handler: DatabaseHandler, work_dir: Path) -> tuple[str, str, str]:
+    """Dialog 'chat': the groups 1 and 2 are of the same date (one directory), the group 3 is of another date"""
+    session = db_handler.session
+    add_dialog(session, 1, 'chat')
+    first = add_group(session, 1, 1, 'First', file_names=('2026-01-01/a.jpg',))
+    second = add_group(session, 2, 1, 'Second', file_names=('2026-01-01/b.jpg',))
+    third = add_group(session, 3, 1, 'Third', file_names=('2026-01-02/c.jpg',))
+    for name in ('2026-01-01/a.jpg', '2026-01-01/b.jpg', '2026-01-02/c.jpg'):
+        make_media_file(work_dir, f'chat/{name}')
+    return first, second, third
+
+
+def test_delete_removes_files_and_empty_directories(client: TestClient, three_groups_with_files: tuple[str, str, str],
+                                                    work_dir: Path):
+    """The files of the deleted messages go; a directory is removed when it is empty (the date directory, then the
+    dialog directory), the media directory stays"""
+    first, second, third = three_groups_with_files
+    media = work_dir / ProjectDirs.media_dir
+    assert client.post('/db_delete_selected_from_database', data=checkbox(first, third)).status_code == 200
+    # The date directory of the second message still has its file, so it and the dialog directory stay
+    assert not (media / 'chat' / '2026-01-01' / 'a.jpg').exists()
+    assert (media / 'chat' / '2026-01-01' / 'b.jpg').is_file()
+    assert not (media / 'chat' / '2026-01-02').exists()
+
+    assert client.post('/db_delete_selected_from_database', data=checkbox(second)).status_code == 200
+    assert media.is_dir() and list(media.iterdir()) == []
+
+
+def test_delete_reports_deleted_files_in_status_bar(client: TestClient, three_groups_with_files: tuple[str, str, str]):
+    """The status bar shows the number of deleted files"""
+    first, second, _ = three_groups_with_files
+    client.post('/db_delete_selected_from_database', data=checkbox(first, second))
+    assert any('Files deleted from local storage: 2' in line for line in status_messages.report_list or [])
+
+
+def test_delete_file_error_does_not_fail_the_request(client: TestClient, db_handler: DatabaseHandler,
+                                                     three_groups_with_files: tuple[str, str, str], work_dir: Path,
+                                                     monkeypatch: pytest.MonkeyPatch):
+    """A file that cannot be deleted: the record is deleted anyway, the file stays, the error is in the status bar"""
+    first = three_groups_with_files[0]
+    real_unlink = Path.unlink
+
+    def unlink(self: Path, *args, **kwargs):
+        if self.name == 'a.jpg':
+            raise PermissionError('busy')
+        real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'unlink', unlink)
+    response = client.post('/db_delete_selected_from_database', data=checkbox(first))
+
+    assert response.status_code == 200
+    assert db_handler.session.query(DbMessageGroup).filter_by(grouped_id=first).count() == 0
+    assert (work_dir / ProjectDirs.media_dir / 'chat' / '2026-01-01' / 'a.jpg').is_file()
+    assert any('File was not deleted: chat/2026-01-01/a.jpg: busy' in line for line in status_messages.report_list or [])
+
+
+def test_delete_without_files_reports_nothing_about_files(client: TestClient, db_handler: DatabaseHandler):
+    """Messages without files: nothing to delete and nothing is reported about files"""
+    add_dialog(db_handler.session, 1, 'chat')
+    grouped_id = add_group(db_handler.session, 1, 1, 'Only text')
+    assert client.post('/db_delete_selected_from_database', data=checkbox(grouped_id)).status_code == 200
+    assert not any('Files deleted' in line for line in status_messages.report_list or [])
+
+
+def test_delete_updates_saved_flags_of_the_telegram_list(client: TestClient, tg_handler: SimpleNamespace,
+                                                         three_groups_with_files: tuple[str, str, str],
+                                                         monkeypatch: pytest.MonkeyPatch):
+    """The opened Telegram dialog: the deleted messages lose the saved flag and the Telegram list is redrawn"""
+    first, second, third = three_groups_with_files
+    tg_groups = [SimpleNamespace(grouped_id=grouped_id, saved_to_db=True) for grouped_id in (first, second, third)]
+    tg_handler.current_state.message_group_list = tg_groups
+    real_render = database_routes.render_fragment
+    monkeypatch.setattr(database_routes, 'render_fragment',
+                        lambda request, name, **context: 'TG LIST' if name == 'tg_messages.html'
+                        else real_render(request, name, **context))
+
+    response = client.post('/db_delete_selected_from_database', data=checkbox(first, third))
+
+    assert response.json()['tg_messages'] == 'TG LIST'
+    assert [group.saved_to_db for group in tg_groups] == [False, True, False]
+
+
+def test_delete_without_opened_telegram_dialog_has_no_telegram_list(client: TestClient,
+                                                                    three_groups_with_files: tuple[str, str, str]):
+    """No Telegram dialog was opened (the list is None): the response has no Telegram list key, no error"""
+    response = client.post('/db_delete_selected_from_database', data=checkbox(three_groups_with_files[0]))
+    assert response.status_code == 200
+    assert 'tg_messages' not in response.json()

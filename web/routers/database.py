@@ -12,7 +12,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from configs.config import FormCfg, GlobalConst, ProjectDirs
-from utils import clean_file_path, status_messages
+from utils import clean_file_path, delete_media_files, limit_list, status_messages
+from telegram_handler import get_tg_handler
 from database_handler import get_db_handler, DbMessageGroup
 from web.deps import FormDep, form_list, form_str, render_fragment, state_lock
 
@@ -151,10 +152,17 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
         # DELETE) also removes the links with tags and the file records; the bulk one fails on the tag links.
         # Удаление отмеченных групп сообщений из базы данных в одной транзакции. Удаление через ORM (а не массовый SQL
         # DELETE) убирает и связи с тегами, и записи о файлах; массовый падает на связях с тегами.
+        file_paths: list[str] = []
         with db_handler.transaction():
             stmt = select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(selected_messages_id))
             for message_group in db_handler.session.execute(stmt).scalars().all():
+                file_paths.extend(db_file.file_path for db_file in message_group.files if db_file.file_path)
                 db_handler.session.delete(message_group)
+        # The records are deleted for good (the transaction is committed): now delete the files of these messages and
+        # the directories left empty. The file errors go to the status bar and do not fail the request: the files stay.
+        # Записи удалены окончательно (транзакция зафиксирована): теперь удаляем файлы этих сообщений и оставшиеся
+        # пустыми директории. Ошибки файлов идут в строку статуса и не прерывают запрос: файлы остаются.
+        deleted_count, file_errors = delete_media_files(ProjectDirs.media_dir, file_paths)
         # Updating the message list after deletion from the database
         # Обновление списка сообщений после удаления из базы данных
         db_handler.current_state.message_group_list = db_handler.get_message_group_list()
@@ -167,14 +175,31 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
         # Updating the list of all tags: a tag without messages is removed automatically
         # Обновление списка всех тегов: тег без сообщений удаляется автоматически
         db_handler.all_tags_list = db_handler.get_all_tag_list()
-        # Update the list of messages, message counter, message details, tags of the closed message, the dialog filter
-        # and the list of all tags / Обновление списка сообщений, счетчика сообщений, деталей сообщения, тегов закрытого
-        # сообщения, фильтра диалогов и списка всех тегов
-        return JSONResponse({'db_messages': render_fragment(request, 'db_messages.html'),
-                             'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
-                             'db_details': '',
-                             FormCfg.db_detail_tags['curr_message_tags']: '',
-                             FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_select_content_string(
-                                 db_handler.all_tags_list, 'id', 'name'),
-                             FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
-                                 db_handler.current_state.dialog_list, 'dialog_id', 'title')})
+        # The report of the file deletion goes last: reloading the lists above rewrites the status bar
+        # Отчет об удалении файлов - в конце: перезагрузка списков выше перезаписывает строку статуса
+        if file_paths:
+            status_messages.mess_update('Deleting messages from the database',
+                                        f'Files deleted from local storage: {deleted_count}', True)
+            for error in limit_list(file_errors, GlobalConst.status_list_max_items):
+                status_messages.mess_update('', f'File was not deleted: {error}')
+        response = {'db_messages': render_fragment(request, 'db_messages.html'),
+                    'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
+                    'db_details': '',
+                    FormCfg.db_detail_tags['curr_message_tags']: '',
+                    FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_select_content_string(
+                        db_handler.all_tags_list, 'id', 'name'),
+                    FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
+                        db_handler.current_state.dialog_list, 'dialog_id', 'title')}
+        # Deleted messages are no longer saved: recalculate the save flags of the opened Telegram dialog and redraw
+        # its list (nothing to redraw until a dialog is opened)
+        # Удаленные сообщения больше не сохранены: пересчитываем признаки сохранения открытого диалога Telegram и
+        # перерисовываем его список (пока диалог не открыт, перерисовывать нечего)
+        tg_message_groups = get_tg_handler().current_state.message_group_list
+        if tg_message_groups is not None:
+            for tg_message_group in tg_message_groups:
+                tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
+            response['tg_messages'] = render_fragment(request, 'tg_messages.html')
+        # Update the list of messages, message counter, message details, tags of the closed message, the dialog filter,
+        # the list of all tags and the Telegram message list / Обновление списка сообщений, счетчика сообщений, деталей
+        # сообщения, тегов закрытого сообщения, фильтра диалогов, списка всех тегов и списка сообщений Telegram
+        return JSONResponse(response)

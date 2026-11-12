@@ -68,6 +68,7 @@ class GlobalConst:
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
     dialog_no_title = '<No Title>'  # Title for dialogs without a title
+    status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report
 
 
 class DialogTypes(Enum):

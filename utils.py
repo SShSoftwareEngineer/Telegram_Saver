@@ -4,12 +4,16 @@ The module contains classes, functions, and variables that are used in other mod
 class StatusMessages: a class to hold status messages for the web interface.
 parse_date_string: a function to parse a date string and return a datetime object
 clean_file_path: a function to clean a file or directory name from invalid characters
+limit_list: a function to cut a long list of report lines and mark the continuation
+delete_media_files: a function to delete media files and the directories left empty
 status_messages: a global instance of StatusMessages
 """
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from dateutil.parser import parse
 
 
@@ -106,6 +110,65 @@ def clean_file_path(file_path: str | None) -> str | None:
         # Убираем лишние точки в начале и конце
         clean_filepath = clean_filepath.strip('.')
     return clean_filepath
+
+
+def limit_list(items: list[str], max_items: int) -> list[str]:
+    """
+    Cuts a long list of report lines to `max_items` and adds '...' as a sign of the continuation
+    Обрезает длинный список строк отчета до `max_items` и добавляет '...' как признак продолжения
+    Attributes:
+        items (list[str]): Report lines
+        max_items (int): Maximum number of lines to keep
+    Returns:
+        list[str]: The same lines or the first `max_items` of them and '...'
+    """
+
+    if len(items) <= max_items:
+        return items
+    return [*items[:max_items], '...']
+
+
+def delete_media_files(media_dir: str | Path, file_paths: Iterable[str]) -> tuple[int, list[str]]:
+    """
+    Deletes media files (paths are relative to the media directory) and then the directories left empty, going up the
+    tree until the media directory (it always stays). A non-empty directory stops the climb. Errors do not stop the
+    work: the file stays and its error is returned. A path outside the media directory is never touched.
+    Удаляет файлы медиа (пути относительно директории медиа), затем директории, оставшиеся пустыми, поднимаясь вверх по
+    дереву до директории медиа (она остается всегда). Непустая директория останавливает подъем. Ошибки не прерывают
+    работу: файл остается, а его ошибка возвращается. Путь вне директории медиа никогда не затрагивается.
+    Attributes:
+        media_dir (str | Path): Media directory
+        file_paths (Iterable[str]): File paths relative to the media directory
+    Returns:
+        tuple[int, list[str]]: Number of deleted files and the error descriptions
+    """
+
+    root = Path(media_dir).resolve()
+    deleted_count = 0
+    errors: list[str] = []
+    for file_path in file_paths:
+        full_path = (root / file_path).resolve()
+        if full_path == root or not full_path.is_relative_to(root):
+            errors.append(f'{file_path}: outside of the media directory')
+            continue
+        try:
+            if full_path.is_file():
+                full_path.unlink()
+                deleted_count += 1
+        except OSError as error:
+            errors.append(f'{file_path}: {error.strerror or error}')
+            continue
+        # Delete the empty directories up to the media directory / Удаляем пустые директории вплоть до директории медиа
+        parent = full_path.parent
+        while parent != root:
+            try:
+                parent.rmdir()
+            except FileNotFoundError:
+                pass
+            except OSError:  # the directory is not empty (or is busy): the directories above are not empty either
+                break
+            parent = parent.parent
+    return deleted_count, errors
 
 
 if __name__ == '__main__':
