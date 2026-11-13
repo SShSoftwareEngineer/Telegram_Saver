@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
-from configs.config import FormCfg, GlobalConst, ProjectDirs
+from configs.config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from utils import clean_file_path, delete_media_files, limit_list, status_messages
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler, DbMessageGroup
@@ -109,6 +109,9 @@ def db_export_selected_message_to_html(  # pylint: disable=too-many-locals
             # Correcting file paths so they can be opened from an exported HTML file
             # Коррекция путей к файлам для возможности открытия из экспортированного HTML файла
             for file in export_data.get('files', []):
+                # The HTML file of the message itself is not exported / HTML файл самого сообщения не экспортируется
+                if Path(file['file_path']).suffix == MessageFileTypes.CONTENT.default_ext:
+                    continue
                 if (Path(ProjectDirs.media_dir) / file['file_path']).exists():
                     new_file_path = Path(ProjectDirs.export_dir) / export_date_time / Path(file['file_path']).name
                     new_file_path.parent.mkdir(parents=True, exist_ok=True)

@@ -238,9 +238,12 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                 # Сохраняем HTML файл с контентом сообщения в файловой системе
                 with open(file_path, 'w', encoding='utf-8') as cf:
                     cf.write(html_content)
-                # Create a record about the HTML file in the database for the corresponding message group
-                # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений
-                db_file = db_handler.upsert_record(DbFile, {'file_path': file_path.as_posix()},
+                # Create a record about the HTML file in the database for the corresponding message group. The path is
+                # relative to the media directory, like the other files (deletion and maintenance rely on it)
+                # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений. Путь относительно
+                # директории медиа, как у остальных файлов (на него опираются удаление и сервисное обслуживание)
+                relative_path = file_path.relative_to(ProjectDirs.media_dir).as_posix()
+                db_file = db_handler.upsert_record(DbFile, {'file_path': relative_path},
                                                    {'message_id': 0,
                                                     'size': len(html_content.encode('utf-8')),
                                                     'grouped_id': message_group_export_data.get('message_group_id'),

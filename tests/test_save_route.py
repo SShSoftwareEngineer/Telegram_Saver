@@ -71,7 +71,9 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
         [MessageFileTypes.IMAGE.type_id, MessageFileTypes.CONTENT.type_id])
     # The HTML file is in the file system and in the database / HTML файл есть в файловой системе и в базе данных
     html_record = next(f for f in saved.files if f.file_type_id == MessageFileTypes.CONTENT.type_id)
-    html_path = work_dir / html_record.file_path
+    # The path is relative to the media directory, like the paths of the other files / Путь относительно директории медиа
+    assert not html_record.file_path.startswith(ProjectDirs.media_dir)
+    html_path = work_dir / ProjectDirs.media_dir / html_record.file_path
     assert html_path.parent == work_dir / ProjectDirs.media_dir / 'Test chat_1001234567891' / '2026-01-01'
     html = html_path.read_text(encoding='utf-8')
     assert html_record.size == len(html.encode('utf-8'))
@@ -152,3 +154,22 @@ def test_save_error_rolls_back_only_failed_group(error_client: TestClient, tg_ha
     tg_handler.download_message_file.side_effect = None
     assert error_client.post('/tg_save_selected_message_to_db', data=checkbox(groups[1])).status_code == 200
     assert db_handler.session.query(DbMessageGroup).count() == 2
+
+
+def test_saved_message_is_deleted_with_its_html_and_empty_directories(
+        client: TestClient, tg_handler: SimpleNamespace, tg_dialog: SimpleNamespace, work_dir: Path):
+    """The HTML file path is relative to the media directory, so deleting the message removes the HTML file and the
+    directories left empty (the dialog and date directories); the media directory stays
+    Путь HTML файла относительный к директории медиа, поэтому удаление сообщения удаляет HTML файл и оставшиеся пустыми
+    директории (диалога и даты); директория медиа остается"""
+    group = make_group(1, with_file=False)
+    tg_handler.current_state.message_group_list = [group]
+    assert client.post('/tg_save_selected_message_to_db', data=checkbox(group)).status_code == 200
+    media_dir = work_dir / ProjectDirs.media_dir
+    html_files = list(media_dir.rglob('*.html'))
+    assert len(html_files) == 1
+    response = client.post('/db_delete_selected_from_database', data={
+        FormCfg.db_checkbox_list['db_checkbox_list']: [f'{GlobalConst.select_in_database}{group.grouped_id}']})
+    assert response.status_code == 200
+    assert not html_files[0].exists()
+    assert media_dir.is_dir() and not any(media_dir.iterdir())
