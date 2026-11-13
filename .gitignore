@@ -189,3 +189,4 @@ media_storage/
 /configs/.env_prod
 /database/backup/
 /Notes/Перевод проекта с Flask на FastApi, какие плюсы и минусы.docx
+/Notes/legacy_flask.py

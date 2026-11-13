@@ -1,7 +1,7 @@
 """
-TEMPORARY: compares the JSON of the migrated routes with the Flask version (`telegram_saver.py`) on the same fake state.
+TEMPORARY: compares the JSON of the migrated routes with the Flask version (`legacy_flask.py`) on the same fake state.
 Delete this file together with Flask (step 12 of MIGRATION_PLAN.md).
-ВРЕМЕННО: сравнивает JSON перенесенных роутов с Flask-версией (`telegram_saver.py`) на одном и том же состоянии-заглушке.
+ВРЕМЕННО: сравнивает JSON перенесенных роутов с Flask-версией (`legacy_flask.py`) на одном и том же состоянии-заглушке.
 Удалить вместе с Flask (шаг 12 MIGRATION_PLAN.md).
 """
 
@@ -22,10 +22,10 @@ def flask_client(tg_handler: SimpleNamespace, db_handler) -> Iterator:
     Тестовый клиент Flask. Модуль импортируется, пока установлены заглушки обработчиков (он берет их при импорте), и
     затем удаляется, чтобы следующий тест импортировал его заново со своими заглушками.
     """
-    sys.modules.pop('telegram_saver', None)
-    import telegram_saver  # pylint: disable=import-outside-toplevel
-    yield telegram_saver.tg_saver.test_client()
-    sys.modules.pop('telegram_saver', None)
+    sys.modules.pop('legacy_flask', None)
+    import legacy_flask  # pylint: disable=import-outside-toplevel
+    yield legacy_flask.tg_saver.test_client()
+    sys.modules.pop('legacy_flask', None)
 
 
 def reset_state(tg_handler: SimpleNamespace) -> None:
