@@ -14,7 +14,8 @@ from configs.config import ProjectDirs
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
 from web.deps import BASE_DIR
-from web.routers import service, telegram, database
+from web.errors import register_error_handlers
+from web.routers import service, telegram, database, tags
 
 
 @asynccontextmanager
@@ -35,6 +36,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+register_error_handlers(app)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 # The directory is created in lifespan, so it is not checked when the app is built
 # Директория создается в lifespan, поэтому при создании приложения ее наличие не проверяется
@@ -42,3 +44,4 @@ app.mount(f'/{ProjectDirs.media_dir}', StaticFiles(directory=ProjectDirs.media_d
 app.include_router(service.router)
 app.include_router(telegram.router)
 app.include_router(database.router)
+app.include_router(tags.router)

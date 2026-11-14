@@ -372,7 +372,7 @@ function deleteSelectedButton(config, url) {
         totalSelected += selected.length;
     });
     if (totalSelected > 0) {
-        if (confirm(`Are you sure you want to delete ${totalSelected} messages?\nThis action cannot be undone!`)) {
+        if (confirm(`Are you sure you want to delete ${totalSelected} messages and their files from disk?\nThis action cannot be undone!`)) {
             pressFormButton(config, url);
         }
     }

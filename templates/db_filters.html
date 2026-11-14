@@ -86,7 +86,7 @@ Variables:
 {# Filtering database messages by tags / Фильтр по тегам сообщений #}
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
 <div class="control-X-button">
-    {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; flask; HTML" %}
+    {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; fastapi; HTML" %}
     <textarea class="filter_tags-textarea"
               id="{{ form_cfg.tag_query }}"
               name="{{ form_cfg.tag_query }}"

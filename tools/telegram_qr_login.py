@@ -6,7 +6,7 @@ It creates the same .session file the application uses, so the app will not ask 
 
 Usage / Запуск (from any folder / из любой папки):
     poetry run pip install qrcode
-    poetry run python tools/qr_login.py
+    poetry run python tools/telegram_qr_login.py
 Then in the Telegram app: Settings -> Devices -> Link Desktop Device -> scan the QR from the console.
 Затем в приложении Telegram: Настройки -> Устройства -> Подключить устройство -> отсканировать QR из консоли.
 The cloud (2FA) password, if enabled, is asked in the console and is never stored.

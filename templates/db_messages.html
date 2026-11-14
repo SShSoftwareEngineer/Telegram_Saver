@@ -5,6 +5,7 @@ Variables:
   - message_grouped_id: name of the hidden field for grouped_id of the message group
   - message_date: formatted date and time of the message
   - constants: global constants
+  - tg_me: the logged-in Telegram account (its messages are indented)
   - db_file_types: Telegram file types
 #}
 
@@ -41,18 +42,18 @@ Variables:
                 <label for="{{ checkbox_name }}">{{ constants.check_in_db_label }}</label>
             </span>
 
-            {# Displaying the beginning of the text / Вывод начального фрагмента текста #}
+            {# Displaying the beginning of the text; the messages of the account owner are indented, as in the
+               Telegram list / Вывод начального фрагмента текста; сообщения владельца аккаунта с отступом, как в списке Telegram #}
             {% if db_message.text %}
-                <br>
-                {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+                <div class="{% if db_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
+                    {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+                </div>
             {% endif %}
 
             {# Displaying information about files in a message group / Вывод строки информации о файлах в группе сообщений #}
             {% if db_message.files_report %}
-                <br>
-                <b>{{ db_message.files_report }}</b>
+                <div><b>{{ db_message.files_report }}</b></div>
             {% endif %}
-            <br>
         </li>
     {% endfor %}
 </ul>
