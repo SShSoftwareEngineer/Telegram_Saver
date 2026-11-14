@@ -1,7 +1,8 @@
 """
-The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+The module contains model classes and functions for working with an SQLite database using SQLAlchemy.
+Модуль содержит классы моделей и функции для работы с базой данных SQLite через SQLAlchemy.
 
-class DatabaseHandler:a class to represent handle database operations.
+class DatabaseHandler: a class to represent handle database operations.
 class Base(DeclarativeBase): a declarative class for creating tables in the database
 class DbDialog(Base): a class to represent a dialog (chat) in the database.
 class DbDialogType(Base): a class to represent a type of dialog (chat) in the database.
@@ -10,8 +11,8 @@ class DbFileType(Base): a class to represent a type of file associated with a me
 class DbMessageGroup(Base): a class to represent a message group in the database.
 class DbTag(Base): a class to represent a tag associated with a message group in the database.
 class DbCurrentState: a class representing the current state of the database client
-class DbMessageSortFilter:a class to represent sorting and filtering of message groups in the database.
-db_handler: an object of the DatabaseHandler class for working with the database
+class DbMessageSortFilter: a class to represent sorting and filtering of message groups in the database.
+get_db_handler: a function returning the shared DatabaseHandler (created lazily on the first call)
 message_group_tag_links: a relationship table for many-to-many relationship between message groups and tags
 ModelType: a TypeVar for model classes, bound to Base
 """
@@ -62,7 +63,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
-    from_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
     dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
@@ -83,7 +84,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
                        'message_group_id': self.grouped_id,
                        'date': self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
                        'text': self.text if self.text else '',
-                       'from_id': self.from_id,
+                       'sender_id': self.sender_id,
                        'files': [{'file_path': db_file.file_path,
                                   'alt_text': db_file.file_type.alt_text,
                                   'type_name': db_file.file_type.name if db_file.file_type else ''}
@@ -452,6 +453,9 @@ class DatabaseHandler:
         Инициализирует обработчик базы данных, создавая движок, сессию и необходимые таблицы.
         """
 
+        # SQLite creates the database file but not its folder (a fresh clone has no `database/`)
+        # SQLite создает файл базы данных, но не его папку (в свежем клоне нет `database/`)
+        Path(ProjectDirs.data_base_dir).mkdir(parents=True, exist_ok=True)
         # Creating database engine and session
         # check_same_thread=False: the session is created in one thread but used from the web server's thread pool;
         # access is serialized by a shared lock outside this class.
@@ -629,7 +633,7 @@ class DatabaseHandler:
                       'text': current_message_group.text if current_message_group.text else '',
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
-                      'tags': current_message_group.tags if current_message_group.tags else None}
+                      'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
         message_date = db_details.get('date')
         message_date_str = message_date.strftime(
@@ -688,103 +692,109 @@ class DatabaseHandler:
                             'file_type_id': query_result.file_type_id, }
         return db_file_info
 
-    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
+    def _get_message_group(self, message_group_id: str) -> DbMessageGroup:
         """
-        Adds a tag to a specified group of messages
-        Добавляет тег к заданной группе сообщений
+        Gets a message group by its ID (raises NoResultFound if there is no such group)
+        Получает группу сообщений по ее ID (выбрасывает NoResultFound, если такой группы нет)
         Attributes:
-            tag_name (str): tag name
             message_group_id (str): message group ID
-        Returns:
-            tuple[str, str]: updated current message tags select string, updated all tags select string
         """
 
-        # Get the tag and group of messages by their ID / Получаем тег и группу сообщений по их ID
-        tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
         stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
-        message_group = self.session.execute(stmt).scalars().one()
-        # Check for the tag in the database and add it if it is not there
-        # Проверяем наличие тега в базе данных и добавляем, если нет
+        return self.session.execute(stmt).scalars().one()
+
+    def _attach_tag(self, message_group: DbMessageGroup, tag_name: str) -> None:
+        """
+        Adds a tag to a message group, creating the tag if it does not exist. It does not commit: the caller owns the
+        transaction.
+        Добавляет тег к группе сообщений, создавая тег, если его нет.
+        Не делает commit: транзакцией управляет вызывающий.
+        Attributes:
+            message_group (DbMessageGroup): message group
+            tag_name (str): tag name
+        """
+
+        tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
+        # Add the tag to the database if it is not there / Добавляем тег в базу данных, если его там нет
         if not tag:
             tag = DbTag(name=tag_name)
             self.session.add(tag)
             self.session.flush()
-        # Check for the presence of messages in the database and the absence of the tag in it, and add the tag to it
-        # Проверяем наличие группы сообщений в базе данных и отсутствие тега в ней и добавляем тег к ней
-        if message_group and tag not in message_group.tags:
+        # Link the tag with the group if it is not linked yet / Связываем тег с группой, если еще не связан
+        if tag not in message_group.tags:
             message_group.tags.append(tag)
             tag.usage_count += 1
-        self.session.commit()
-        # Get updated tag lists for SELECT current message and all tags
-        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
-        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
-        self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
-        return current_tags_select, all_tags_select
 
-    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> tuple[str, str]:
+    def _detach_tag(self, message_group: DbMessageGroup, tag_name: str) -> None:
         """
-        Removes a tag from a specified group of messages
-        Удаляет тег из заданной группы сообщений
+        Removes a tag from a message group if the group has it. It does not commit: the caller owns the transaction.
+        Удаляет тег из группы сообщений, если он в ней есть. Не делает commit: транзакцией управляет вызывающий.
+        Attributes:
+            message_group (DbMessageGroup): message group
+            tag_name (str): tag name
+        """
+
+        tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
+        if tag and tag in message_group.tags:
+            message_group.tags.remove(tag)
+            tag.usage_count -= 1
+
+    def _tag_selects(self, message_group: DbMessageGroup | None) -> tuple[str | None, str]:
+        """
+        Builds the SELECT strings after a change: the tags of the message group (None if no group is given) and all
+        tags (the list is refreshed: it recounts the usage and removes unused tags).
+        Формирует строки для SELECT после изменения: теги группы сообщений (None, если группа не задана) и все теги
+        (список обновляется: пересчитывается использование и удаляются неиспользуемые теги).
+        Attributes:
+            message_group (DbMessageGroup | None): message group
+        Returns:
+            tuple[str | None, str]: current message tags select string, all tags select string
+        """
+
+        current_tags_select = (self.get_select_content_string(message_group.tags, 'id', 'name')
+                               if message_group else None)
+        self.all_tags_list = self.get_all_tag_list()
+        return current_tags_select, self.get_select_content_string(self.all_tags_list, 'id', 'name')
+
+    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str | None, str]:
+        """
+        Adds a tag to a specified group of messages (one transaction)
+        Добавляет тег к заданной группе сообщений (одна транзакция)
         Attributes:
             tag_name (str): tag name
             message_group_id (str): message group ID
         Returns:
-            tuple[str, str]: updated current message tags select string, updated all tags select string
+            tuple[str | None, str]: updated current message tags select string, updated all tags select string
         """
 
-        # Get a tag and a group of messages by their IDs / Получаем тег и группу сообщений по их ID
-        stmt: Select = select(DbTag).filter(DbTag.name == tag_name)
-        tag = self.session.execute(stmt).scalars().first()
-        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
-        message_group = self.session.execute(stmt).scalars().one()
-        # Check for the presence of a tag in a group of messages in the database and remove the tag from it
-        # Проверяем наличие тега в группе сообщений в базе данных и удаляем тег из неё
-        if all([tag, message_group, tag in message_group.tags]):
-            message_group.tags.remove(tag)
-            tag.usage_count -= 1
-            self.session.commit()
-        # Get updated tag lists for SELECT current message and all tags
-        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
-        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
-        self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
-        return current_tags_select, all_tags_select
+        with self.transaction():
+            message_group = self._get_message_group(message_group_id)
+            self._attach_tag(message_group, tag_name)
+        return self._tag_selects(message_group)
 
-    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str, message_group_id: str) -> tuple[
-        str, str]:
+    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> tuple[str | None, str]:
         """
-        Changes the specified tag from the current group message
-        Изменяет заданный тег из текущего группового сообщения
+        Removes a tag from a specified group of messages (one transaction)
+        Удаляет тег из заданной группы сообщений (одна транзакция)
         Attributes:
-            old_tag_name (str): old tag name
-            new_tag_name (str): new tag name
+            tag_name (str): tag name
             message_group_id (str): message group ID
         Returns:
-            tuple[str, str]: updated current message tags select string, updated all tags select string
+            tuple[str | None, str]: updated current message tags select string, updated all tags select string
         """
 
-        # Get the old tag and a group of messages by their ID / Получаем старый тег и группу сообщений по их ID
-        tag = self.session.query(DbTag).filter(DbTag.name == old_tag_name).first()
-        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
-        message_group = self.session.execute(stmt).scalars().one()
-        # Check for the presence of a tag and a group of messages in the database
-        # Проверяем наличие группы сообщений и тега в ней в базе данных
-        if all([tag, message_group, tag in message_group.tags]):
-            self.remove_tag_from_message_group(old_tag_name, message_group_id)
-            self.add_tag_to_message_group(new_tag_name, message_group_id)
-        # Get updated tag lists for SELECT current message and all tags
-        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
-        current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
-        self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
-        return current_tags_select, all_tags_select
+        with self.transaction():
+            message_group = self._get_message_group(message_group_id)
+            self._detach_tag(message_group, tag_name)
+        return self._tag_selects(message_group)
 
-    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str,
-                              message_group_id: str) -> tuple[str | None, str]:
+    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str,
+                                      message_group_id: str) -> tuple[str | None, str]:
         """
-        Updates the tag in all message groups where it is used
-        Обновляет тег во всех группах сообщений, где он используется
+        Changes the specified tag from the current group message (one transaction: either both the removal of the old
+        tag and the adding of the new one happen, or neither)
+        Изменяет заданный тег из текущего группового сообщения (одна транзакция: либо удаление старого тега и
+        добавление нового выполняются оба, либо ни один)
         Attributes:
             old_tag_name (str): old tag name
             new_tag_name (str): new tag name
@@ -793,23 +803,39 @@ class DatabaseHandler:
             tuple[str | None, str]: updated current message tags select string, updated all tags select string
         """
 
-        current_tags_select = None
+        with self.transaction():
+            message_group = self._get_message_group(message_group_id)
+            # Change the tag only if the group has it / Изменяем тег, только если он есть в группе
+            if any(tag.name == old_tag_name for tag in message_group.tags):
+                self._detach_tag(message_group, old_tag_name)
+                self._attach_tag(message_group, new_tag_name)
+        return self._tag_selects(message_group)
+
+    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str,
+                              message_group_id: str) -> tuple[str | None, str]:
+        """
+        Updates the tag in all message groups where it is used (one transaction for all groups)
+        Обновляет тег во всех группах сообщений, где он используется (одна транзакция на все группы)
+        Attributes:
+            old_tag_name (str): old tag name
+            new_tag_name (str): new tag name
+            message_group_id (str): message group ID
+        Returns:
+            tuple[str | None, str]: updated current message tags select string (None if the current message group did
+                not have the tag), updated all tags select string
+        """
+
+        current_group = None
         # Rename the tag in all message groups where it is used
         # Переименовываем тег во всех группах сообщений, где он используется
-        stmt = select(DbMessageGroup).filter(DbMessageGroup.tags.any(name=old_tag_name))
-        message_group_list = self.session.execute(stmt).scalars().all()
-        for message_group in message_group_list:
-            self.remove_tag_from_message_group(old_tag_name, message_group.grouped_id)
-            self.add_tag_to_message_group(new_tag_name, message_group.grouped_id)
-            if message_group.grouped_id == message_group_id:
-                # Get the current list of tags for the current message
-                # Получаем текущий список тегов для текущего сообщения
-                current_tags_select = self.get_select_content_string(message_group.tags, 'id', 'name')
-        # Get updated tag lists for SELECT current message and all tags
-        # Получаем обновленные списки тегов для SELECT текущего сообщения и всех тегов
-        self.all_tags_list = self.get_all_tag_list()
-        all_tags_select = self.get_select_content_string(self.all_tags_list, 'id', 'name')
-        return current_tags_select, all_tags_select
+        with self.transaction():
+            stmt = select(DbMessageGroup).filter(DbMessageGroup.tags.any(name=old_tag_name))
+            for message_group in self.session.execute(stmt).scalars().all():
+                self._detach_tag(message_group, old_tag_name)
+                self._attach_tag(message_group, new_tag_name)
+                if message_group.grouped_id == message_group_id:
+                    current_group = message_group
+        return self._tag_selects(current_group)
 
 
 # The DatabaseHandler instance is created lazily on the first get_db_handler() call, not on module import:

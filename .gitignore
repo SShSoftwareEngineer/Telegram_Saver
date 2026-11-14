@@ -168,15 +168,14 @@ Support Materials/
 media_storage/
 /exported_messages/
 
-/Notes/notes.txt
 /pyvenv.cfg
 /.Database Scheme.vpp.lck
 /Database Scheme.vpp.*
 /Config Scheme.vpp.*
 /.session
-/Notes/infa.docx
+*.session
+*.session-journal
 /~$infa.docx
-/Notes/telethon-flask-module.py
 /.session-journal
 /configs/.env_dev_1
 /configs/.env_dev_2
@@ -188,4 +187,6 @@ media_storage/
 /database/*.db-journal
 /configs/.env_prod
 /database/backup/
-/Notes/Перевод проекта с Flask на FastApi, какие плюсы и минусы.docx
+
+# Personal notes / Личные заметки
+/Notes/

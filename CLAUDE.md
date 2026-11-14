@@ -21,7 +21,7 @@
 - Не запускать код, который подключается к Telegram, без просьбы (запрашивает вход и ходит в сеть).
 
 ## Ключевые факты
-- Запуск (сейчас Flask): `python telegram_saver.py`, порт 5000. Цель: `uvicorn web.main:app`.
+- Запуск: `python telegram_saver.py` (запускатель uvicorn, порт 5000) или `uvicorn web.main:app`.
 - Конфиг: `configs/config.py` (`PROFILE`, `FormCfg`, `ProjectDirs`); секреты в `configs/.env_dev_1` (не в git).
 - Файлы: `telegram_handler.py`, `database_handler.py`, `utils.py` (`status_messages`), `templates/`, `static/js/my_scripts.js`.
 - Python >= 3.14, менеджер зависимостей Poetry. Тесты: pytest, Telethon мокается.
