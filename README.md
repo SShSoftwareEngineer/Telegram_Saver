@@ -10,14 +10,14 @@ handling and SQLAlchemy for database flexibility.
 - **Flexible extraction**: Manual selection via "saved messages" + optional automatic channel monitoring
 - **Multi-type content**: Messages, media files, documents, forward chains, user metadata
 - **Database abstraction**: SQLAlchemy ORM with SQLite (easily portable to PostgreSQL)
-- **Web interface**: Flask + Vanilla JavaScript for browsing and searching archived content
+- **Web interface**: FastAPI + Vanilla JavaScript for browsing and searching archived content
 - **Async operations**: AsyncIO for non-blocking data retrieval
 
 ## Architecture
 - **Backend**: Python, Telethon (Telegram API), AsyncIO
 - **Database**: SQLite via SQLAlchemy ORM (PostgreSQL-ready schema)
-- **Web UI**: Flask, Jinja2, Vanilla JavaScript
-- **Data flow**: Telegram API → AsyncIO handlers → SQLAlchemy → Database → Flask views
+- **Web UI**: FastAPI, Jinja2, Vanilla JavaScript
+- **Data flow**: Telegram API → AsyncIO handlers → SQLAlchemy → Database → FastAPI routes
 
 ## Use Cases
 - Personal message archive (selective saving via Telegram "saved messages")
