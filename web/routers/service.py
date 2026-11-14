@@ -55,7 +55,8 @@ def db_database_maintenance() -> JSONResponse:
         1. Reporting the local files that are not referenced in the database (to delete them manually)
         2. Downloading files that are referenced in the database but are not present in the local file system
         3. Backing up the database (SQLite backup API: the database is in the WAL mode)
-        4. Refreshing the lists of dialogs (unused ones are deleted) and tags (usage is recalculated, unused are deleted)
+        4. Refreshing the lists of dialogs (unused ones are deleted) and tags (usage is recalculated,
+           unused are deleted)
     Сервисное обслуживание базы данных и файловой системы. Здесь ничего не удаляется: файлы и директории удаленных
     сообщений удаляются вместе с сообщениями (`/db_delete_selected_from_database`).
         1. Отчет о локальных файлах, на которые нет ссылок в базе данных (для ручного удаления)
@@ -121,7 +122,8 @@ def db_database_maintenance() -> JSONResponse:
         # uses / Обновление списка тегов в базе данных с сортировкой по текущим установкам и пересчетом количества
         # использований
         db_handler.all_tags_list = db_handler.get_all_tag_list()
-        # Updating dialogue lists and tags in the database form / Обновление списков диалогов и тегов в форме базы данных
+        # Updating dialogue lists and tags in the database form
+        # Обновление списков диалогов и тегов в форме базы данных
         return JSONResponse({
             FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
                 db_handler.current_state.dialog_list, 'dialog_id', 'title'),

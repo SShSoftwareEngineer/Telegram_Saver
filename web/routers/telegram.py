@@ -44,7 +44,8 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
     with state_lock:
         tg_handler = get_tg_handler()
         db_handler = get_db_handler()
-        # Get a list of message groups for the selected dialogue / Получаем список групп сообщений для выбранного диалога
+        # Get a list of message groups for the selected dialogue
+        # Получаем список групп сообщений для выбранного диалога
         tg_message_groups = tg_handler.get_message_group_list(dialog_id)
         # Check which message groups are already saved in the database
         # Проверяем, какие группы сообщений уже сохранены в базе данных
@@ -100,7 +101,8 @@ def tg_dialog_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         tg_handler.current_state.message_group_list = []
         tg_handler.current_state.message_details = None
         # Update list of dialogs and the dialog counter, clear list of messages, message details, and message counter
-        # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения и счетчика сообщений
+        # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения
+        # и счетчика сообщений
         return JSONResponse({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
                              'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
                              'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })

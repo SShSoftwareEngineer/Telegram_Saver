@@ -1,5 +1,6 @@
 """
-The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+The module contains classes and functions for working with Telegram (Telethon): dialogs, messages, files, filters.
+Модуль содержит классы и функции для работы с Telegram (Telethon): диалоги, сообщения, файлы, фильтры.
 
 class TelegramHandler: a class for handling Telegram operations.
 class TgCurrentState: a class to represent the current state of the Telegram client

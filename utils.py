@@ -1,5 +1,6 @@
 """
 The module contains classes, functions, and variables that are used in other modules.
+Модуль содержит классы, функции и переменные, которые используются в других модулях.
 
 class StatusMessages: a class to hold status messages for the web interface.
 parse_date_string: a function to parse a date string and return a datetime object

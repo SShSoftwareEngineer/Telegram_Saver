@@ -173,6 +173,8 @@ media_storage/
 /Database Scheme.vpp.*
 /Config Scheme.vpp.*
 /.session
+*.session
+*.session-journal
 /~$infa.docx
 /.session-journal
 /configs/.env_dev_1

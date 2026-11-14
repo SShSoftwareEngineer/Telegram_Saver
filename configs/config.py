@@ -1,14 +1,15 @@
 """
-The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+The module contains the project configuration: profile, directories, constants and web form settings.
+Модуль содержит конфигурацию проекта: профиль, директории, константы и настройки веб-форм.
 
-HTTP_ERRORS: a dictionary containing descriptions of HTTP request errors
-class Base(DeclarativeBase): a declarative class for creating tables in the database
-class RawMessage(Base): a model class for original Telegram messages
-class VacancyMessage(Base): a model class for vacancy messages
-class StatisticMessage(Base): a model class for statistics messages
-class ServiceMessage(Base): a model class for service messages
-def export_data_to_excel(): a function for exporting data from the database to MS Excel file
-session: a session object for working with the database
+PROFILE: the configuration profile; it sets the suffix of the Telegram settings file and of the database file
+class ProjectDirs: directories and files of the project (media, export, Telegram settings, database)
+class GlobalConst: constants of the project (limits, formats, labels, key names)
+class DialogTypes(Enum): IDs and names of the dialog types in Telegram
+class MessageFileTypes(Enum): names, types, extensions and signatures of message files
+class TableNames: names of the database tables
+class FormCfg: configurations of the web interface form controls
+class TagsSorting: tag sorting options
 """
 
 from typing import Any
@@ -17,12 +18,15 @@ from pathlib import Path
 from enum import Enum
 import re
 
-# Set the profile for the project
-PROFILE = '_dev_1'
-
-
+# The configuration profile: it selects `configs/.env<PROFILE>` and `database/telegram_archive<PROFILE>.db`.
+# '' (empty) is the working profile: `configs/.env` and `database/telegram_archive.db`.
+# Other values (e.g. '_dev_1', '_dev_2') are for experiments with separate accounts and databases.
+# Профиль конфигурации: выбирает `configs/.env<PROFILE>` и `database/telegram_archive<PROFILE>.db`.
+# '' (пустая строка) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
+# Другие значения (например, '_dev_1', '_dev_2') - для экспериментов с отдельными аккаунтами и базами данных.
+PROFILE = ''
+# PROFILE = '_dev_1'
 # PROFILE = '_dev_2'
-# PROFILE = ''
 
 @dataclass(frozen=True)
 class ProjectDirs:
@@ -32,9 +36,9 @@ class ProjectDirs:
     Attributes:
         media_dir (str): Directory for storing downloaded media files from Telegram
         export_dir (str): Directory for exporting messages to HTML files
-        telegram_settings_file (Path): Telegram API settings file
+        telegram_settings_file (Path): Telegram API settings file (`configs/.env<PROFILE>`)
         data_base_dir (Path): Directory for storing the SQLite database file
-        data_base_file (Path): SQLite database file
+        data_base_file (Path): SQLite database file (`telegram_archive<PROFILE>.db`)
     """
 
     media_dir = r'media_storage'
@@ -56,7 +60,7 @@ class GlobalConst:
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
     last_days_by_default = 30  # Default number of last days for messages filter
     text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
-    message_datetime_format = '%d-%m-%Y %H:%M :%S'  # Format for displaying date and time for messages and details
+    message_datetime_format = '%d-%m-%Y %H:%M:%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'  # Date and time format for file names
     saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database
     save_to_db_label = 'Save'  # Label for the checkbox to save a message to the database

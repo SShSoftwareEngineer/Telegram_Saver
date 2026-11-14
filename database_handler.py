@@ -1,7 +1,8 @@
 """
-The module contains model classes, functions, and constants for working with an SQLite database using SQLAlchemy.
+The module contains model classes and functions for working with an SQLite database using SQLAlchemy.
+Модуль содержит классы моделей и функции для работы с базой данных SQLite через SQLAlchemy.
 
-class DatabaseHandler:a class to represent handle database operations.
+class DatabaseHandler: a class to represent handle database operations.
 class Base(DeclarativeBase): a declarative class for creating tables in the database
 class DbDialog(Base): a class to represent a dialog (chat) in the database.
 class DbDialogType(Base): a class to represent a type of dialog (chat) in the database.
@@ -10,8 +11,8 @@ class DbFileType(Base): a class to represent a type of file associated with a me
 class DbMessageGroup(Base): a class to represent a message group in the database.
 class DbTag(Base): a class to represent a tag associated with a message group in the database.
 class DbCurrentState: a class representing the current state of the database client
-class DbMessageSortFilter:a class to represent sorting and filtering of message groups in the database.
-db_handler: an object of the DatabaseHandler class for working with the database
+class DbMessageSortFilter: a class to represent sorting and filtering of message groups in the database.
+get_db_handler: a function returning the shared DatabaseHandler (created lazily on the first call)
 message_group_tag_links: a relationship table for many-to-many relationship between message groups and tags
 ModelType: a TypeVar for model classes, bound to Base
 """
@@ -706,7 +707,8 @@ class DatabaseHandler:
         """
         Adds a tag to a message group, creating the tag if it does not exist. It does not commit: the caller owns the
         transaction.
-        Добавляет тег к группе сообщений, создавая тег, если его нет. Не делает commit: транзакцией управляет вызывающий.
+        Добавляет тег к группе сообщений, создавая тег, если его нет.
+        Не делает commit: транзакцией управляет вызывающий.
         Attributes:
             message_group (DbMessageGroup): message group
             tag_name (str): tag name
