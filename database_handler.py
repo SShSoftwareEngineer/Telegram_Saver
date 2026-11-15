@@ -20,6 +20,7 @@ ModelType: a TypeVar for model classes, bound to Base
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
+from html import escape
 from pathlib import Path
 from threading import Lock
 from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
@@ -51,6 +52,35 @@ message_group_tag_links = Table(
 )
 
 
+LIKE_ESCAPE_CHAR = '\\'  # Escape character of the LIKE patterns / Символ экранирования в шаблонах LIKE
+
+
+def escape_like(value: str) -> str:
+    """
+    Escapes the characters that have a special meaning in a LIKE pattern (%, _ and the escape character itself), so a
+    search query is matched literally
+    Экранирует символы, имеющие особый смысл в шаблоне LIKE (%, _ и сам символ экранирования), чтобы поисковый запрос
+    сравнивался буквально
+    Attributes:
+        value (str): search query
+    Returns:
+        str: the query for use in a LIKE pattern with `escape=LIKE_ESCAPE_CHAR`
+    """
+
+    return (value.replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR * 2)
+            .replace('%', f'{LIKE_ESCAPE_CHAR}%').replace('_', f'{LIKE_ESCAPE_CHAR}_'))
+
+
+def _unicode_lower(value: Any) -> Any:
+    """
+    Lower-cases a string for any alphabet (the SQLite built-in `lower()` handles only ASCII); other values stay as is
+    Приводит строку к нижнему регистру для любого алфавита (встроенная `lower()` в SQLite умеет только ASCII);
+    остальные значения не меняются
+    """
+
+    return value.lower() if isinstance(value, str) else value
+
+
 class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     """
     A class to represent a message group in the database.
@@ -60,7 +90,10 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     __tablename__ = TableNames.message_groups  # Table name in the database / Имя таблицы в базе данных
     grouped_id: Mapped[str] = mapped_column(String, primary_key=True, unique=True, index=True, nullable=False)
     date: Mapped[datetime]
-    text: Mapped[str] = mapped_column(Text, nullable=True)
+    # Safe HTML of the message text (built by `render_message_html`) and the same text without formatting for search
+    # Безопасный HTML текста сообщения (строит `render_message_html`) и тот же текст без форматирования для поиска
+    html: Mapped[str] = mapped_column(Text, nullable=True)
+    plain_text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
     files_report: Mapped[str] = mapped_column(Text, nullable=True)
     sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
@@ -83,7 +116,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
                        'dialog_title': self.dialog.title if self.dialog else '',
                        'message_group_id': self.grouped_id,
                        'date': self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
-                       'text': self.text if self.text else '',
+                       'html': self.html if self.html else '',
                        'sender_id': self.sender_id,
                        'files': [{'file_path': db_file.file_path,
                                   'alt_text': db_file.file_type.alt_text,
@@ -439,6 +472,11 @@ class DatabaseHandler:
         # Enforce foreign key constraints in SQLite
         @event.listens_for(self.engine, "connect")
         def set_sqlite_pragma(dbapi_conn, _):  # _ используется вместо необязательного параметра connection_record
+            # SQLite `lower()` changes only ASCII letters, and SQLAlchemy renders `ilike` as `lower(a) LIKE lower(b)`.
+            # Replace it with a Unicode-aware function, so the search ignores the case of Cyrillic text too.
+            # `lower()` в SQLite меняет только ASCII-буквы, а SQLAlchemy превращает `ilike` в `lower(a) LIKE lower(b)`.
+            # Заменяем ее функцией с поддержкой Unicode, чтобы поиск не зависел от регистра и у кириллицы.
+            dbapi_conn.create_function('lower', 1, _unicode_lower, deterministic=True)
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")  # Enabling foreign key constraints
             cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
@@ -578,7 +616,8 @@ class DatabaseHandler:
             select_stmt = select_stmt.where(DbMessageGroup.date <= self.message_sort_filter.date_to)
         # Filter by message text / Фильтр по текстам сообщений
         if self.message_sort_filter.message_query:
-            select_stmt = select_stmt.where(DbMessageGroup.text.ilike(f'%{self.message_sort_filter.message_query}%'))
+            select_stmt = select_stmt.where(DbMessageGroup.plain_text.ilike(
+                f'%{escape_like(self.message_sort_filter.message_query)}%', escape=LIKE_ESCAPE_CHAR))
         # Filter by message tags / Фильтр по тегам сообщений
         if self.message_sort_filter.tag_query:
             # Create a list of expressions with conditions for searching for key phrases in tags
@@ -608,8 +647,11 @@ class DatabaseHandler:
 
         if not db_object_list:
             return ''
+        # The values (dialog titles, tag names) are escaped: the string goes to the page as HTML
+        # Значения (названия диалогов, имена тегов) экранируются: строка попадает на страницу как HTML
         result = '\n'.join(
-            [f'<option value="{getattr(db_object, value)}" >{getattr(db_object, visible_text)}</option>'
+            [f'<option value="{escape(str(getattr(db_object, value)))}" >'
+             f'{escape(str(getattr(db_object, visible_text)))}</option>'
              for db_object in db_object_list])
         return result
 
@@ -630,7 +672,7 @@ class DatabaseHandler:
                       'dialog_title': current_message_group.dialog.title,
                       'message_group_id': message_group_id,
                       'date': current_message_group.date,
-                      'text': current_message_group.text if current_message_group.text else '',
+                      'html': current_message_group.html if current_message_group.html else '',
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'tags': current_message_group.tags if current_message_group.tags else []}

@@ -31,7 +31,8 @@ def add_group(handler: DatabaseHandler, number: int, tags: tuple[str, ...] = ())
     if not session.get(DbDialog, 1):
         session.add(DbDialog(dialog_id=1, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     grouped_id = f'1_{number}'
-    group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number), text='text', truncated_text='text',
+    group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number), html='text', plain_text='text',
+                           truncated_text='text',
                            files_report='', sender_id=7, dialog_id=1)
     session.add(group)
     for name in tags:

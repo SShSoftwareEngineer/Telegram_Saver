@@ -16,7 +16,6 @@ from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
 from enum import Enum
-import re
 
 # The configuration profile: it selects `configs/.env<PROFILE>` and `database/telegram_archive<PROFILE>.db`.
 # '' (empty) is the working profile: `configs/.env` and `database/telegram_archive.db`.
@@ -59,7 +58,6 @@ class GlobalConst:
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
     last_days_by_default = 30  # Default number of last days for messages filter
-    text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
     message_datetime_format = '%d-%m-%Y %H:%M:%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'  # Date and time format for file names
     saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database

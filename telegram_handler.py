@@ -10,7 +10,6 @@ class TgFile: a class to represent a Telegram message file
 class TgMessageGroup: a class to represent a Telegram message group in this program
 class TgMessageSortFilter: a class to represent sorting and filtering of Telegram message groups.
 get_tg_handler: a function returning the shared TelegramHandler (created lazily on the first call)
-convert_text_hyperlinks: a function for converting text hyperlinks in Markdown format [Text](URL) to HTML format
 
 The asyncio event loop of the Telegram client runs in a background daemon thread owned by TelegramHandler
 (see TelegramHandler._run and TelegramHandler.close).
@@ -33,6 +32,7 @@ from telethon import TelegramClient
 from dotenv import dotenv_values
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
 from utils import parse_date_string, clean_file_path, status_messages
+from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
 
 @dataclass
@@ -214,12 +214,13 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
         message_grouped_id (str): message group ID
         message (Message): Telegram message object
         message_id (int): message ID
-        description (str): description of the reference message
+        description (str): description of the reference message (plain text)
         file_name (str): file name
         file_path (str): full file path
         alt_text (str): alternate text for media file
         size (int): size of file
         file_type (MessageFileTypes): file type
+        description_html (str): safe HTML of the description (escaped text, a link with a checked address)
     """
 
     dialog_id: int
@@ -232,6 +233,7 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
     alt_text: str
     size: int
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
+    description_html: str = ''
 
     def is_exists(self) -> bool:
         """
@@ -272,8 +274,9 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         ids (list[int]): ID of messages contained in the message group
         files (list[TgFile]): message files contained in a message group
         date (datetime | None): date of message group
-        text (str): text of message group
-        truncated_text (str): truncated text of message group for HTML templates
+        html (str): safe HTML of the message group text (built by `render_message_html`, output with `|safe`)
+        plain_text (str): text of the message group without formatting (for search and truncation)
+        truncated_text (str): truncated plain text of message group
         sender_id (int | None): message sender ID (the number `message.sender_id`, not the raw `Peer` object)
         files_report (str | None): summary of message group files
         saved_to_db (bool): database saving status
@@ -284,7 +287,8 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     ids: list[int]
     files: list[TgFile]
     date: datetime | None = None
-    text: str = ''
+    html: str = ''
+    plain_text: str = ''
     truncated_text: str = ''
     sender_id: int | None = None
     files_report: str | None = ''
@@ -318,8 +322,21 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         self.sender_id = message.sender_id if self.sender_id is None else self.sender_id
         self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
         self.ids.append(message.id)
-        if message.text:
-            self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
+        # `raw_text` has no formatting marks; the formatting is in `entities` and goes to `render_message_html`
+        # `raw_text` без знаков форматирования; форматирование лежит в `entities` и обрабатывается `render_message_html`
+        if message.raw_text:
+            self._append_text(message.raw_text, render_message_html(message.raw_text, message.entities))
+
+    def _append_text(self, plain_text: str, html: str) -> None:
+        """
+        Appends a text part to the message group: the plain text and its HTML, separated by an empty line
+        Добавляет часть текста в группу сообщений: обычный текст и его HTML, через пустую строку
+        Attributes:
+            plain_text (str): plain text of the part
+            html (str): safe HTML of the part
+        """
+        self.plain_text = '\n\n'.join([self.plain_text, plain_text]).strip() if self.plain_text else plain_text.strip()
+        self.html = '<br><br>'.join([self.html, html]) if self.html else html
 
     def add_message_file(self, message_file: TgFile | None = None) -> None:
         """
@@ -331,8 +348,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         if message_file:
             self.files.append(message_file)
             if message_file.description:
-                self.text = message_file.description if self.text is None else '\n\n'.join(
-                    [self.text, message_file.description]).strip()
+                self._append_text(message_file.description, message_file.description_html)
 
     def set_files_report(self) -> None:
         """
@@ -350,47 +366,16 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
             alt_texts_list.append(current_report)
         self.files_report = ' '.join(sorted(alt_texts_list))
 
-    def text_hyperlink_conversion(self) -> None:
-        """
-        Converting text hyperlinks of the form [Text](URL) to HTML format
-        Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-        """
-        if self.text:
-            self.text = convert_text_hyperlinks(self.text) or ''
-
     def set_truncated_text(self) -> None:
         """
         Trimming the length of a message for display in the web interface of the message list
+        The plain text is cut, not the HTML, so a tag can never be cut in half
         Обрезание длины текста сообщения для отображения в веб-интерфейсе списка сообщений
+        Обрезается обычный текст, а не HTML, поэтому тег не может быть разрезан пополам
         """
 
-        if self.text:
-            # If the text of the message does not contain hyperlinks, we trim it to the specified length.
-            # Если текст сообщения не содержит гиперссылок обрезаем до заданной длины
-            if any([self.text.find('<a href') == -1,
-                    self.text.find('<a href') > GlobalConst.truncated_text_length]):
-                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length, placeholder='...')
-            else:
-                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length + 50,
-                                              placeholder='...')
-
-            #     hyperlinks = re.findall(r'.*?(<a href.*?>)(.*?)(<\/a>).*?', self.text)
-            #     if hyperlinks:
-            #         for hyperlink in hyperlinks:
-            #             hyperlink_text = ''.join(hyperlink)
-            #             truncated_text_length = self.text.find(hyperlink_text)
-            #             if truncated_text_length  >= ProjectConst.truncated_text_length:
-            #                 pass
-            #             if truncated_text_length+len(hyperlink[1]) >= ProjectConst.truncated_text_length:
-            #                 self.truncated_text = shorten(self.text, placeholder='...',
-            #                                               width=truncated_text_length + len(hyperlink_text))
-            #                 break
-            # if not self.truncated_text:
-            #     self.truncated_text = self.text
-
-        # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >
-        # «Перезавантаження: розширення для працевлаштування» </a>
-        # shorten             из             модуля             textwrap
+        if self.plain_text:
+            self.truncated_text = shorten(self.plain_text, width=GlobalConst.truncated_text_length, placeholder='...')
 
     def get_self_dir(self) -> str:
         """
@@ -776,13 +761,10 @@ class TelegramHandler:
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
-                if not self.message_sort_filter.message_query.lower() in message_group.text.lower():
+                if not self.message_sort_filter.message_query.lower() in message_group.plain_text.lower():
                     message_group_list.remove(message_group)
         # Post-processing of the generated message group / Постобработка сформированной группы сообщений
         for tg_message_group in message_group_list:
-            # Converting text hyperlinks of the form [Text](URL) to HTML format
-            # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-            tg_message_group.text_hyperlink_conversion()
             # Create a summary string based on the files available in the group messages and their types
             # Формирование строки резюме по имеющимся в группе сообщений файлам и их типам
             tg_message_group.set_files_report()
@@ -820,10 +802,7 @@ class TelegramHandler:
                       'dialog_title': detail_dialog_title,
                       'message_group_id': message_group_id,
                       'date': current_message_group.date,
-                      # Converting text hyperlinks of the form [Text](URL) to HTML format
-                      # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-                      'text': convert_text_hyperlinks(
-                          current_message_group.text) if current_message_group.text else '',
+                      'html': current_message_group.html,
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'saved_to_db': current_message_group.saved_to_db}
@@ -915,19 +894,24 @@ class TelegramHandler:
             else:
                 file_size = mess_doc.size
         # Get the file description / Получаем описание файла
+        # The description is kept as plain text and as safe HTML (escaped text, a link with a checked address)
+        # Описание хранится как обычный текст и как безопасный HTML (экранированный текст, ссылка с проверенным адресом)
         description = ''
+        description_html = ''
         if file_type == MessageFileTypes.WEBPAGE:
             if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
-                description = (f'<a href = "{message.media.webpage.url}"'
-                               f' target="_blank" >{message.media.webpage.url}</a>')
+                description = message.media.webpage.url
+                description_html = render_link_html(description, description)
             if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
-                description = '\n\n'.join([description,
-                                           shorten(message.media.webpage.description,
-                                                   width=GlobalConst.truncated_text_length, placeholder='...')])
+                page_description = shorten(message.media.webpage.description,
+                                           width=GlobalConst.truncated_text_length, placeholder='...')
+                description = '\n\n'.join(filter(None, [description, page_description]))
+                description_html = '<br><br>'.join(filter(None, [description_html,
+                                                                 plain_text_to_html(page_description)]))
         # Creating TgFile object / Создаем объект TgFile
         tg_file = TgFile(dialog_id=dialog_id, message_grouped_id=message_group.grouped_id,
                          message=message, message_id=message.id,
-                         description=description,
+                         description=description, description_html=description_html,
                          file_name='', file_path='',
                          alt_text=file_type.alt_text,
                          size=file_size,
@@ -1024,25 +1008,6 @@ class TelegramHandler:
                             f'No messages found: {no_messages_found}')
         status_messages.mess_update('', resulting_report)
         return resulting_report
-
-
-def convert_text_hyperlinks(message_text: str | None) -> str | None:
-    """
-    Converting text hyperlinks of the form [Text](URL) to HTML format
-    Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-    Attributes:
-        message_text (str | None): message text
-    Returns:
-        str | None: converted message text
-    """
-
-    if message_text:
-        matches = GlobalConst.text_with_url_pattern.findall(message_text)
-        if matches:
-            for match in matches:
-                message_text = message_text.replace(f'[{match[0]}]({match[1]})',
-                                                    f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
-    return message_text
 
 
 # Экземпляр TelegramHandler создается лениво, при первом вызове get_tg_handler(), а не при импорте модуля:

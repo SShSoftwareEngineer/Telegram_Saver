@@ -31,8 +31,8 @@ def add_message(db_handler: DatabaseHandler, dialog_id: int, title: str, file_pa
     """Adds a dialog with one message group that has the given files / Диалог с одной группой сообщений и файлами"""
     session = db_handler.session
     session.add(DbDialog(dialog_id=dialog_id, title=title, dialog_type_id=DialogTypes.CHANNEL.value))
-    group = DbMessageGroup(grouped_id=f'{dialog_id}_1', date=datetime(2026, 1, 1, 3, 4, 5), text='text',
-                           truncated_text='text', files_report='', sender_id=7, dialog_id=dialog_id)
+    group = DbMessageGroup(grouped_id=f'{dialog_id}_1', date=datetime(2026, 1, 1, 3, 4, 5), html='text',
+                           plain_text='text', truncated_text='text', files_report='', sender_id=7, dialog_id=dialog_id)
     for number, file_path in enumerate(file_paths, start=1):
         group.files.append(DbFile(file_path=file_path, message_id=number, size=10 * number,
                                   file_type_id=MessageFileTypes.IMAGE.type_id))
@@ -97,8 +97,8 @@ def test_maintenance_does_not_call_download_when_nothing_is_missing(client: Test
 
 def test_maintenance_reports_files_without_records_and_deletes_nothing(client: TestClient, db_handler: DatabaseHandler,
                                                                        work_dir: Path):
-    """The local files without records are listed with sizes and totals (the names are escaped for HTML); the
-    files, the directories and the files with records stay as they are"""
+    """The local files without records are listed with sizes and totals (the report keeps the original names, they
+    are escaped when the status bar HTML is built); the files, the directories and the files with records stay"""
     add_message(db_handler, 1, 'chat', ('chat/2026-01-01/kept.jpg',))
     kept = make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
     orphan = make_media_file(work_dir, 'chat/2026-01-01/a&b.jpg', size=2048)
@@ -111,7 +111,7 @@ def test_maintenance_reports_files_without_records_and_deletes_nothing(client: T
 
     lines = report()
     assert any('Local files without a record in the database: 2 (3.00 MB)' in line for line in lines)
-    assert any('chat/2026-01-01/a&amp;b.jpg (2.0 KB)' in line for line in lines)
+    assert any('chat/2026-01-01/a&b.jpg (2.0 KB)' in line for line in lines)
     assert any('old/clip.mp4 (3.00 MB)' in line for line in lines)
     assert not any('kept.jpg' in line or 'notes.txt' in line for line in lines)
     assert all(path.exists() for path in (kept, orphan, video, other, empty_dir))

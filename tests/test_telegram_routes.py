@@ -22,13 +22,13 @@ def make_message_group(dialog_id: int = CHANNEL_ID, number: int = 1, sender_id: 
     """Fake message group with the attributes `tg_messages.html` uses (sender 1 is the fake account `tg_me`)
     Заглушка группы сообщений (отправитель 1 - заглушка аккаунта `tg_me`)"""
     return SimpleNamespace(grouped_id=f'{dialog_id}_{number}', dialog_id=dialog_id, date=datetime(2026, 1, 2, 3, 4, 5),
-                           text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
+                           html='Hello<br>world', plain_text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
 
 
 def make_details(message_group_id: str = f'{CHANNEL_ID}_1') -> dict:
     """Fake message details with an image and a video / Заглушка деталей сообщения с изображением и видео"""
     return {'dialog_id': CHANNEL_ID, 'dialog_title': 'Test chat', 'message_group_id': message_group_id,
-            'date': datetime(2026, 1, 2, 3, 4, 5), 'text': 'Hello\nworld', 'saved_to_db': False,
+            'date': datetime(2026, 1, 2, 3, 4, 5), 'html': 'Hello<br>world', 'saved_to_db': False,
             'existing_files': [SimpleNamespace(alt_text='Image', file_path='chat/photo 1.jpg'),
                                SimpleNamespace(alt_text='Video', file_path='chat/clip.mp4')]}
 
@@ -77,7 +77,8 @@ def test_get_messages_highlights_own_messages(client: TestClient, tg_handler: Si
 def test_get_messages_files_report_on_its_own_line(client: TestClient, tg_handler: SimpleNamespace):
     """The files report is a block, so it stays on its own line also for a message without text"""
     group = make_message_group()
-    group.text = ''
+    group.html = ''
+    group.plain_text = ''
     tg_handler.get_message_group_list.return_value = [group]
     response = client.get(f'/tg_messages/{CHANNEL_ID}')
     assert '<div><b>1 photo</b></div>' in response.json()['tg_messages']

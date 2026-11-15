@@ -31,7 +31,7 @@ Variables:
                 {{ message_date }}</a>
 
             {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
-            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|safe|truncate(constants.truncated_title_length) }}</span>
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(constants.truncated_title_length) }}</span>
 
             {# Creating a checkbox for marking for export or deletion / Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
@@ -44,9 +44,11 @@ Variables:
 
             {# Displaying the beginning of the text; the messages of the account owner are indented, as in the
                Telegram list / Вывод начального фрагмента текста; сообщения владельца аккаунта с отступом, как в списке Telegram #}
-            {% if db_message.text %}
-                <div class="{% if db_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
-                    {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+            {% if db_message.plain_text %}
+                {# The plain text is cut and escaped automatically (no |safe); the line breaks come from the CSS
+                   Обычный текст обрезается и экранируется автоматически (без |safe); переводы строк - через CSS #}
+                <div class="message-preview {% if db_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
+                    {{- db_message.plain_text|replace('\n\n', '\n')|truncate(constants.truncated_text_length) -}}
                 </div>
             {% endif %}
 

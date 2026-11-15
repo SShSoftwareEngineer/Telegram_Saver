@@ -6,7 +6,6 @@ Service routes: the main page, the status bar, the database and file system main
 import sqlite3
 from contextlib import closing
 from datetime import datetime
-from html import escape
 from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -83,7 +82,7 @@ def db_database_maintenance() -> JSONResponse:
         # 1. Local files without a record in the database: only report them, with sizes, to delete manually
         # 1. Локальные файлы без записи в базе данных: только сообщаем о них с размерами, для ручного удаления
         orphan_files = sorted(local_files - database_files)
-        orphan_lines = [f'{escape(name)} ({_format_size((media_dir / name).stat().st_size)})'
+        orphan_lines = [f'{name} ({_format_size((media_dir / name).stat().st_size)})'
                         for name in orphan_files]
         total_size = sum((media_dir / name).stat().st_size for name in orphan_files)
         status_messages.mess_update('Synchronizing the list of local files with the database',

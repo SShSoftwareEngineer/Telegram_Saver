@@ -34,7 +34,8 @@ def make_group(number: int, with_file: bool = True) -> TgMessageGroup:
     """Real message group (with a real image file object) of the fake dialog / Группа сообщений с файлом-изображением"""
     group = TgMessageGroup(f'{DIALOG_ID}_{number}', DIALOG_ID)
     group.date = datetime(2026, 1, number, 3, 4, 5)
-    group.text = f'Message {number}\nsecond line'
+    group.html = f'Message {number}<br>second line'
+    group.plain_text = f'Message {number}\nsecond line'
     group.truncated_text = f'Message {number}'
     group.sender_id = 7
     group.files_report = '1 photo'
@@ -66,7 +67,8 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
     assert session.query(DbDialog).filter_by(dialog_id=DIALOG_ID).one().title == 'Test chat'
     assert {g.grouped_id for g in session.query(DbMessageGroup)} == {groups[0].grouped_id, groups[2].grouped_id}
     saved = session.query(DbMessageGroup).filter_by(grouped_id=groups[0].grouped_id).one()
-    assert (saved.text, saved.sender_id, saved.dialog.title) == ('Message 1\nsecond line', 7, 'Test chat')
+    assert (saved.html, saved.plain_text, saved.sender_id, saved.dialog.title) == (
+        'Message 1<br>second line', 'Message 1\nsecond line', 7, 'Test chat')
     assert sorted(f.file_type_id for f in saved.files) == sorted(
         [MessageFileTypes.IMAGE.type_id, MessageFileTypes.CONTENT.type_id])
     # The HTML file is in the file system and in the database / HTML файл есть в файловой системе и в базе данных

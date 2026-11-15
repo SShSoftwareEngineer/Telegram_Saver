@@ -14,6 +14,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
+from html import escape
 from pathlib import Path
 from dateutil.parser import parse
 
@@ -53,11 +54,17 @@ class StatusMessages:
             self.report_list.append(report_string)
         # Forming a string for a tag in HTML format for the content <select>
         # Формируем строку для тега в HTML формате для содержимого <select>
+        # The texts (file names, chat titles, error messages) are escaped here, once, because the string goes to the
+        # page as HTML; `report_list` and the console output keep the original text. Callers must not escape them.
+        # Тексты (имена файлов, названия чатов, сообщения об ошибках) экранируются здесь, один раз, потому что строка
+        # попадает на страницу как HTML; `report_list` и вывод в консоль сохраняют исходный текст. Вызывающий код
+        # не должен экранировать их сам.
         select_string = ''
         if self.report_list:
             select_string = '\n'.join(
-                [f'<option>{current_report}</option>' for current_report in reversed(self.report_list)])
-        self.messages = {'sb_operation': f'<strong>Operation: </strong>{self.operation}', 'sb_report': select_string}
+                [f'<option>{escape(current_report)}</option>' for current_report in reversed(self.report_list)])
+        self.messages = {'sb_operation': f'<strong>Operation: </strong>{escape(self.operation)}',
+                         'sb_report': select_string}
         # Print the report message to the console
         # Вывод сообщения отчета в консоль
         print(f'{current_time}  {self.operation} - {report}')

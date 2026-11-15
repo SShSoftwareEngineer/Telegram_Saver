@@ -182,7 +182,8 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                 # Saving a group of messages / Сохраняем группу сообщений
                 db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
                                                             {'date': tg_message_group.date,
-                                                             'text': tg_message_group.text,
+                                                             'html': tg_message_group.html,
+                                                             'plain_text': tg_message_group.plain_text,
                                                              'truncated_text': tg_message_group.truncated_text,
                                                              'files_report': tg_message_group.files_report,
                                                              'sender_id': tg_message_group.sender_id,

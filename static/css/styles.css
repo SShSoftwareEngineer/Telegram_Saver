@@ -391,6 +391,31 @@ html, body {
     margin-left: 7%;
 }
 
+/* Text preview in the list: the line breaks of the plain text are shown as they are */
+/* Фрагмент текста в списке: переводы строк обычного текста выводятся как есть */
+.message-preview {
+    white-space: pre-line;
+}
+
+/* Formatting of the message text (HTML built by render_message_html) */
+/* Форматирование текста сообщения (HTML из render_message_html) */
+blockquote {
+    margin: 6px 0;
+    padding-left: 10px;
+    border-left: 3px solid #90a4ae;
+}
+
+.tg-spoiler {
+    background: #9e9e9e;
+    color: transparent;
+    border-radius: 3px;
+}
+
+.tg-spoiler:hover {
+    background: transparent;
+    color: inherit;
+}
+
 
 /* ====== Display or export message details ====== */
 /* ===== Вывод или экспорт деталей сообщения ===== */

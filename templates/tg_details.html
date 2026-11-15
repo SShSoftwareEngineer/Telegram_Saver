@@ -35,9 +35,10 @@ Variables:
     </div>
 
     {# Message text / Вывод текста сообщения #}
-    {% if tg_details.text %}
+    {% if tg_details.html %}
         <br>
-        {{ tg_details.text|replace('\n', '<br>')|safe }}
+        {# Safe HTML built by render_message_html when the message was received / Безопасный HTML из render_message_html #}
+        {{ tg_details.html|safe }}
     {% endif %}
 
     {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}

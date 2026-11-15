@@ -62,7 +62,7 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     """In the database list only the messages of the logged-in account (`sender_id` equals `tg_me.id`) are indented,
     as in the Telegram list / В списке БД с отступом только сообщения владельца аккаунта, как в списке Telegram"""
     def saved_group(number: int, sender_id: int | None) -> SimpleNamespace:
-        return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), text=f'Text {number}',
+        return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), plain_text=f'Text {number}',
                                files_report='1 photo', sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
 
     monkeypatch.setattr(db_handler.current_state, 'message_group_list', [
