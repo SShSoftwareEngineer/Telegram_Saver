@@ -18,7 +18,7 @@ import database_handler
 import telegram_handler
 from configs.config import ProjectDirs
 from database_handler import DatabaseHandler
-from telegram_handler import TgCurrentState
+from telegram_handler import TgCurrentState, TgMessageSortFilter
 from web.main import app
 
 
@@ -42,9 +42,13 @@ def tg_handler(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     Заглушка TelegramHandler с атрибутами, которые используют шаблоны и lifespan. Заменяет кэшированный обработчик,
     поэтому `get_tg_handler()` возвращает ее и не создает настоящий клиент.
     """
+    # The real filter with the defaults, as the real handler sets it (the page shows its dates)
+    # Настоящий фильтр с умолчаниями, как его задает настоящий обработчик (страница показывает его даты)
+    message_filter = TgMessageSortFilter()
+    message_filter.set_default_filters()
     fake = SimpleNamespace(
         me=SimpleNamespace(id=1),
-        message_sort_filter=SimpleNamespace(date_from_default='2026-01-01'),
+        message_sort_filter=message_filter,
         dialog_sort_filter=MagicMock(),
         current_state=TgCurrentState(),
         # Reading methods: the tests set the return values they need

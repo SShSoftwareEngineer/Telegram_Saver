@@ -27,6 +27,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 state_lock = Lock()
 
 
+def filter_date(value: datetime | None) -> str:
+    """
+    Date of a filter for the value of `<input type="date">`: the local day as `YYYY-MM-DD`, or '' if the date is off
+    Дата фильтра для значения `<input type="date">`: локальный день в виде `YYYY-MM-DD` или '', если даты нет
+    """
+    return to_local(value).strftime('%Y-%m-%d') if value else ''
+
+
 def inject_field_names(_request: Request) -> dict[str, Any]:
     """
     Context processor with field names and the current state (the Flask `inject_field_names` equivalent).
@@ -39,10 +47,13 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
         'tg_file_types': MessageFileTypes,
         'form_ctrl_cfg': FormCfg,
         'tg_me': tg_handler.me,
-        'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
+        'tg_mess_date_from': filter_date(tg_handler.message_sort_filter.date_from),
+        'tg_mess_date_to': filter_date(tg_handler.message_sort_filter.date_to),
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
         'tg_details': tg_handler.current_state.message_details,
+        'db_mess_date_from': filter_date(db_handler.message_sort_filter.date_from),
+        'db_mess_date_to': filter_date(db_handler.message_sort_filter.date_to),
         'db_all_dialog_list': db_handler.all_dialogues_list,
         'db_all_tags': db_handler.all_tags_list,
         'db_messages': db_handler.current_state.message_group_list,

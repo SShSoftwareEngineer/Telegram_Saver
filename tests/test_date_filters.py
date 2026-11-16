@@ -97,8 +97,7 @@ def test_telegram_default_start_is_the_local_day_start():
     message_filter.set_default_filters()
     start = message_filter.date_from
     assert start is not None and start.tzinfo is not None and start.replace(tzinfo=None).time() == time(0)
-    assert message_filter.date_from_default == start.strftime('%Y-%m-%d')
-    assert start == local_day_start(GlobalConst.last_days_by_default)
+    assert start == local_day_start(GlobalConst.tg_last_days_by_default)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

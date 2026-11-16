@@ -161,7 +161,9 @@ def test_sorting_of_groups_with_and_without_date():
 
 def test_filter_dates_are_aware():
     """The dates of the Telegram filter are aware: Telethon takes a naive datetime for UTC (the filter was shifted)"""
-    assert TgMessageSortFilter()._date_from.tzinfo is not None  # pylint: disable=protected-access
+    message_filter = TgMessageSortFilter()
+    message_filter.set_default_filters()
+    assert message_filter.date_from is not None and message_filter.date_from.tzinfo is not None
     parsed = parse_date_string('2026-01-15')
     assert parsed is not None and parsed.tzinfo is not None
     assert parsed.replace(tzinfo=None) == datetime(2026, 1, 15)  # local midnight / локальная полночь

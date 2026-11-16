@@ -32,7 +32,7 @@ from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
 from sqlalchemy.types import TypeDecorator
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
-from utils import parse_date_string, status_messages, to_local, to_utc
+from utils import local_day_start, parse_date_string, status_messages, to_local, to_utc
 
 
 class UtcDateTime(TypeDecorator):  # pylint: disable=too-many-ancestors,abstract-method
@@ -448,6 +448,23 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         self._tag_match_all = value == '1'
 
+    def set_default_filters(self) -> None:
+        """
+        Sets the default filters of the tab: the last `db_last_days_by_default` days (from the start of the local day),
+        sorted by date, newest first (as the radio buttons of the filter form are set), no other filters.
+        Устанавливает фильтры вкладки по умолчанию: последние `db_last_days_by_default` дней (с начала локального дня),
+        сортировка по дате, сначала новые (как выставлены радиокнопки формы фильтра), других фильтров нет.
+        """
+
+        self._selected_dialog_list = None
+        self.sorting_field = '0'  # by date / по дате
+        self.sort_order = '1'  # descending / по убыванию
+        self._date_from = local_day_start(GlobalConst.db_last_days_by_default)
+        self._date_to = None
+        self._message_query = None
+        self._tag_query = None
+        self._tag_match_all = False
+
 
 @dataclass
 class DbCurrentState:
@@ -599,6 +616,14 @@ class DatabaseHandler:
         # Set the current state of the database client / Устанавливаем текущее состояние клиента базы данных
         self.current_state.dialog_list = list(self.all_dialogues_list)
         self.current_state.all_tags_list = list(self.all_tags_list)
+        # The handler's own message filter with the defaults (the last days, sorted by date), like the Telegram handler;
+        # the form of the tab shows its dates, so the first "Apply" does not load the whole archive. The list of
+        # messages stays empty until the filter is applied.
+        # Собственный фильтр сообщений обработчика с умолчаниями (последние дни, сортировка по дате), как у обработчика
+        # Telegram; форма вкладки показывает его даты, поэтому первое «Apply» не загрузит весь архив. Список сообщений
+        # пуст, пока фильтр не применен.
+        self.message_sort_filter = DbMessageSortFilter()
+        self.message_sort_filter.set_default_filters()
         self.current_state.message_group_list = []
 
     def get_dialog_list(self) -> list[DbDialog]:

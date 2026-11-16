@@ -23,7 +23,7 @@ from threading import Event, Lock, Thread, current_thread
 from textwrap import shorten
 from dataclasses import dataclass
 from typing import Any, Callable, cast
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
@@ -398,28 +398,28 @@ class TgMessageSortFilter:
     Класс представляющий параметры сортировки и фильтрации группы сообщений
     """
 
+    # A new filter is neutral (no period); the handler sets the defaults with `set_default_filters()`, like the
+    # database handler does. The filter dates are aware (local time of the system): Telethon takes a naive datetime
+    # for UTC.
+    # Новый фильтр нейтральный (без периода); умолчания задает обработчик через `set_default_filters()`, как и
+    # обработчик БД. Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC.
     _sort_order: bool = True
-    # The filter dates are aware (local time of the system): Telethon takes a naive datetime for UTC. The default
-    # start is the start of the local day, like the date in the form field
-    # Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC. Начало по умолчанию - начало
-    # локального дня, как дата в поле формы
-    _date_from: datetime | None = local_day_start(GlobalConst.last_days_by_default)
+    _date_from: datetime | None = None
     _date_to: datetime | None = None
     _message_query: str | None = None
-    date_from_default: str | None = (datetime.now() - timedelta(
-        days=GlobalConst.last_days_by_default)).strftime("%Y-%m-%d")
 
-    def set_default_filters(self):
+    def set_default_filters(self) -> None:
         """
-        Sets default filters
-        Устанавливает фильтры по умолчанию
+        Sets the default filters of the tab: the last `tg_last_days_by_default` days (from the start of the local day),
+        newest first (as the radio buttons of the filter form are set), no text filter.
+        Устанавливает фильтры вкладки по умолчанию: последние `tg_last_days_by_default` дней (с начала локального дня),
+        сначала новые (как выставлены радиокнопки формы фильтра), фильтра по тексту нет.
         """
 
         self._sort_order = True
-        self._date_from = local_day_start(GlobalConst.last_days_by_default)
+        self._date_from = local_day_start(GlobalConst.tg_last_days_by_default)
         self._date_to = None
         self._message_query = None
-        self.date_from_default = self.date_from.strftime("%Y-%m-%d")
 
     @property
     def sort_order(self) -> bool:
@@ -550,6 +550,12 @@ class TelegramHandler:
 
         # Load Telegram connection settings from file / Загружаем настройки подключения к Telegram из файла
         self._connection_settings = dotenv_values(ProjectDirs.telegram_settings_file)
+        # The handler's own message filter with the defaults (the last days, newest first), like the database handler;
+        # the form of the tab shows its dates. The list of messages stays empty until a chat is selected.
+        # Собственный фильтр сообщений обработчика с умолчаниями (последние дни, сначала новые), как у обработчика БД;
+        # форма вкладки показывает его даты. Список сообщений пуст, пока не выбран чат.
+        self.message_sort_filter = TgMessageSortFilter()
+        self.message_sort_filter.set_default_filters()
         # Start the event loop of the Telegram client in a background daemon thread
         # Запускаем цикл событий клиента Telegram в фоновом потоке (daemon)
         self._loop = new_event_loop()

@@ -57,7 +57,8 @@ class GlobalConst:
     max_download_file_size = 50 * 2 ** 20  # 50 MB - Maximum file size for downloading from Telegram
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
-    last_days_by_default = 30  # Default number of last days for messages filter
+    tg_last_days_by_default = 30  # Default number of last days for the messages filter of the Telegram tab
+    db_last_days_by_default = 30  # Default number of last days for the messages filter of the database tab
     message_datetime_format = '%d-%m-%Y %H:%M:%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'  # Date and time format for file names
     saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database

@@ -171,8 +171,10 @@ def test_message_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
     assert data['tg-messages-count'] == '(1)'
     assert data['tg_details'] == ''
     mess_filter = tg_handler.message_sort_filter
-    assert (mess_filter.sort_order, mess_filter.date_from, mess_filter.date_to, mess_filter.message_query) == (
-        '1', '2026-01-01', '2026-02-01', 'hello')
+    assert mess_filter.sort_order is False  # '1' is "oldest first" / '1' - сначала старые
+    assert mess_filter.date_from == datetime(2026, 1, 1).astimezone()  # the start of the local day
+    assert mess_filter.date_to == datetime(2026, 2, 1, 23, 59, 59, 999999).astimezone()  # the end of the local day
+    assert mess_filter.message_query == 'hello'
     tg_handler.get_message_group_list.assert_called_once_with(CHANNEL_ID)
     assert tg_handler.current_state.message_details is None
 

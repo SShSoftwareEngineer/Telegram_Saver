@@ -1,7 +1,8 @@
 {#
 Application home page.
 Variables:
-- chats_count: number of chats
+- the lists (tg_dialogs, tg_messages, db_messages) and the filter dates come from the context processor; a counter
+  next to a list is shown only when the list is not empty and always equals its length
 #}
 
 
@@ -36,8 +37,8 @@ Variables:
         <div id="tab1" class="tab-content" style="display: block;">
             <div class="tg-container-tab_1">
                 <div class="header tg-filter_h">Filters</div>
-                <div class="header tg-chat_h">Chats&nbsp;<span id="tg-chats-count">{{ chats_count }}</span></div>
-                <div class="header tg-message_h">Messages&nbsp;<span id="tg-messages-count"></span></div>
+                <div class="header tg-chat_h">Chats&nbsp;<span id="tg-chats-count">{% if tg_dialogs %}({{ tg_dialogs|length }}){% endif %}</span></div>
+                <div class="header tg-message_h">Messages&nbsp;<span id="tg-messages-count">{% if tg_messages %}({{ tg_messages|length }}){% endif %}</span></div>
                 <div class="header tg-detail_h">Message Details</div>
                 <div class="grid tg-filters">
                     {# Filters for Telegram chats and messages / Фильтры для диалогов и сообщений Telegram #}
@@ -88,7 +89,7 @@ Variables:
         <div id="tab2" class="tab-content">
             <div class="db-container-tab_2">
                 <div class="header db-filters_h"> Filters</div>
-                <div class="header db-messages_h">Messages&nbsp;<span id="db-messages-count"></span></div>
+                <div class="header db-messages_h">Messages&nbsp;<span id="db-messages-count">{% if db_messages %}({{ db_messages|length }}){% endif %}</span></div>
                 <div class="header db-details_h">Message details</div>
                 <div class="header db-tags_h">Tags</div>
                 <div class="grid db-filters">

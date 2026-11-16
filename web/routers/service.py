@@ -34,11 +34,11 @@ def index(request: Request):
     Главная страница приложения
     """
     with state_lock:
-        dialog_list = get_tg_handler().current_state.dialog_list
-        chats_count = f'({len(dialog_list)})' if dialog_list else ''
-        # Rendering the main page template with displaying the number of Telegram chats
-        # Рендеринг шаблона главной страницы с отображением количества чатов Telegram
-        return templates.TemplateResponse(request, 'index.html', {'chats_count': chats_count})
+        # The lists, the counters next to them and the filter dates all come from the current state of the handlers
+        # (the context processor), so after a reload they agree on every tab
+        # Списки, счетчики рядом с ними и даты фильтров берутся из текущего состояния обработчиков (контекстный
+        # процессор), поэтому после перезагрузки они согласованы на каждой вкладке
+        return templates.TemplateResponse(request, 'index.html')
 
 
 def _format_size(size: int) -> str:
