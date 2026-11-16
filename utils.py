@@ -4,6 +4,8 @@ The module contains classes, functions, and variables that are used in other mod
 
 class StatusMessages: a class to hold status messages for the web interface.
 parse_date_string: a function to parse a date string and return a datetime object
+to_utc: a function to convert a datetime to UTC (naive datetimes are local time)
+to_local: a function to convert a datetime to the local time zone of the system (naive datetimes are local time)
 clean_file_path: a function to clean a file or directory name from invalid characters
 limit_list: a function to cut a long list of report lines and mark the continuation
 delete_media_files: a function to delete media files and the directories left empty
@@ -13,7 +15,7 @@ status_messages: a global instance of StatusMessages
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from dateutil.parser import parse
@@ -88,9 +90,41 @@ def parse_date_string(date_str: str) -> datetime | None:
     if not date_str:
         return None
     try:
-        return parse(date_str, dayfirst=True)
+        # The date comes from the form in local time: make it aware, so Telethon (it takes a naive datetime for UTC) and
+        # the database (stores UTC) get the right moment
+        # Дата приходит из формы в локальном времени: делаем ее aware, чтобы Telethon (наивную дату он считает UTC) и
+        # база данных (хранит UTC) получали верный момент
+        return to_local(parse(date_str, dayfirst=True))
     except (ValueError, OverflowError):
         return None
+
+
+def to_utc(value: datetime) -> datetime:
+    """
+    Converts a datetime to UTC. A naive datetime is local time of the system (the Python rule), not UTC.
+    Переводит дату-время в UTC. Наивная дата-время - это локальное время системы (правило Python), а не UTC.
+    Attributes:
+        value (datetime): date and time
+    Returns:
+        datetime: aware datetime in UTC
+    """
+
+    return value.astimezone(timezone.utc)
+
+
+def to_local(value: datetime) -> datetime:
+    """
+    Converts a datetime to the local time zone of the system (the time zone of the OS settings). A naive datetime is
+    already local time: it only gets the time zone.
+    Переводит дату-время в локальный часовой пояс системы (пояс из настроек ОС). Наивная дата-время уже локальная:
+    ей только присваивается часовой пояс.
+    Attributes:
+        value (datetime): date and time
+    Returns:
+        datetime: aware datetime in the local time zone
+    """
+
+    return value.astimezone()
 
 
 def clean_file_path(file_path: str | None) -> str | None:

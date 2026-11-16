@@ -11,7 +11,7 @@ Variables:
 
 {% if db_details %}
     {% set group = db_details.message_group_id %}
-    {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
+    {% set message_date = db_details.date|local_dt(constants.message_datetime_format) %}
     {% set message_grouped_id = constants.mess_group_id+'_det = '+group %}
 
     {# Hidden element that returns the grouped_id of the corresponding message group for details /

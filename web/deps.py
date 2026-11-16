@@ -3,6 +3,7 @@ Shared objects of the web layer: the global state lock, Jinja2 templates, templa
 Общие объекты веб-слоя: глобальный замок состояния, шаблоны Jinja2, контекст шаблонов и помощник url_for.
 """
 
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any
@@ -15,6 +16,7 @@ from starlette.templating import Jinja2Templates
 from configs.config import GlobalConst, MessageFileTypes, FormCfg
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
+from utils import to_local
 
 # Project root: templates and static files are looked up relative to it, not to the current directory
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
@@ -74,6 +76,19 @@ templates = Jinja2Templates(directory=BASE_DIR / 'templates', context_processors
 # Replace the built-in Starlette url_for (it always returns absolute URLs)
 # Заменяем встроенный url_for Starlette (он всегда возвращает абсолютные URL)
 templates.env.globals['url_for'] = url_for
+
+
+def local_dt(value: datetime, fmt: str) -> str:
+    """
+    Jinja2 filter: formats a date and time in the local time zone of the system (the dates are stored and passed in
+    UTC, the user always sees the local time, as in the Telegram client).
+    Фильтр Jinja2: форматирует дату и время в локальном часовом поясе системы (даты хранятся и передаются в UTC,
+    пользователь всегда видит локальное время, как в клиенте Telegram).
+    """
+    return to_local(value).strftime(fmt)
+
+
+templates.env.filters['local_dt'] = local_dt
 
 
 def render_fragment(request: Request, name: str, **context: Any) -> str:

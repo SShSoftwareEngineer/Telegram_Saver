@@ -23,7 +23,7 @@ Variables:
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
 
             {# Forming the date and time of a message as a reference / Формирование даты и времени сообщения как ссылки #}
-            {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
+            {% set message_date = db_message.date|local_dt(constants.message_datetime_format) %}
 
             {# Link to message details for loading / Ссылка на детали сообщения для загрузки #}
             <a href="/db_details/{{ db_message.grouped_id }}"

@@ -9,6 +9,8 @@ class DbDialogType(Base): a class to represent a type of dialog (chat) in the da
 class DbFile(Base): a class to represent a file associated with a message group in the database.
 class DbFileType(Base): a class to represent a type of file associated with a message group in the database.
 class DbMessageGroup(Base): a class to represent a message group in the database.
+class UtcDateTime(TypeDecorator): a column type for date and time stored in UTC
+utc_now: a function returning the current moment as an aware datetime in UTC
 class DbTag(Base): a class to represent a tag associated with a message group in the database.
 class DbCurrentState: a class representing the current state of the database client
 class DbMessageSortFilter: a class to represent sorting and filtering of message groups in the database.
@@ -19,16 +21,51 @@ ModelType: a TypeVar for model classes, bound to Base
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 from threading import Lock
 from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
-    Boolean, update, delete, event, func, Select
+    Boolean, update, delete, event, func, Select, DateTime
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+from sqlalchemy.types import TypeDecorator
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
-from utils import parse_date_string, status_messages
+from utils import parse_date_string, status_messages, to_local, to_utc
+
+
+class UtcDateTime(TypeDecorator):  # pylint: disable=too-many-ancestors,abstract-method
+    """
+    Date and time stored in UTC. SQLite keeps a date as a string without a time zone, so the value is converted to UTC
+    on write (a naive datetime is local time, as in Python) and comes back as an aware datetime in UTC. It works for the
+    values of the query filters too (they are bound through the same type).
+    Дата и время, хранимые в UTC. SQLite хранит дату строкой без часового пояса, поэтому при записи значение переводится
+    в UTC (наивная дата-время - локальное время, как в Python), а читается как aware дата-время в UTC. Работает и для
+    значений фильтров запросов (они передаются через тот же тип).
+    """
+
+    impl = DateTime(timezone=True)
+    cache_ok = True
+
+    def process_bind_param(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        """Converts a value to UTC before writing to the database / Переводит значение в UTC перед записью в БД"""
+        return to_utc(value) if value is not None else None
+
+    def process_result_value(self, value: datetime | None, dialect: Dialect) -> datetime | None:
+        """Marks a value read from the database as UTC / Помечает значение, прочитанное из БД, как UTC"""
+        if value is None:
+            return None
+        return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def utc_now() -> datetime:
+    """
+    Current moment as an aware datetime in UTC (a column default)
+    Текущий момент как aware дата-время в UTC (значение столбца по умолчанию)
+    """
+
+    return datetime.now(timezone.utc)
 
 
 class Base(DeclarativeBase):  # pylint: disable=too-few-public-methods
@@ -36,6 +73,9 @@ class Base(DeclarativeBase):  # pylint: disable=too-few-public-methods
     A declarative class for creating tables in the database
     Декларативный класс для создания таблиц в базе данных
     """
+
+    # Every `Mapped[datetime]` column is stored in UTC / Каждый столбец `Mapped[datetime]` хранится в UTC
+    type_annotation_map = {datetime: UtcDateTime}
 
 
 # TypeVar for model classes, bound to Base
@@ -115,7 +155,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
         export_data = {'dialog_id': self.dialog_id,
                        'dialog_title': self.dialog.title if self.dialog else '',
                        'message_group_id': self.grouped_id,
-                       'date': self.date.strftime(GlobalConst.message_datetime_format) if self.date else '',
+                       'date': to_local(self.date).strftime(GlobalConst.message_datetime_format) if self.date else '',
                        'html': self.html if self.html else '',
                        'sender_id': self.sender_id,
                        'files': [{'file_path': db_file.file_path,
@@ -137,7 +177,7 @@ class DbTag(Base):  # pylint: disable=too-few-public-methods
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
     name: Mapped[str] = mapped_column(Text, default='', nullable=False)
     usage_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(default=utc_now)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped[List['DbMessageGroup']] = relationship(secondary=message_group_tag_links,
                                                                   back_populates='tags')
@@ -678,7 +718,7 @@ class DatabaseHandler:
                       'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
         message_date = db_details.get('date')
-        message_date_str = message_date.strftime(
+        message_date_str = to_local(message_date).strftime(
             GlobalConst.message_datetime_format) if message_date is not None else ''
         status_messages.mess_update(
             f'Loading details of message "{message_date_str}" in chat "{db_details.get('dialog_title')}"',

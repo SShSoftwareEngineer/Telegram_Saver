@@ -23,7 +23,7 @@ from threading import Event, Lock, Thread, current_thread
 from textwrap import shorten
 from dataclasses import dataclass
 from typing import Any, Callable, cast
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
@@ -31,7 +31,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
 from telethon import TelegramClient
 from dotenv import dotenv_values
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
-from utils import parse_date_string, clean_file_path, status_messages
+from utils import parse_date_string, clean_file_path, status_messages, to_local
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
 
@@ -68,7 +68,8 @@ class TgDialog:
         else:
             self.title = GlobalConst.dialog_no_title
         self.unread_count = dialog.unread_count if dialog.unread_count else 0
-        self.last_message_date = dialog.date.astimezone() if dialog.date else None  # type: ignore
+        # UTC as Telegram gives it / UTC, как отдает Telegram
+        self.last_message_date = dialog.date if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
         self.dialog_dir = clean_file_path(f'{self.title}_{self.dialog_id}')
 
@@ -258,7 +259,7 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
             str: file name
         """
 
-        file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
+        file_name = (f'{to_local(date).strftime('%H-%M-%S')}_'
                      f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
         return clean_file_path(file_name) or file_name
 
@@ -320,7 +321,9 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         # `sender_id` - число (маркированный ID); `message.from_id` - сырой объект `Peer`, который не подходит для БД и
         # шаблонов. Может быть None, например у собственных исходящих сообщений в личном чате.
         self.sender_id = message.sender_id if self.sender_id is None else self.sender_id
-        self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
+        # The date stays in UTC as Telegram gives it; the local time is only for display and file names (`to_local`)
+        # Дата остается в UTC, как ее отдает Telegram; локальное время - только для показа и имен файлов (`to_local`)
+        self.date = message.date if self.date is None else min(self.date, message.date)
         self.ids.append(message.id)
         # `raw_text` has no formatting marks; the formatting is in `entities` and goes to `render_message_html`
         # `raw_text` без знаков форматирования; форматирование лежит в `entities` и обрабатывается `render_message_html`
@@ -384,7 +387,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         """
 
         assert self.date is not None, 'The message group must contain the date'
-        date_str = self.date.astimezone().strftime('%Y-%m-%d')
+        date_str = to_local(self.date).strftime('%Y-%m-%d')
         return clean_file_path(date_str) or date_str
 
 
@@ -396,7 +399,9 @@ class TgMessageSortFilter:
     """
 
     _sort_order: bool = True
-    _date_from: datetime | None = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
+    # The filter dates are aware (local time of the system): Telethon takes a naive datetime for UTC
+    # Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC
+    _date_from: datetime | None = datetime.now().astimezone() - timedelta(days=GlobalConst.last_days_by_default)
     _date_to: datetime | None = None
     _message_query: str | None = None
     date_from_default: str | None = (datetime.now() - timedelta(
@@ -409,7 +414,7 @@ class TgMessageSortFilter:
         """
 
         self._sort_order = True
-        self._date_from = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
+        self._date_from = datetime.now().astimezone() - timedelta(days=GlobalConst.last_days_by_default)
         self._date_to = None
         self._message_query = None
         self.date_from_default = self.date_from.strftime("%Y-%m-%d")
@@ -495,7 +500,10 @@ class TgMessageSortFilter:
         Returns:
             list[TgMessageGroup]: sorted list of message groups
         """
-        return sorted(message_group_list, key=lambda group: group.date or datetime.min, reverse=self.sort_order)
+        # A group without a date goes first/last; the key must be aware like the dates (aware and naive do not compare)
+        # Группа без даты идет первой/последней; ключ должен быть aware, как даты (aware и naive не сравниваются)
+        return sorted(message_group_list, key=lambda group: group.date or datetime.min.replace(tzinfo=timezone.utc),
+                      reverse=self.sort_order)
 
 
 @dataclass
@@ -790,7 +798,7 @@ class TelegramHandler:
                                                              message_group_id)
         assert current_message_group is not None and current_message_group.date is not None, \
             'The message group must exist and contain the date'
-        message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
+        message_date_str = to_local(current_message_group.date).strftime(GlobalConst.message_datetime_format)
         current_dialog = self.get_dialog_by_id(dialog_id)
         # 1. Take the dialog, or None / Берем диалог, или None
         # 2. Take the title from the dialog, or None (if the dialog was None) / У диалога берем title, или None
