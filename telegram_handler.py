@@ -31,7 +31,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
 from telethon import TelegramClient
 from dotenv import dotenv_values
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
-from utils import parse_date_string, clean_file_path, status_messages, to_local
+from utils import parse_date_string, clean_file_path, local_day_start, status_messages, to_local
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
 
@@ -399,9 +399,11 @@ class TgMessageSortFilter:
     """
 
     _sort_order: bool = True
-    # The filter dates are aware (local time of the system): Telethon takes a naive datetime for UTC
-    # Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC
-    _date_from: datetime | None = datetime.now().astimezone() - timedelta(days=GlobalConst.last_days_by_default)
+    # The filter dates are aware (local time of the system): Telethon takes a naive datetime for UTC. The default
+    # start is the start of the local day, like the date in the form field
+    # Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC. Начало по умолчанию - начало
+    # локального дня, как дата в поле формы
+    _date_from: datetime | None = local_day_start(GlobalConst.last_days_by_default)
     _date_to: datetime | None = None
     _message_query: str | None = None
     date_from_default: str | None = (datetime.now() - timedelta(
@@ -414,7 +416,7 @@ class TgMessageSortFilter:
         """
 
         self._sort_order = True
-        self._date_from = datetime.now().astimezone() - timedelta(days=GlobalConst.last_days_by_default)
+        self._date_from = local_day_start(GlobalConst.last_days_by_default)
         self._date_to = None
         self._message_query = None
         self.date_from_default = self.date_from.strftime("%Y-%m-%d")
@@ -471,7 +473,7 @@ class TgMessageSortFilter:
         Attributes:
             value (str): form data
         """
-        self._date_to = parse_date_string(value)
+        self._date_to = parse_date_string(value, end_of_day=True)  # the last day is included / последний день включен
 
     @property
     def message_query(self) -> str | None:

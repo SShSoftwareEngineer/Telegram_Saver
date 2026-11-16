@@ -377,7 +377,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         Attributes:
             value (str): form data
         """
-        self._date_to = parse_date_string(value)
+        self._date_to = parse_date_string(value, end_of_day=True)  # the last day is included / последний день включен
 
     @property
     def message_query(self) -> str | None:

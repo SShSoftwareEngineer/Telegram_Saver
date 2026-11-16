@@ -3,7 +3,8 @@ The module contains classes, functions, and variables that are used in other mod
 Модуль содержит классы, функции и переменные, которые используются в других модулях.
 
 class StatusMessages: a class to hold status messages for the web interface.
-parse_date_string: a function to parse a date string and return a datetime object
+parse_date_string: a function to parse a filter date (ISO) into the start or the end of that local day
+local_day_start: a function returning the start of the local day, the given number of days ago
 to_utc: a function to convert a datetime to UTC (naive datetimes are local time)
 to_local: a function to convert a datetime to the local time zone of the system (naive datetimes are local time)
 clean_file_path: a function to clean a file or directory name from invalid characters
@@ -15,10 +16,9 @@ status_messages: a global instance of StatusMessages
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
-from dateutil.parser import parse
 
 
 @dataclass
@@ -77,26 +77,46 @@ class StatusMessages:
 status_messages = StatusMessages()
 
 
-def parse_date_string(date_str: str) -> datetime | None:
+def parse_date_string(date_str: str | None, end_of_day: bool = False) -> datetime | None:
     """
-    Parses a date string and returns a datetime object.
-    Парсит строку даты и возвращает объект datetime.
+    Parses the date of a filter (`<input type="date">` always sends ISO `YYYY-MM-DD`) into a boundary of that day in the
+    local time of the system: 00:00:00 or, with `end_of_day`, 23:59:59.999999. The result is aware, so Telethon (it
+    takes a naive datetime for UTC) and the database (stores UTC) get the right moment. Any other format is not a
+    date of the form: the result is None, the filter is off.
+    Разбирает дату фильтра (`<input type="date">` всегда присылает ISO `YYYY-MM-DD`) в границу этого дня в локальном
+    времени системы: 00:00:00 или, при `end_of_day`, 23:59:59.999999. Результат aware, чтобы Telethon (наивную дату он
+    считает UTC) и база данных (хранит UTC) получали верный момент. Любой другой формат - не дата формы: результат
+    None, фильтр выключен.
     Attributes:
-        date_str (str): Date string to parse
+        date_str (str | None): date string from the form
+        end_of_day (bool): the end of the day instead of its start
     Returns:
-        datetime | None: Parsed datetime object or None if parsing fails
+        datetime | None: aware datetime in the local time zone, or None if the string is empty or not a valid date
     """
 
     if not date_str:
         return None
     try:
-        # The date comes from the form in local time: make it aware, so Telethon (it takes a naive datetime for UTC) and
-        # the database (stores UTC) get the right moment
-        # Дата приходит из формы в локальном времени: делаем ее aware, чтобы Telethon (наивную дату он считает UTC) и
-        # база данных (хранит UTC) получали верный момент
-        return to_local(parse(date_str, dayfirst=True))
-    except (ValueError, OverflowError):
+        day = datetime.strptime(date_str.strip(), '%Y-%m-%d')
+        if end_of_day:
+            day = day.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return to_local(day)
+    except (ValueError, OverflowError, OSError):
         return None
+
+
+def local_day_start(days_ago: int = 0) -> datetime:
+    """
+    Start (00:00:00) of the local day, the given number of days ago, as an aware datetime
+    Начало (00:00:00) локального дня, заданное число дней назад, как aware дата-время
+    Attributes:
+        days_ago (int): number of days back from today
+    Returns:
+        datetime: aware datetime in the local time zone
+    """
+
+    day = (datetime.now() - timedelta(days=days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return to_local(day)
 
 
 def to_utc(value: datetime) -> datetime:
