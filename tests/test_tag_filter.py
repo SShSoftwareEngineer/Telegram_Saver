@@ -38,10 +38,12 @@ def tagged(db_handler: DatabaseHandler) -> DatabaseHandler:
     return db_handler
 
 
-def by_tags(db_handler: DatabaseHandler, query: str | None) -> list[str]:
-    """IDs of the groups found by the tag filter (the query is the text of the form field)"""
+def by_tags(db_handler: DatabaseHandler, query: str | None, mode: str | None = None) -> list[str]:
+    """IDs of the groups found by the tag filter (the query is the text of the form field, the mode is the value of
+    its radio buttons: '1' - AND, otherwise OR)"""
     db_handler.message_sort_filter = DbMessageSortFilter()
     db_handler.message_sort_filter.tag_query = query  # type: ignore[assignment]
+    db_handler.message_sort_filter.tag_match_all = mode  # type: ignore[assignment]
     return sorted(group.grouped_id for group in db_handler.get_message_group_list())
 
 
@@ -115,3 +117,75 @@ def test_filter_route_ignores_the_empty_part(client: TestClient, tagged: Databas
     response = client.post('/db_message_apply_filters', data=form)
     assert response.status_code == 200
     assert response.json()['db-messages-count'] == '(1)'
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# OR / AND mode / Режим ИЛИ / И
+# ----------------------------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('value, expected', [('1', True), ('0', False), ('', False), ('x', False), (None, False)])
+def test_mode_of_the_field(value: str | None, expected: bool):
+    """Only '1' switches AND on; the default and any other value (also a missing field) is OR"""
+    message_filter = DbMessageSortFilter()
+    assert message_filter.tag_match_all is False
+    message_filter.tag_match_all = value  # type: ignore[assignment]
+    assert message_filter.tag_match_all is expected
+
+
+def test_or_mode_finds_any_keyword(tagged: DatabaseHandler):
+    """OR (the default): a message with at least one of the keywords is found"""
+    assert by_tags(tagged, 'alpha; beta') == ['g1', 'g2']
+    assert by_tags(tagged, 'alpha; beta', '0') == ['g1', 'g2']
+    assert by_tags(tagged, 'alpha; zzz') == ['g1']
+
+
+def test_and_mode_needs_every_keyword(tagged: DatabaseHandler):
+    """AND: only the message that has all the keywords is found (`g2` has `beta`, but not `alpha`)"""
+    assert by_tags(tagged, 'alpha; beta', '1') == ['g1']
+    assert by_tags(tagged, 'beta; alpha', '1') == ['g1']  # the order does not matter / порядок не важен
+    assert by_tags(tagged, 'alpha; zzz', '1') == []       # one keyword matches nothing: nothing is found
+    assert by_tags(tagged, 'beta; Звіт', '1') == []       # no message has both / нет сообщения с обоими
+
+
+def test_and_mode_with_parts_case_and_empty_parts(tagged: DatabaseHandler):
+    """AND works with parts of tags, any case and ignores the empty parts, like OR"""
+    assert by_tags(tagged, 'alp; bet', '1') == ['g1']
+    assert by_tags(tagged, 'ALPHA; BETA', '1') == ['g1']
+    assert by_tags(tagged, 'alpha; ; beta; ', '1') == ['g1']
+
+
+def test_and_mode_one_tag_may_match_several_keywords(tagged: DatabaseHandler):
+    """Every keyword must match some tag of the message, not a different one: one tag can match both keywords"""
+    assert by_tags(tagged, 'alpha; alp', '1') == ['g1']
+    assert by_tags(tagged, 'art; ad', '1') == ['g8']
+
+
+def test_modes_agree_for_one_keyword_and_no_keywords(tagged: DatabaseHandler):
+    """One keyword gives the same result in both modes; without keywords the filter is off in both"""
+    for mode in ('0', '1'):
+        assert by_tags(tagged, 'beta', mode) == ['g1', 'g2']
+        assert by_tags(tagged, ' ; ', mode) == ALL_GROUPS
+
+
+def test_filter_route_passes_the_mode(client: TestClient, tagged: DatabaseHandler):
+    """The same through the route: the radio value goes to the filter; a missing value is OR"""
+    form = {FILTER_CFG['tag_query']: 'alpha; beta', FILTER_CFG['sorting_field']: '0',
+            FILTER_CFG['sorting_order']: '0'}
+    counts = {}
+    for mode in ('1', '0', None):
+        data = dict(form)
+        if mode is not None:
+            data[FILTER_CFG['tag_mode']] = mode
+        response = client.post('/db_message_apply_filters', data=data)
+        assert response.status_code == 200
+        counts[mode] = response.json()['db-messages-count']
+    assert counts == {'1': '(1)', '0': '(2)', None: '(2)'}
+
+
+def test_page_has_the_mode_radio_buttons(client: TestClient):
+    """The main page has the OR / AND radio buttons under the tag field; OR is checked by default"""
+    page = client.get('/').text
+    mode_name = FILTER_CFG['tag_mode']
+    assert f'id="{mode_name}"' in page  # the container the page script reads the value from / контейнер для скрипта
+    assert f'name="{mode_name}" value="0" checked' in page
+    assert f'name="{mode_name}" value="1">' in page

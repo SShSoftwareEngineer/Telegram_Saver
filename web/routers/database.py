@@ -39,6 +39,7 @@ def db_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         mess_filter.date_to = form_str(form, form_cfg['date_to'])
         mess_filter.message_query = form_str(form, form_cfg['message_query'])
         mess_filter.tag_query = form_str(form, form_cfg['tag_query'])
+        mess_filter.tag_match_all = form_str(form, form_cfg['tag_mode'])
         # Getting list of messages based on filters and sorting
         # Получение списка сообщений с учетом фильтров и сортировки
         db_handler.current_state.message_group_list = db_handler.get_message_group_list()

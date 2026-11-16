@@ -26,7 +26,7 @@ from html import escape
 from pathlib import Path
 from threading import Lock
 from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, or_, \
+from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
     Boolean, update, delete, event, func, Select, DateTime
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
@@ -270,6 +270,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         date_to (datetime | None): date to which to get messages
         message_query (str | None): filter by message text
         tag_query (list[str] | None): filter by message tags
+        tag_match_all (bool): the tag filter mode: every keyword must match (True, AND) or any (False, OR)
     """
 
     _selected_dialog_list: list[int] | None = None
@@ -279,6 +280,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     _date_to: datetime | None = None
     _message_query: str | None = None
     _tag_query: list[str] | None = None
+    _tag_match_all: bool = False
     sort_by_date: str = 'by date'
     sort_by_title: str = 'by title'
 
@@ -423,6 +425,28 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         """
         keywords = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else []
         self._tag_query = [keyword for keyword in keywords if keyword] or None
+
+    @property
+    def tag_match_all(self) -> bool:
+        """
+        Returns the mode of the tag filter: True - every keyword must match (AND), False - any keyword (OR)
+        Возвращает режим фильтра по тегам: True - должны совпасть все слова (И), False - любое слово (ИЛИ)
+        Return:
+            bool: the AND mode
+        """
+        return self._tag_match_all
+
+    @tag_match_all.setter
+    def tag_match_all(self, value: str):
+        """
+        Sets the mode of the tag filter from the radio buttons of the form: '1' - AND, anything else (also a missing
+        value) - OR, the default
+        Устанавливает режим фильтра по тегам по радиокнопкам формы: '1' - И, все остальное (в том числе отсутствие
+        значения) - ИЛИ, режим по умолчанию
+        Attributes:
+            value (str): form data
+        """
+        self._tag_match_all = value == '1'
 
 
 @dataclass
@@ -669,9 +693,15 @@ class DatabaseHandler:
             # `%`, `_` and `\` are ordinary characters, like in the search by message text)
             # Создаем список выражений с условиями для поиска ключевых фраз в тегах (часть тега, `%`, `_` и `\` -
             # обычные символы, как в поиске по тексту сообщений)
-            tag_conditions = [DbTag.name.ilike(f'%{escape_like(keyword)}%', escape=LIKE_ESCAPE_CHAR)
+            # One condition per keyword: the message has a tag that contains the keyword. OR: any keyword is enough;
+            # AND: every keyword must match some tag of the message (not necessarily the same one)
+            # Одно условие на слово: у сообщения есть тег, содержащий слово. ИЛИ: достаточно любого слова;
+            # И: каждое слово должно совпасть с каким-либо тегом сообщения (не обязательно с одним и тем же)
+            tag_conditions = [DbMessageGroup.tags.any(DbTag.name.ilike(f'%{escape_like(keyword)}%',
+                                                                       escape=LIKE_ESCAPE_CHAR))
                               for keyword in self.message_sort_filter.tag_query]
-            select_stmt = select_stmt.where(DbMessageGroup.tags.any(or_(*tag_conditions)))
+            select_stmt = select_stmt.where(
+                and_(*tag_conditions) if self.message_sort_filter.tag_match_all else or_(*tag_conditions))
         # Sort by dialogues / Сортировка по диалогам
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
             select_stmt = select_stmt.join(DbDialog).order_by(

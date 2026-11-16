@@ -208,7 +208,8 @@ class FormCfg:
                          'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
                          'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
-                         'radio': ['sorting_field', 'sorting_order'],
+                         'tag_mode': 'db_tag_mode',
+                         'radio': ['sorting_field', 'sorting_order', 'tag_mode'],
                          'input': ['date_from', 'date_to', 'message_query', 'tag_query'], 'select': ['dialog_select']}
     # Database tag control form configuration / Конфигурация формы управления тегов базы данных
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',

@@ -99,6 +99,14 @@ Variables:
     </button>
 </div>
 
+{# Tag filter mode radiobuttons: any keyword (OR) or every keyword (AND) / Режим фильтра тегов: любое слово или все #}
+<div id="{{ form_cfg.tag_mode }}" class="segmented-radio">
+    <input type="radio" id="db_tag_mode_0" name="{{ form_cfg.tag_mode }}" value="0" checked>
+    <label for="db_tag_mode_0" title="Any of the keywords">OR</label>
+    <input type="radio" id="db_tag_mode_1" name="{{ form_cfg.tag_mode }}" value="1">
+    <label for="db_tag_mode_1" title="All of the keywords">AND</label>
+</div>
+
 
 {# Apply database message filters button / Кнопка применения фильтра #}
 <button class="apply-filters-buttons"
