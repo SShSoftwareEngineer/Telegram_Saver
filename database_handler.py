@@ -412,12 +412,17 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     @tag_query.setter
     def tag_query(self, value: str):
         """
-        Sets a list of filters by message tags
-        Устанавливает список фильтров по тегам сообщений
+        Sets a list of filters by message tags. The keywords are the parts between the separators (the spaces inside a
+        part stay: `art ad` is one keyword); the edges are trimmed, the empty parts are dropped (an empty keyword would
+        match every tag). No keywords: the filter is off.
+        Устанавливает список фильтров по тегам сообщений. Ключевые слова - части между разделителями (пробелы внутри
+        части сохраняются: `art ad` - одно слово); края обрезаются, пустые части отбрасываются (пустое слово совпало бы
+        с любым тегом). Нет слов: фильтр выключен.
         Attributes:
             value (str): form data
         """
-        self._tag_query = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else None
+        keywords = [tag.strip() for tag in value.split(GlobalConst.tag_filter_separator)] if value else []
+        self._tag_query = [keyword for keyword in keywords if keyword] or None
 
 
 @dataclass
@@ -660,9 +665,12 @@ class DatabaseHandler:
                 f'%{escape_like(self.message_sort_filter.message_query)}%', escape=LIKE_ESCAPE_CHAR))
         # Filter by message tags / Фильтр по тегам сообщений
         if self.message_sort_filter.tag_query:
-            # Create a list of expressions with conditions for searching for key phrases in tags
-            # Создаем список выражений с условиями для поиска ключевых фраз в тегах
-            tag_conditions = [DbTag.name.ilike(f'%{keyword}%') for keyword in self.message_sort_filter.tag_query]
+            # Create a list of expressions with conditions for searching for key phrases in tags (a part of a tag,
+            # `%`, `_` and `\` are ordinary characters, like in the search by message text)
+            # Создаем список выражений с условиями для поиска ключевых фраз в тегах (часть тега, `%`, `_` и `\` -
+            # обычные символы, как в поиске по тексту сообщений)
+            tag_conditions = [DbTag.name.ilike(f'%{escape_like(keyword)}%', escape=LIKE_ESCAPE_CHAR)
+                              for keyword in self.message_sort_filter.tag_query]
             select_stmt = select_stmt.where(DbMessageGroup.tags.any(or_(*tag_conditions)))
         # Sort by dialogues / Сортировка по диалогам
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
