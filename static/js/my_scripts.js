@@ -138,7 +138,15 @@ function updateElementsFromResponse(data) {
         }
         // For checkboxes and radio buttons, update checked / Для checkbox и radio - обновляем checked
         if (element instanceof HTMLInputElement && (element.type === 'checkbox' || element.type === 'radio')) {
+            // Setting `checked` from code does not fire `change`; fire it for a checkbox that really changed, so its
+            // handler (the counter of the checked items) runs, as if the user had clicked it
+            // Смена `checked` из кода не вызывает `change`; вызываем его для чек-бокса, который реально изменился,
+            // чтобы сработал его обработчик (счетчик отмеченных), как при клике пользователя
+            const changed = element.checked !== data[key];
             element.checked = data[key];
+            if (changed && element.type === 'checkbox') {
+                element.dispatchEvent(new Event('change', {bubbles: true}));
+            }
         }
         // For input and textarea - update value / Для input and textarea - обновляем value
         else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {

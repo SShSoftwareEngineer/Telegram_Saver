@@ -12,6 +12,7 @@ class DbMessageGroup(Base): a class to represent a message group in the database
 class UtcDateTime(TypeDecorator): a column type for date and time stored in UTC
 utc_now: a function returning the current moment as an aware datetime in UTC
 class DbTag(Base): a class to represent a tag associated with a message group in the database.
+class TagChange: the result of a tag operation for the page (the number of changed groups, the SELECT strings)
 class DbCurrentState: a class representing the current state of the database client
 class DbMessageSortFilter: a class to represent sorting and filtering of message groups in the database.
 get_db_handler: a function returning the shared DatabaseHandler (created lazily on the first call)
@@ -19,6 +20,7 @@ message_group_tag_links: a relationship table for many-to-many relationship betw
 ModelType: a TypeVar for model classes, bound to Base
 """
 
+from collections.abc import Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -467,6 +469,23 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass
+class TagChange:
+    """
+    The result of a tag operation for the page
+    Результат операции с тегами для страницы
+    Attributes:
+        changed (int): the number of message groups the operation really changed
+        current_tags_select (str | None): SELECT string with the tags of the open message, None if the open message was
+            not processed (the field of the page stays as it is)
+        all_tags_select (str): SELECT string with all tags
+    """
+
+    changed: int
+    current_tags_select: str | None
+    all_tags_select: str
+
+
+@dataclass
 class DbCurrentState:
     """
     A class representing the current state of the database client
@@ -837,18 +856,23 @@ class DatabaseHandler:
                             'file_type_id': query_result.file_type_id, }
         return db_file_info
 
-    def _get_message_group(self, message_group_id: str) -> DbMessageGroup:
+    def _get_message_groups(self, message_group_ids: Iterable[str]) -> list[DbMessageGroup]:
         """
-        Gets a message group by its ID (raises NoResultFound if there is no such group)
-        Получает группу сообщений по ее ID (выбрасывает NoResultFound, если такой группы нет)
+        Gets the message groups by their IDs. A repeated ID counts once; an ID of a group that does not exist (for
+        example, the page was not refreshed after the group was deleted) is skipped.
+        Получает группы сообщений по их ID. Повторяющийся ID учитывается один раз; ID несуществующей группы (например,
+        страница не обновилась после удаления группы) пропускается.
         Attributes:
-            message_group_id (str): message group ID
+            message_group_ids (Iterable[str]): message group IDs
         """
 
-        stmt = select(DbMessageGroup).filter(DbMessageGroup.grouped_id == message_group_id)
-        return self.session.execute(stmt).scalars().one()
+        unique_ids = list(dict.fromkeys(message_group_ids))
+        if not unique_ids:
+            return []
+        stmt = select(DbMessageGroup).where(DbMessageGroup.grouped_id.in_(unique_ids))
+        return list(self.session.execute(stmt).scalars().all())
 
-    def _attach_tag(self, message_group: DbMessageGroup, tag_name: str) -> None:
+    def _attach_tag(self, message_group: DbMessageGroup, tag_name: str) -> bool:
         """
         Adds a tag to a message group, creating the tag if it does not exist. It does not commit: the caller owns the
         transaction.
@@ -857,6 +881,8 @@ class DatabaseHandler:
         Attributes:
             message_group (DbMessageGroup): message group
             tag_name (str): tag name
+        Returns:
+            bool: True if the tag was added, False if the group already had it
         """
 
         tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
@@ -869,118 +895,139 @@ class DatabaseHandler:
         if tag not in message_group.tags:
             message_group.tags.append(tag)
             tag.usage_count += 1
+            return True
+        return False
 
-    def _detach_tag(self, message_group: DbMessageGroup, tag_name: str) -> None:
+    def _detach_tag(self, message_group: DbMessageGroup, tag_name: str) -> bool:
         """
         Removes a tag from a message group if the group has it. It does not commit: the caller owns the transaction.
         Удаляет тег из группы сообщений, если он в ней есть. Не делает commit: транзакцией управляет вызывающий.
         Attributes:
             message_group (DbMessageGroup): message group
             tag_name (str): tag name
+        Returns:
+            bool: True if the tag was removed, False if the group did not have it
         """
 
         tag = self.session.query(DbTag).filter(DbTag.name == tag_name).first()
         if tag and tag in message_group.tags:
             message_group.tags.remove(tag)
             tag.usage_count -= 1
+            return True
+        return False
 
-    def _tag_selects(self, message_group: DbMessageGroup | None) -> tuple[str | None, str]:
+    def _tag_change(self, processed_groups: list[DbMessageGroup], changed: int, current_group_id: str) -> TagChange:
         """
-        Builds the SELECT strings after a change: the tags of the message group (None if no group is given) and all
-        tags (the list is refreshed: it recounts the usage and removes unused tags).
-        Формирует строки для SELECT после изменения: теги группы сообщений (None, если группа не задана) и все теги
-        (список обновляется: пересчитывается использование и удаляются неиспользуемые теги).
+        Builds the result of a tag operation. The tags of the open message are returned only if it was among the
+        processed groups (otherwise the field of the page stays as it is). The list of all tags is refreshed: it
+        recounts the usage and removes unused tags.
+        Формирует результат операции с тегами. Теги открытого сообщения возвращаются, только если оно было среди
+        обработанных групп (иначе поле страницы остается как есть). Список всех тегов обновляется: пересчитывается
+        использование и удаляются неиспользуемые теги.
         Attributes:
-            message_group (DbMessageGroup | None): message group
-        Returns:
-            tuple[str | None, str]: current message tags select string, all tags select string
+            processed_groups (list[DbMessageGroup]): the groups the operation looked at (checked, or having the tag)
+            changed (int): the number of groups the operation really changed
+            current_group_id (str): ID of the message open in the details ('' if closed)
         """
 
-        current_tags_select = (self.get_select_content_string(message_group.tags, 'id', 'name')
-                               if message_group else None)
+        current_group = next((group for group in processed_groups if group.grouped_id == current_group_id), None)
+        current_tags_select = (self.get_select_content_string(current_group.tags, 'id', 'name')
+                               if current_group else None)
         self.all_tags_list = self.get_all_tag_list()
-        return current_tags_select, self.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return TagChange(changed, current_tags_select,
+                         self.get_select_content_string(self.all_tags_list, 'id', 'name'))
 
-    def add_tag_to_message_group(self, tag_name: str, message_group_id: str) -> tuple[str | None, str]:
+    def add_tag_to_message_groups(self, tag_name: str, message_group_ids: Iterable[str],
+                                  current_group_id: str = '') -> TagChange:
         """
-        Adds a tag to a specified group of messages (one transaction)
-        Добавляет тег к заданной группе сообщений (одна транзакция)
+        Adds a tag to the specified groups of messages (one transaction for all of them)
+        Добавляет тег к заданным группам сообщений (одна транзакция на все группы)
         Attributes:
             tag_name (str): tag name
-            message_group_id (str): message group ID
+            message_group_ids (Iterable[str]): IDs of the groups (the checked messages)
+            current_group_id (str): ID of the message open in the details ('' if closed)
         Returns:
-            tuple[str | None, str]: updated current message tags select string, updated all tags select string
+            TagChange: the number of groups that got the tag, the select strings to update
         """
 
+        changed = 0
         with self.transaction():
-            message_group = self._get_message_group(message_group_id)
-            self._attach_tag(message_group, tag_name)
-        return self._tag_selects(message_group)
+            groups = self._get_message_groups(message_group_ids)
+            for message_group in groups:
+                changed += self._attach_tag(message_group, tag_name)
+        return self._tag_change(groups, changed, current_group_id)
 
-    def remove_tag_from_message_group(self, tag_name: str, message_group_id: str) -> tuple[str | None, str]:
+    def remove_tag_from_message_groups(self, tag_name: str, message_group_ids: Iterable[str],
+                                       current_group_id: str = '') -> TagChange:
         """
-        Removes a tag from a specified group of messages (one transaction)
-        Удаляет тег из заданной группы сообщений (одна транзакция)
+        Removes a tag from the specified groups of messages (one transaction for all of them)
+        Удаляет тег из заданных групп сообщений (одна транзакция на все группы)
         Attributes:
             tag_name (str): tag name
-            message_group_id (str): message group ID
+            message_group_ids (Iterable[str]): IDs of the groups (the checked messages)
+            current_group_id (str): ID of the message open in the details ('' if closed)
         Returns:
-            tuple[str | None, str]: updated current message tags select string, updated all tags select string
+            TagChange: the number of groups that lost the tag, the select strings to update
         """
 
+        changed = 0
         with self.transaction():
-            message_group = self._get_message_group(message_group_id)
-            self._detach_tag(message_group, tag_name)
-        return self._tag_selects(message_group)
+            groups = self._get_message_groups(message_group_ids)
+            for message_group in groups:
+                changed += self._detach_tag(message_group, tag_name)
+        return self._tag_change(groups, changed, current_group_id)
 
-    def update_tag_from_message_group(self, old_tag_name: str, new_tag_name: str,
-                                      message_group_id: str) -> tuple[str | None, str]:
+    def update_tag_from_message_groups(self, old_tag_name: str, new_tag_name: str,
+                                       message_group_ids: Iterable[str], current_group_id: str = '') -> TagChange:
         """
-        Changes the specified tag from the current group message (one transaction: either both the removal of the old
-        tag and the adding of the new one happen, or neither)
-        Изменяет заданный тег из текущего группового сообщения (одна транзакция: либо удаление старого тега и
-        добавление нового выполняются оба, либо ни один)
+        Changes the specified tag in the specified groups of messages that have it (one transaction for all of them:
+        either all the removals of the old tag and the additions of the new one happen, or none)
+        Изменяет заданный тег в заданных группах сообщений, где он есть (одна транзакция на все группы: либо все
+        удаления старого тега и добавления нового выполняются, либо ни одно)
         Attributes:
             old_tag_name (str): old tag name
             new_tag_name (str): new tag name
-            message_group_id (str): message group ID
+            message_group_ids (Iterable[str]): IDs of the groups (the checked messages)
+            current_group_id (str): ID of the message open in the details ('' if closed)
         Returns:
-            tuple[str | None, str]: updated current message tags select string, updated all tags select string
+            TagChange: the number of groups where the tag was changed, the select strings to update
         """
 
+        changed = 0
         with self.transaction():
-            message_group = self._get_message_group(message_group_id)
-            # Change the tag only if the group has it / Изменяем тег, только если он есть в группе
-            if any(tag.name == old_tag_name for tag in message_group.tags):
-                self._detach_tag(message_group, old_tag_name)
-                self._attach_tag(message_group, new_tag_name)
-        return self._tag_selects(message_group)
+            groups = self._get_message_groups(message_group_ids)
+            for message_group in groups:
+                # Change the tag only if the group has it / Изменяем тег, только если он есть в группе
+                if any(tag.name == old_tag_name for tag in message_group.tags):
+                    self._detach_tag(message_group, old_tag_name)
+                    self._attach_tag(message_group, new_tag_name)
+                    changed += 1
+        return self._tag_change(groups, changed, current_group_id)
 
-    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str,
-                              message_group_id: str) -> tuple[str | None, str]:
+    def update_tag_everywhere(self, old_tag_name: str, new_tag_name: str, current_group_id: str = '') -> TagChange:
         """
-        Updates the tag in all message groups where it is used (one transaction for all groups)
-        Обновляет тег во всех группах сообщений, где он используется (одна транзакция на все группы)
+        Updates the tag in all message groups where it is used, whether the messages are checked or not (one
+        transaction for all groups)
+        Обновляет тег во всех группах сообщений, где он используется, отмечены сообщения или нет (одна транзакция на все
+        группы)
         Attributes:
             old_tag_name (str): old tag name
             new_tag_name (str): new tag name
-            message_group_id (str): message group ID
+            current_group_id (str): ID of the message open in the details ('' if closed)
         Returns:
-            tuple[str | None, str]: updated current message tags select string (None if the current message group did
-                not have the tag), updated all tags select string
+            TagChange: the number of groups where the tag was renamed, the select strings to update (the tags of the
+                open message only if it had the tag)
         """
 
-        current_group = None
         # Rename the tag in all message groups where it is used
         # Переименовываем тег во всех группах сообщений, где он используется
         with self.transaction():
             stmt = select(DbMessageGroup).filter(DbMessageGroup.tags.any(name=old_tag_name))
-            for message_group in self.session.execute(stmt).scalars().all():
+            groups = list(self.session.execute(stmt).scalars().all())
+            for message_group in groups:
                 self._detach_tag(message_group, old_tag_name)
                 self._attach_tag(message_group, new_tag_name)
-                if message_group.grouped_id == message_group_id:
-                    current_group = message_group
-        return self._tag_selects(current_group)
+        return self._tag_change(groups, len(groups), current_group_id)
 
 
 # The DatabaseHandler instance is created lazily on the first get_db_handler() call, not on module import:

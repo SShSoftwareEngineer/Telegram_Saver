@@ -46,22 +46,28 @@ Variables:
 </div>
 
 
-{# Add a tag to a message / Добавить тег к сообщению #}
+{# The first three buttons act on the messages checked in the list, the last one on all messages with the tag
+   Первые три кнопки действуют на сообщения, отмеченные в списке, последняя - на все сообщения с этим тегом #}
+
+{# Add a tag to the checked messages / Добавить тег к отмеченным сообщениям #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        title="Adds the tag to the checked messages"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_add');">
     Add tag
 </button>
 
 
-{# Remove message tag / Удалить тег сообщения #}
+{# Remove the tag from the checked messages / Удалить тег у отмеченных сообщений #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        title="Removes the tag from the checked messages"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_remove')">
     Remove tag
 </button>
 
 
-{# Update message tag / Изменить тег сообщения #}
+{# Update the tag in the checked messages / Изменить тег у отмеченных сообщений #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        title="Changes the tag in the checked messages that have it"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update');
                 clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag
@@ -70,6 +76,7 @@ Variables:
 
 {# Update tag everywhere / Изменить тег у всех сообщений #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        title="Renames the tag in all messages that have it, checked or not"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update_everywhere');
                 clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
     Update tag everywhere

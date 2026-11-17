@@ -216,8 +216,12 @@ class FormCfg:
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',
                       'tag_sorting_field': 'db_tag_sorting_field',
+                      # The tag buttons act on the messages checked in the list of the database tab
+                      # Кнопки тегов действуют на сообщения, отмеченные в списке вкладки БД
+                      'db_checkbox_list': 'db-message-checkbox',
                       'input': ['edit_tag_name', 'old_tag_name'],
-                      'select': ['curr_message_tags', 'all_detail_tags'], 'radio': ['tag_sorting_field']}
+                      'select': ['curr_message_tags', 'all_detail_tags'], 'radio': ['tag_sorting_field'],
+                      'checkbox_list': ['db_checkbox_list']}
     # Configuration of checkboxes Telegram messages list / Конфигурация чекбоксов списка сообщений Telegram
     tg_checkbox_list = {'tg_checkbox_list': 'tg-message-checkbox',
                         'checkbox_list': ['tg_checkbox_list']}
