@@ -19,12 +19,20 @@ router = APIRouter()
 
 
 @router.get('/status_output')
-def status_output() -> JSONResponse:
+def status_output(since: int | None = None) -> JSONResponse:
     """
     Updating the status bar. Without the lock: the page polls it while long operations hold the lock.
+    `since` is the version the page has already shown: if it is the current one, the body is empty (nothing to
+    redraw); the current version is always in the `X-Status-Version` header. Any other value (including one left
+    from before a server restart) gets the messages.
     Обновление строки статуса. Без замка: страница опрашивает его, пока долгие операции держат замок.
+    `since` - версия, которую страница уже показала: если она текущая, тело пустое (перерисовывать нечего); текущая
+    версия всегда в заголовке `X-Status-Version`. Любое другое значение (в том числе оставшееся от запуска до
+    перезапуска сервера) получает сообщения.
     """
-    return JSONResponse(status_messages.messages)
+    version = status_messages.version
+    content = {} if since == version else status_messages.messages
+    return JSONResponse(content, headers={'X-Status-Version': str(version)})
 
 
 @router.get('/', response_class=HTMLResponse)

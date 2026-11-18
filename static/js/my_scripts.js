@@ -304,14 +304,28 @@ function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLin
 
 // Function for updating the status string. We check the status every 500 ms.
 // Функция для обновления строки статуса. Проверяем статус каждые 500мс
+// The server returns an empty body if nothing changed since the version we send, so the list is not redrawn
+// (an open list does not jump). After a redraw the last (newest) line is selected, so the closed list shows it.
+// Сервер возвращает пустое тело, если с отправленной версии ничего не изменилось, поэтому список не перерисовывается
+// (открытый список не дергается). После перерисовки выбирается последняя (новая) строка, и закрытый список ее показывает.
+let statusVersion = null;
 setInterval(() => {
-    fetch('/status_output')
-        .then(response => response.json())
+    const url = statusVersion === null ? '/status_output' : `/status_output?since=${statusVersion}`;
+    fetch(url)
+        .then(response => {
+            statusVersion = response.headers.get('X-Status-Version');
+            return response.json();
+        })
         .then(data => {
             if (Object.keys(data).length > 0) {
                 updateElementsFromResponse(data);
+                const report = document.getElementById('sb_report');
+                if (report && report.options.length > 0) {
+                    report.selectedIndex = report.options.length - 1;
+                }
             }
-        });
+        })
+        .catch(err => console.error('Status bar update failed:', err));
 }, 500);
 
 

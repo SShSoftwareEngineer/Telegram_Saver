@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from database_handler import get_db_handler
-from utils import status_messages
+from utils import OPERATION_ERROR, status_messages
 from web.deps import state_lock
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,11 @@ def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
         logger.exception('Session rollback failed')
     # The status bar text is escaped inside `status_messages.mess_update`
     # Текст строки статуса экранируется внутри `status_messages.mess_update`
-    status_messages.mess_update(f'Error in {request.url.path}', message)
+    # The state is passed explicitly: the handler runs outside the middleware, which has already marked the error,
+    # and a plain call would mark the operation as running again
+    # Состояние передается явно: обработчик выполняется вне middleware, который уже отметил ошибку, а обычный вызов
+    # снова пометил бы операцию как идущую
+    status_messages.mess_update(f'Error in {request.url.path}', message, state=OPERATION_ERROR)
     return JSONResponse({'error': message}, status_code=500)
 
 

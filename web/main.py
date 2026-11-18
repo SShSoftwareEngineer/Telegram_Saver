@@ -13,8 +13,10 @@ from fastapi.staticfiles import StaticFiles
 from configs.config import ProjectDirs
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
+from utils import status_messages
 from web.deps import BASE_DIR
 from web.errors import register_error_handlers
+from web.middleware import OperationTracker
 from web.routers import service, telegram, database, tags
 
 
@@ -30,6 +32,11 @@ async def lifespan(_app: FastAPI):
     tg_handler = await to_thread.run_sync(get_tg_handler)
     try:
         await to_thread.run_sync(get_db_handler)
+        # The handlers load the chat lists in their constructors (outside any request, so the request middleware does
+        # not see it): mark that startup operation as finished, otherwise the spinner would stay
+        # Обработчики загружают списки чатов в конструкторах (вне запроса, поэтому middleware запросов этого не видит):
+        # отмечаем стартовую операцию завершенной, иначе крутилка останется
+        status_messages.finish()
         yield
     finally:
         await to_thread.run_sync(tg_handler.close)
@@ -37,6 +44,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 register_error_handlers(app)
+app.add_middleware(OperationTracker)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 # The directory is created in lifespan, so it is not checked when the app is built
 # Директория создается в lifespan, поэтому при создании приложения ее наличие не проверяется
