@@ -330,6 +330,11 @@ html, body {
     align-items: center;
 }
 
+/* The same without the clear button: one column, no empty gap / То же без кнопки очистки: одна колонка, без пустого зазора */
+.control-X-button.no-X-button {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 /* One button in a cell / Одна кнопка в ячейке */
 .button-in-cell {
     width: 100%;

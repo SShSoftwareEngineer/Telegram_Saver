@@ -11,6 +11,15 @@ Variables:
 {# Form control configuration / Конфигурация элементов управления формы #}
 {% set form_cfg = form_ctrl_cfg.db_detail_tags %}
 
+{# Fields of the tag being edited: the edit field, its hidden old name and the highlighted tag of the open message. They
+   are cleared together, otherwise a stale old name would be renamed by "Update tag". The selection in "All tags" is
+   cleared only by its own button: that list also serves the tag filter
+   Поля редактируемого тега: поле редактирования, его скрытое старое имя и выделенный тег открытого сообщения. Очищаются
+   вместе, иначе «Update tag» переименует тег по устаревшему старому имени. Выделение в «All tags» очищается только его
+   собственной кнопкой: этот список служит и фильтру по тегам #}
+{% set clear_tag_fields = "'" ~ form_cfg.edit_tag_name ~ "', '" ~ form_cfg.old_tag_name ~ "', '"
+                          ~ form_cfg.curr_message_tags ~ "'" %}
+
 
 {# A hidden element that stores the value of a tag passed from SELECT in an editable field
    Скрытый элемент, сохраняющий значение тега, переданного из SELECT в поле для редактирования #}
@@ -19,7 +28,8 @@ Variables:
 
 {# Current message tag list / Теги текущего сообщения #}
 <label for="{{ form_cfg.curr_message_tags }}" class="group-label no-margin-top">Message Tags</label>
-<div class="control-X-button">
+{# Filled automatically, so it has no clear button / Заполняется автоматически, поэтому без кнопки очистки #}
+<div class="control-X-button no-X-button">
     <select class="select-element"
             id="{{ form_cfg.curr_message_tags }}"
             name="{{ form_cfg.curr_message_tags }}"
@@ -28,10 +38,6 @@ Variables:
             onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
                     document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
     </select>
-    <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.curr_message_tags }}', '{{ form_cfg.edit_tag_name }}'])"
-            class="clear-button X-button"> ✖
-    </button>
 </div>
 
 
@@ -40,7 +46,8 @@ Variables:
 <div class="control-X-button">
     <input type="text" id="{{ form_cfg.edit_tag_name }}" name="{{ form_cfg.edit_tag_name }}">
     <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.edit_tag_name }}'])"
+            title="Clears the tag name"
+            onclick="clearFormFields([{{ clear_tag_fields }}])"
             class="clear-button X-button"> ✖
     </button>
 </div>
@@ -69,7 +76,7 @@ Variables:
 <button class="apply-filters-buttons vertical-spread-detail-tags"
         title="Changes the tag in the checked messages that have it"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update');
-                clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
+                clearFormFields([{{ clear_tag_fields }}])">
     Update tag
 </button>
 
@@ -78,7 +85,7 @@ Variables:
 <button class="apply-filters-buttons vertical-spread-detail-tags"
         title="Renames the tag in all messages that have it, checked or not"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update_everywhere');
-                clearFormFields(['{{ form_cfg.edit_tag_name }}'])">
+                clearFormFields([{{ clear_tag_fields }}])">
     Update tag everywhere
 </button>
 
@@ -112,6 +119,7 @@ Variables:
         {% endfor %}
     </select>
     <button type="button"
+            title="Clears the selection in the list"
             onclick="clearFormFields(['{{ form_cfg.all_detail_tags }}'])"
             class="clear-button X-button"> ✖
     </button>
