@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import ProjectDirs
+from configs.config import MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler
 from utils import status_messages
 
@@ -112,7 +112,8 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     as in the Telegram list / В списке БД с отступом только сообщения владельца аккаунта, как в списке Telegram"""
     def saved_group(number: int, sender_id: int | None) -> SimpleNamespace:
         return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), plain_text=f'Text {number}',
-                               files_report='1 photo', sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
+                               files=[SimpleNamespace(file_type_id=MessageFileTypes.IMAGE.type_id)],
+                               sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
 
     monkeypatch.setattr(db_handler.current_state, 'message_group_list', [
         saved_group(1, 1), saved_group(2, 2), saved_group(3, -1001234567891), saved_group(4, None)])
@@ -124,6 +125,7 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     # from the template (the Telegram list has none either) / Пустых строк между сообщениями нет: в списке нет `<br>`
     message_list = response.text.split('id="db_messages"')[1].split('id="db_details"')[0]
     assert '<br>' not in message_list
-    # The files report is a block, so it stays on its own line also for a message without text
-    # Отчет о файлах - блок, поэтому он на своей строке и у сообщения без текста
-    assert message_list.count('<div><b>1 photo</b></div>') == 4
+    # The files report (formed from the files of the group) is a block, so it stays on its own line also for a message
+    # without text / Отчет о файлах (формируется по файлам группы) - блок, поэтому он на своей строке и у сообщения без
+    # текста
+    assert message_list.count('<div><b>Image</b></div>') == 4

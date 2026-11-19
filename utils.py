@@ -10,18 +10,21 @@ local_day_start: a function returning the start of the local day, the given numb
 to_utc: a function to convert a datetime to UTC (naive datetimes are local time)
 to_local: a function to convert a datetime to the local time zone of the system (naive datetimes are local time)
 clean_file_path: a function to clean a file or directory name from invalid characters
+format_files_report: a function to form the summary line of the files of a message group (`2 Images, Video`)
 limit_list: a function to cut a long list of report lines and mark the continuation
 delete_media_files: a function to delete media files and the directories left empty
 status_messages: a global instance of StatusMessages
 """
 
 import re
+from collections import Counter
 from collections.abc import Iterable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
+from configs.config import MessageFileTypes
 
 # States of the operation shown in the status bar / Состояния операции в строке статуса
 OPERATION_RUNNING = 'running'
@@ -233,6 +236,34 @@ def clean_file_path(file_path: str | None) -> str | None:
         # Убираем лишние точки в начале и конце
         clean_filepath = clean_filepath.strip('.')
     return clean_filepath
+
+
+# File types that are not counted in the summary line: the service HTML file of the message and the preview picture of
+# a video (the video itself is counted)
+# Типы файлов, которые не входят в строку-резюме: служебный HTML-файл сообщения и картинка-превью видео (само видео
+# считается)
+UNCOUNTED_FILE_TYPES = (MessageFileTypes.CONTENT, MessageFileTypes.THUMBNAIL)
+
+
+def format_files_report(file_type_ids: Iterable[int]) -> str:
+    """
+    Forms the summary line of the files of a message group for the lists, e.g. `2 Images, Video`: a type with several
+    files has the number and the plural form, a single file has the bare type name, the types are in alphabetical order,
+    a type without files is not shown. The service file with the HTML of the message itself and the preview pictures of
+    videos are not counted (`UNCOUNTED_FILE_TYPES`). The line is not stored: it is formed whenever a list is shown.
+    Формирует строку-резюме файлов группы сообщений для списков, например `2 Images, Video`: у типа с несколькими
+    файлами есть число и множественная форма, у одного файла - только название типа, типы идут по алфавиту, тип без
+    файлов не показывается. Служебный файл с HTML самого сообщения и картинки-превью видео не считаются
+    (`UNCOUNTED_FILE_TYPES`). Строка не хранится: она формируется при каждом показе списка.
+    Attributes:
+        file_type_ids (Iterable[int]): type IDs (`MessageFileTypes.type_id`) of the group files, one per file
+    Returns:
+        str: the summary line, empty if there are no counted files
+    """
+
+    counts = Counter(file_type.alt_text for file_type in map(MessageFileTypes.get_file_type_by_type_id, file_type_ids)
+                     if file_type not in UNCOUNTED_FILE_TYPES)
+    return ', '.join(f'{count} {alt_text}s' if count > 1 else alt_text for alt_text, count in sorted(counts.items()))
 
 
 def limit_list(items: list[str], max_items: int) -> list[str]:

@@ -16,7 +16,6 @@ The asyncio event loop of the Telegram client runs in a background daemon thread
 """
 
 from asyncio import new_event_loop, run_coroutine_threadsafe
-from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
 from threading import Event, Lock, Thread, current_thread
@@ -31,7 +30,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
 from telethon import TelegramClient
 from dotenv import dotenv_values
 from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
-from utils import parse_date_string, clean_file_path, local_day_start, status_messages, to_local
+from utils import parse_date_string, clean_file_path, format_files_report, local_day_start, status_messages, to_local
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
 
@@ -359,15 +358,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         Формирование строки резюме по имеющимся в группе сообщений файлам и их типам
         """
 
-        alt_texts_list = []
-        for file in self.files:
-            alt_texts_list.append(file.alt_text)
-        alt_texts_dict = dict(sorted(Counter(alt_texts_list).items()))
-        alt_texts_list.clear()
-        for alt_text, count in alt_texts_dict.items():
-            current_report = f'{alt_text} ({count})' if count > 1 else alt_text
-            alt_texts_list.append(current_report)
-        self.files_report = ' '.join(sorted(alt_texts_list))
+        self.files_report = format_files_report(file.file_type.type_id for file in self.files)
 
     def set_truncated_text(self) -> None:
         """

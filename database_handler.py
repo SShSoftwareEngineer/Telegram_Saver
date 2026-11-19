@@ -31,10 +31,10 @@ from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for re
 from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
     Boolean, update, delete, event, func, Select, DateTime
 from sqlalchemy.engine import Dialect
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, Session
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, Session
 from sqlalchemy.types import TypeDecorator
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
-from utils import local_day_start, parse_date_string, status_messages, to_local, to_utc
+from utils import format_files_report, local_day_start, parse_date_string, status_messages, to_local, to_utc
 
 
 class UtcDateTime(TypeDecorator):  # pylint: disable=too-many-ancestors,abstract-method
@@ -718,7 +718,11 @@ class DatabaseHandler:
         # Save changes to the database / Сохраняем изменения в базе данных
         self.session.commit()
         # Generating a query taking into account filters and sorting / Формируем запрос с учетом фильтров и сортировки
-        select_stmt = select(DbMessageGroup)
+        # The files of the groups are loaded by one more query for the whole list: the list shows the files summary
+        # line, which is formed from their type IDs (not stored)
+        # Файлы групп подгружаются еще одним запросом на весь список: список показывает строку-резюме файлов,
+        # которая формируется по ID их типов (не хранится)
+        select_stmt = select(DbMessageGroup).options(selectinload(DbMessageGroup.files))
         # Filter by selected dialogs / Фильтр по выбранным диалогам
         if self.message_sort_filter.selected_dialog_list:
             select_stmt = select_stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
@@ -796,7 +800,8 @@ class DatabaseHandler:
                       'date': current_message_group.date,
                       'html': current_message_group.html if current_message_group.html else '',
                       'files': current_message_group.files,
-                      'files_report': current_message_group.files_report if current_message_group.files_report else '',
+                      'files_report': format_files_report(
+                          db_file.file_type_id for db_file in current_message_group.files),
                       'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
         message_date = db_details.get('date')

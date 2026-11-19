@@ -16,7 +16,7 @@ from starlette.templating import Jinja2Templates
 from configs.config import GlobalConst, MessageFileTypes, FormCfg
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
-from utils import to_local
+from utils import format_files_report, to_local
 
 # Project root: templates and static files are looked up relative to it, not to the current directory
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
@@ -100,6 +100,9 @@ def local_dt(value: datetime, fmt: str) -> str:
 
 
 templates.env.filters['local_dt'] = local_dt
+# The summary line of the files of a message group is formed in the template (it is not stored in the database)
+# Строка-резюме файлов группы сообщений формируется в шаблоне (в базе данных она не хранится)
+templates.env.globals['format_files_report'] = format_files_report
 
 
 def render_fragment(request: Request, name: str, **context: Any) -> str:
