@@ -37,7 +37,10 @@ Variables:
 
     <div class="db-export action-bar-button-area">
         {# Export selected messages to HTML / Экспорт выделенных сообщений в HTML #}
+        {# Disabled until a message is checked (see `updateCheckedDependentButtons`) / Неактивна, пока нет отмеченных #}
         <button class="action-bar-button"
+                disabled data-needs-checked=".db-message-checkbox"
+                title="Exports the checked messages to an HTML file"
                 onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_export_selected_message_to_html')">
             Export selection to HTML
         </button>
@@ -45,7 +48,10 @@ Variables:
 
     <div class="db-delete action-bar-button-area">
         {# Delete selected messages from the database / Удалить выделенные сообщения из базы данных #}
+        {# Disabled until a message is checked (see `updateCheckedDependentButtons`) / Неактивна, пока нет отмеченных #}
         <button class="action-bar-button"
+                disabled data-needs-checked=".db-message-checkbox"
+                title="Deletes the checked messages and their files from the database and the disk"
                 onclick="deleteSelectedButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_delete_selected_from_database')">
             Delete selection from the database
         </button>

@@ -58,6 +58,7 @@ Variables:
 
 {# Add a tag to the checked messages / Добавить тег к отмеченным сообщениям #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        disabled data-needs-checked=".db-message-checkbox"
         title="Adds the tag to the checked messages"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_add');">
     Add tag
@@ -66,6 +67,7 @@ Variables:
 
 {# Remove the tag from the checked messages / Удалить тег у отмеченных сообщений #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        disabled data-needs-checked=".db-message-checkbox"
         title="Removes the tag from the checked messages"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_remove')">
     Remove tag
@@ -74,6 +76,7 @@ Variables:
 
 {# Update the tag in the checked messages / Изменить тег у отмеченных сообщений #}
 <button class="apply-filters-buttons vertical-spread-detail-tags"
+        disabled data-needs-checked=".db-message-checkbox"
         title="Changes the tag in the checked messages that have it"
         onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_tag_update');
                 clearFormFields([{{ clear_tag_fields }}])">

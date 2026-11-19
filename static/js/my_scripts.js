@@ -157,7 +157,24 @@ function updateElementsFromResponse(data) {
             element.innerHTML = data[key];
         }
     });
+    // A re-rendered list has new (unchecked) checkboxes that fire no `change`: refresh the buttons that need a checked item
+    // Перерисованный список содержит новые (неотмеченные) чек-боксы без события `change`: обновляем зависящие от них кнопки
+    updateCheckedDependentButtons();
 }
+
+// Enables each button marked with `data-needs-checked="<checkbox selector>"` only while at least one such checkbox is
+// checked, and disables it otherwise
+// Включает каждую кнопку с `data-needs-checked="<селектор чек-боксов>"`, только пока отмечен хотя бы один такой
+// чек-бокс, иначе отключает ее
+function updateCheckedDependentButtons() {
+    document.querySelectorAll('[data-needs-checked]').forEach(button => {
+        button.disabled = document.querySelector(`${button.dataset.needsChecked}:checked`) === null;
+    });
+}
+
+// A page load (also a reload with the checkbox states restored by the browser) / Загрузка страницы (в том числе
+// повторная с состоянием чек-боксов, восстановленным браузером)
+document.addEventListener('DOMContentLoaded', updateCheckedDependentButtons);
 
 // Function that implements button press, with configuration of form elements and URL handler
 // Функция, реализующая нажатие кнопки, с конфигурацией элементов формы и URL обработчика
@@ -378,6 +395,9 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
     } else {
         console.error(`Элемент с ID "${modifyElementId}" не найден.`);
     }
+    // The checked items changed: refresh the buttons that act on them / Отмеченные изменились: обновляем кнопки,
+    // действующие на них
+    updateCheckedDependentButtons();
 }
 
 // Function to delete selected messages with confirmation / Функция удаления выделенных сообщений с подтверждением

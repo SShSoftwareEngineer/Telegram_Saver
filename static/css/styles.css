@@ -195,6 +195,11 @@ html, body {
     margin: 2px 6px;
 }
 
+/* A button that waits for a checked item is not clickable / Кнопка, ожидающая отмеченного элемента, не нажимается */
+button[data-needs-checked]:disabled {
+    cursor: not-allowed;
+}
+
 /* Location of the action bar button / Расположение кнопки панели действий */
 .action-bar-button-area {
     display: flex;
