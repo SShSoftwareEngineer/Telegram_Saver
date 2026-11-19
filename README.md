@@ -10,8 +10,9 @@ and messages, and saves the ones you choose to an SQLite database and to a local
 ## Features
 - **Selective saving**: pick messages from any chat (including "Saved Messages") and save them with their media files
 - **Multi-type content**: text, photos, video, audio, documents, link previews, forwarded messages, sender metadata
-- **Search and filters**: by chat, date, text and tags, both in Telegram and in the archive
-- **Tags**: add, remove and rename tags, rename a tag in all messages, sort the tag list
+- **Search and filters**: by chat, date, text and tags (any or all of the tags), both in Telegram and in the archive
+- **Tags**: add, remove and rename tags for the checked messages, rename a tag in all messages, sort the tag list,
+  pick several tags at once for the tag filter
 - **Export**: selected messages to a standalone HTML page with copied media files
 - **Maintenance**: report of media files without database records, re-download of missing files, database backup
 - **Database abstraction**: SQLAlchemy ORM with SQLite (the schema is designed to be portable to PostgreSQL)
@@ -92,10 +93,12 @@ account and data: never commit or share them.
 The page has two tabs:
 
 - **Telegram**: the list of your chats (with filters by type and title) and the messages of the selected chat
-  (filters by date and text). Check the messages you want and press **Save**: texts, media files and an HTML copy of
-  the message are saved to the database and to `media_storage/`. Already saved messages are marked.
-- **Database**: the archive. Filter by chat, date, text and tags; open a message to see its details and edit its
-  tags; select messages to export them to HTML (`exported_messages/`) or delete them.
+  (filters by date and text). Check the messages you want and press **Save selection to database**: texts, media
+  files and an HTML copy of the message are saved to the database and to `media_storage/`. Already saved messages are
+  marked. Under each message a line summarizes its files, e.g. `2 Images, Video`.
+- **Database**: the archive. Filter by chat, date, text and tags; open a message to see its details. Check messages
+  to tag them (the tag buttons act on the checked messages), export them to HTML (`exported_messages/`) or delete
+  them. The buttons that need checked messages are disabled until at least one message is checked.
 
 The status bar at the bottom shows the progress and the result of every operation. Service operations (report of
 files without records, re-download of missing media, backup) are in the database maintenance menu.
@@ -120,8 +123,8 @@ Telethon is mocked: the tests do not connect to Telegram.
 
 ## Roadmap
 
-- [ ] Security: escape Telegram text in HTML, Origin/Host check for POST requests, protection of maintenance
-- [ ] Text formatting of Telegram messages (bold, italic, links) via Telethon HTML unparse
+- [ ] Security: Origin/Host check for POST requests, protection of maintenance
+- [ ] Filter of archived messages without tags (to tag recently saved messages)
 - [ ] Fully asynchronous `TelegramHandler` and async SQLAlchemy sessions instead of the global lock
 - [ ] PostgreSQL and Alembic migrations (`BigInteger` ID columns)
 - [ ] Source chats of "Saved Messages": list of chats and a filter by the original chat
