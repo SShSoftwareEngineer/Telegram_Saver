@@ -35,8 +35,7 @@ Variables:
             name="{{ form_cfg.curr_message_tags }}"
             title="Select a tag for actions"
             size="5"
-            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
-                    document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
+            onchange="selectTagForEdit(this, '{{ form_cfg.edit_tag_name }}', '{{ form_cfg.old_tag_name }}');">
     </select>
 </div>
 
@@ -108,15 +107,18 @@ Variables:
 </form>
 
 
-{# All tags list / Список всех тегов #}
+{# All tags list: several tags can be selected (Ctrl/Shift) to add them to the tag filter at once; the tag name field is
+   filled only when exactly one tag is selected
+   Список всех тегов: можно выбрать несколько тегов (Ctrl/Shift), чтобы добавить их в фильтр по тегам сразу; поле имени
+   тега заполняется, только когда выбран ровно один тег #}
 <div class="control-X-button vertical-spread-detail-tags">
     <select class="select-element"
             id="{{ form_cfg.all_detail_tags }}"
             name="{{ form_cfg.all_detail_tags }}"
-            title="Select a tag for actions"
+            title="Select a tag for actions; Ctrl or Shift selects several tags for the filter"
             size="14"
-            onchange="document.getElementById('{{ form_cfg.edit_tag_name }}').value = this.options[this.selectedIndex].text;
-                    document.getElementById('{{ form_cfg.old_tag_name }}').value = this.options[this.selectedIndex].text;">
+            multiple
+            onchange="selectTagForEdit(this, '{{ form_cfg.edit_tag_name }}', '{{ form_cfg.old_tag_name }}');">
         {% for db_tag in db_all_tags %}
             <option value="{{ db_tag.id }}">{{ db_tag.name }}</option>
         {% endfor %}
@@ -132,8 +134,10 @@ Variables:
 {# Adding a tag to the tag filter / Добавить тег к фильтру тегов #}
 <button type="button"
         class="apply-filters-buttons vertical-spread-detail-tags"
+        disabled data-needs-selected="{{ form_cfg.all_detail_tags }}"
+        title="Adds the selected tags of the list to the filter by tags"
         onclick="addTagToFilterFromAllTags('{{ form_cfg.all_detail_tags }}',
                 '{{ form_ctrl_cfg.db_message_filter.tag_query }}',
                 separator = '{{ constants.tag_filter_separator }}')">
-    ←&nbsp; Add tag to filter by tags
+    ←&nbsp; Add tags to filter by tags
 </button>
