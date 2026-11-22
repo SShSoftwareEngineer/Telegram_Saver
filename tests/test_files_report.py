@@ -1,10 +1,8 @@
 """
 Tests of the files summary line of a message group (`2 Images, Video`): the function that forms it, the Telegram group
-that uses it and the database list that forms it at display time from the files of the group (the stored
-`files_report` column is not read), with the files loaded by one query for the whole list.
+that uses it and the database list that forms it at display time from the files of the group, with the files loaded by one query for the whole list.
 Тесты строки-резюме файлов группы сообщений (`2 Images, Video`): функция, которая ее формирует, группа Telegram, которая
-ее использует, и список БД, который формирует ее при показе по файлам группы (сохраненный столбец `files_report` не
-читается), причем файлы загружаются одним запросом на весь список.
+ее использует, и список БД, который формирует ее при показе по файлам группы, причем файлы загружаются одним запросом на весь список.
 """
 
 from datetime import datetime
@@ -98,16 +96,15 @@ def test_telegram_group_report():
 # The database list / Список БД
 # ----------------------------------------------------------------------------------------------------------------------
 
-def add_group(handler: DatabaseHandler, number: int, file_types: tuple[MessageFileTypes, ...],
-              stored_report: str = '') -> str:
-    """Adds a message group with files of the given types (the stored `files_report` is the given one); returns its ID
-    Добавляет группу сообщений с файлами заданных типов (сохраненный `files_report` - заданный); возвращает ее ID"""
+def add_group(handler: DatabaseHandler, number: int, file_types: tuple[MessageFileTypes, ...]) -> str:
+    """Adds a message group with files of the given types; returns its ID
+    Добавляет группу сообщений с файлами заданных типов; возвращает ее ID"""
     session = handler.session
     if session.get(DbDialog, 1) is None:
         session.add(DbDialog(dialog_id=1, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     grouped_id = f'1_{number}'
     group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number, 3, 4, 5), html='text',
-                           plain_text='text', truncated_text='text', files_report=stored_report, sender_id=7, dialog_id=1)
+                           plain_text='text', truncated_text='text', sender_id=7, dialog_id=1)
     for index, file_type in enumerate(file_types):
         group.files.append(DbFile(file_path=f'chat/{number}_{index}{file_type.default_ext}', message_id=number, size=10,
                                   file_type_id=file_type.type_id))
@@ -122,24 +119,22 @@ def list_html(client: TestClient) -> str:
 
 
 def test_database_list_forms_the_line_from_the_files(client: TestClient, db_handler: DatabaseHandler):
-    """The line comes from the files of the group (the service Content file is skipped), not from the stored column"""
-    add_group(db_handler, 1, (IMAGE, IMAGE, VIDEO, THUMBNAIL, CONTENT), stored_report='Image (2) Video')
-    add_group(db_handler, 2, (VIDEO, CONTENT), stored_report='something old')
-    add_group(db_handler, 3, (CONTENT,), stored_report='stored text')
-    add_group(db_handler, 4, (AUDIO, UNKNOWN), stored_report='')
+    """The line comes from the files of the group (the service Content file is skipped)"""
+    add_group(db_handler, 1, (IMAGE, IMAGE, VIDEO, THUMBNAIL, CONTENT))
+    add_group(db_handler, 2, (VIDEO, CONTENT))
+    add_group(db_handler, 3, (CONTENT,))
+    add_group(db_handler, 4, (AUDIO, UNKNOWN))
     html = list_html(client)
     assert '<b>2 Images, Video</b>' in html  # the thumbnail of the video is not an Image
     assert '<b>Video</b>' in html
     assert '<b>Audio, Unknown</b>' in html
-    for old in ('Image (2) Video', 'something old', 'stored text'):
-        assert old not in html
     # A group with the service file only has no line at all (3 of the 4 groups have one)
     assert html.count('<b>') == 3
 
 
 def test_database_details_report_is_formed_from_the_files(db_handler: DatabaseHandler):
     """The message details carry the formed line too"""
-    grouped_id = add_group(db_handler, 1, (IMAGE, IMAGE, VIDEO, CONTENT), stored_report='old')
+    grouped_id = add_group(db_handler, 1, (IMAGE, IMAGE, VIDEO, CONTENT))
     assert db_handler.get_message_detail(grouped_id)['files_report'] == '2 Images, Video'
 
 

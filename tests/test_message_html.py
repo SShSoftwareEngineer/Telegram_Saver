@@ -253,7 +253,7 @@ def test_database_pages_escape_titles_and_previews_but_output_stored_html(client
     session = db_handler.session
     session.add(DbDialog(dialog_id=1, title=EVIL_TITLE, dialog_type_id=DialogTypes.CHANNEL.value))
     group = DbMessageGroup(grouped_id='1_1', date=datetime(2026, 1, 1, 3, 4, 5), html='<strong>ok</strong> &lt;img&gt;',
-                           plain_text=EVIL_TEXT, truncated_text=EVIL_TEXT, files_report='', sender_id=7, dialog_id=1)
+                           plain_text=EVIL_TEXT, truncated_text=EVIL_TEXT, sender_id=7, dialog_id=1)
     session.add(group)
     session.commit()
     db_handler.current_state.message_group_list = [group]
@@ -285,7 +285,7 @@ def test_search_uses_plain_text_not_markup(db_handler: DatabaseHandler):
     session.add(DbDialog(dialog_id=1, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     session.add(DbMessageGroup(grouped_id='1_1', date=datetime(2026, 1, 1), plain_text='see the site',
                                html='see the <a href="https://e.com" target="_blank">site</a>', truncated_text='',
-                               files_report='', sender_id=7, dialog_id=1))
+                               sender_id=7, dialog_id=1))
     session.commit()
     assert search(db_handler, 'href') == [] and search(db_handler, 'target') == [] and search(db_handler, '<a') == []
     assert search(db_handler, 'the site') == ['1_1']
@@ -297,7 +297,7 @@ def test_search_treats_percent_and_underscore_literally(db_handler: DatabaseHand
     session.add(DbDialog(dialog_id=1, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     for number, text in enumerate(['discount 50% today', 'snake_case name', 'plain words', r'back\slash'], start=1):
         session.add(DbMessageGroup(grouped_id=f'1_{number}', date=datetime(2026, 1, number), plain_text=text,
-                                   html=text, truncated_text='', files_report='', sender_id=7, dialog_id=1))
+                                   html=text, truncated_text='', sender_id=7, dialog_id=1))
     session.commit()
     assert search(db_handler, '%') == ['1_1']
     assert search(db_handler, '_') == ['1_2']
@@ -312,7 +312,7 @@ def test_search_ignores_case_of_cyrillic_text(db_handler: DatabaseHandler):
     session.add(DbDialog(dialog_id=1, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     for number, text in enumerate(['Привіт, Світ', 'Hello World', 'без збігів'], start=1):
         session.add(DbMessageGroup(grouped_id=f'1_{number}', date=datetime(2026, 1, number), plain_text=text,
-                                   html=text, truncated_text='', files_report='', sender_id=7, dialog_id=1))
+                                   html=text, truncated_text='', sender_id=7, dialog_id=1))
     session.commit()
     assert search(db_handler, 'привіт') == ['1_1'] and search(db_handler, 'СВІТ') == ['1_1']
     assert search(db_handler, 'world') == ['1_2'] and search(db_handler, 'WORLD') == ['1_2']

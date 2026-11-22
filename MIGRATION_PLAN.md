@@ -638,11 +638,15 @@
   > Еще дополнение: после «← Add tags to filter by tags» (в том числе когда все выбранные теги уже были в поле)
   > выделение в «All tags» сбрасывается (`clearFormFields([selectId])`), кнопка снова неактивна. Тесты:
   > `tests/test_all_tags_multiselect.py` (7). Решено: два дополнения идут одним коммитом с P23.
-- [ ] P24. Удалить столбец `message_groups.files_report` (после P17 он не читается, строка вложений считается при
+- [x] P24. Удалить столбец `message_groups.files_report` (после P17 он не читается, строка вложений считается при
   показе): поле в `DbMessageGroup` (`database_handler.py`), запись в `tg_save_selected_message_to_db`, параметр
   `files_report=` в тестах и фикстурах. Существующие БД: столбец `nullable`, поэтому старый файл БД продолжит
   работать и с ним; при желании `ALTER TABLE message_groups DROP COLUMN files_report;` (SQLite >= 3.35, PostgreSQL).
   Схему БД менять только по явной просьбе пользователя.
+  > **Выполнено.** Удалены поле `DbMessageGroup.files_report`, запись в `tg_save_selected_message_to_db` и параметр
+  > `files_report=` в тестах и фикстурах (`TgMessageGroup.files_report` остается: это строка для показа в списке
+  > Telegram, в БД не пишется). `tests/test_files_report.py`: убран параметр `stored_report`. Пользователь пересоздает
+  > БД. 376 тестов проходят.
 
 ## Перспективные работы
 - Данные профилей (несколько аккаунтов Telegram у одного пользователя, найдено при обсуждении P4): профиль задает только

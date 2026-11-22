@@ -46,7 +46,7 @@ def add_group(session: Session, number: int, dialog_id: int, text: str,  # pylin
     Добавляет группу сообщений с тегами (одно имя - один тег) и файлами-изображениями; возвращает ее ID"""
     grouped_id = f'{dialog_id}_{number}'
     group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number, 3, 4, 5), html=text,
-                           plain_text=text, truncated_text=text, files_report='', sender_id=7, dialog_id=dialog_id)
+                           plain_text=text, truncated_text=text, sender_id=7, dialog_id=dialog_id)
     for name in tags:
         group.tags.append(session.query(DbTag).filter_by(name=name).first() or DbTag(name=name))
     for name in file_names:

@@ -137,7 +137,6 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     html: Mapped[str] = mapped_column(Text, nullable=True)
     plain_text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
-    files_report: Mapped[str] = mapped_column(Text, nullable=True)
     sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table

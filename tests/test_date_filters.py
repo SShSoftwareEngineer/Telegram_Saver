@@ -119,7 +119,7 @@ def boundary_groups(db_handler: DatabaseHandler) -> DatabaseHandler:
                '1_5': local(2026, 1, 15, 23, 59, 59, 999999), '1_6': local(2026, 1, 16, 0, 0, 0)}
     for grouped_id, moment in moments.items():
         session.add(DbMessageGroup(grouped_id=grouped_id, date=moment, html='text', plain_text='text',
-                                   truncated_text='text', files_report='', sender_id=7, dialog_id=1))
+                                   truncated_text='text', sender_id=7, dialog_id=1))
     session.commit()
     return db_handler
 
