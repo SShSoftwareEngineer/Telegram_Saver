@@ -175,3 +175,35 @@ def test_saved_message_is_deleted_with_its_html_and_empty_directories(
     assert response.status_code == 200
     assert not html_files[0].exists()
     assert media_dir.is_dir() and not any(media_dir.iterdir())
+
+
+def save_group_and_read_html(client: TestClient, tg_handler: SimpleNamespace, group: TgMessageGroup,
+                             work_dir: Path) -> tuple[Path, str]:
+    """Saves the group and returns its HTML file and the text of it / Сохраняет группу, возвращает HTML файл и его текст"""
+    tg_handler.current_state.message_group_list = [group]
+    assert client.post('/tg_save_selected_message_to_db', data=checkbox(group)).status_code == 200
+    html_path = next((work_dir / ProjectDirs.media_dir).rglob('*.html'))
+    return html_path, html_path.read_text(encoding='utf-8')
+
+
+def test_saved_html_has_attachments_line_and_does_not_list_itself(client: TestClient, tg_handler: SimpleNamespace,
+                                                                  tg_dialog: SimpleNamespace, work_dir: Path):
+    """The page of a message shows the summary of the attachments and only the media files; saving the group again
+    (its HTML record exists then) gives the same page / Страница сообщения: строка вложений и только медиафайлы"""
+    group = make_group(1)
+    html_path, html = save_group_and_read_html(client, tg_handler, group, work_dir)
+    assert 'Attachments: Image' in html
+    assert '_ctx_' not in html and 'media-files-one-column' in html
+    assert save_group_and_read_html(client, tg_handler, group, work_dir) == (html_path, html)
+
+
+def test_maintenance_restores_html_identical_to_the_saved_one(client: TestClient, tg_handler: SimpleNamespace,
+                                                              tg_dialog: SimpleNamespace, work_dir: Path):
+    """A lost HTML file is rendered again from the database and is the same as the file created when saving"""
+    tg_handler.download_message_file_from_list = MagicMock(return_value='')  # the mocked download left no image
+    html_path, original = save_group_and_read_html(client, tg_handler, make_group(1), work_dir)
+    html_path.unlink()
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert html_path.read_text(encoding='utf-8') == original

@@ -10,10 +10,11 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from configs.config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
-from database_handler import get_db_handler
+from database_handler import DbFile, get_db_handler
 from telegram_handler import get_tg_handler
 from utils import limit_list, status_messages
 from web.deps import state_lock, templates
+from web.message_html import write_message_html
 
 router = APIRouter()
 
@@ -59,11 +60,13 @@ def _format_size(size: int) -> str:
 
 
 @router.post('/db_database_maintenance')
-def db_database_maintenance() -> JSONResponse:
+def db_database_maintenance(request: Request) -> JSONResponse:
     """
     Database and file system maintenance. Nothing is deleted here: the files and directories of deleted messages are
     removed together with the messages (`/db_delete_selected_from_database`).
         1. Reporting the local files that are not referenced in the database (to delete them manually)
+        1a. Recreating the HTML files of messages (from the database, same template as when saving) that are referenced
+            in the database but are not present in the local file system
         2. Downloading files that are referenced in the database but are not present in the local file system (not more
            than `GlobalConst.maintenance_max_downloads` per run; the files that failed are skipped until the restart)
         3. Backing up the database (SQLite backup API: the database is in the WAL mode)
@@ -72,6 +75,8 @@ def db_database_maintenance() -> JSONResponse:
     Сервисное обслуживание базы данных и файловой системы. Здесь ничего не удаляется: файлы и директории удаленных
     сообщений удаляются вместе с сообщениями (`/db_delete_selected_from_database`).
         1. Отчет о локальных файлах, на которые нет ссылок в базе данных (для ручного удаления)
+        1а. Пересоздание HTML файлов сообщений (из базы данных, тем же шаблоном, что при сохранении), на которые есть
+            ссылки в базе данных, но которых нет в локальной файловой системе
         2. Докачка файлов, на которые есть ссылки в базе данных, но которых нет в локальной файловой системе (не больше
            `GlobalConst.maintenance_max_downloads` за запуск; файлы, которые не скачались, пропускаются до перезапуска)
         3. Резервное копирование базы данных
@@ -104,6 +109,31 @@ def db_database_maintenance() -> JSONResponse:
                                     f'{f" ({_format_size(total_size)})" if orphan_files else ""}', True)
         for line in limit_list(orphan_lines, GlobalConst.status_list_max_items):
             status_messages.mess_update('', line)
+        # 1a. Recreate the HTML files of the messages that are in the database but not in the local file system:
+        # they are rendered from the database, so Telegram is not needed (and there is no limit as for downloading)
+        # 1а. Пересоздаем HTML файлы сообщений, которые есть в базе данных, но отсутствуют в локальной файловой системе:
+        # они строятся по базе данных, поэтому Telegram не нужен (и лимита, как у докачки, нет)
+        restored_count = 0
+        unrestored_lines = []
+        for file_path in sorted(database_files - local_files):
+            if Path(file_path).suffix != MessageFileTypes.CONTENT.default_ext:
+                continue
+            # The path is unique and every file record belongs to a message group (a foreign key, NOT NULL)
+            # Путь уникален, а каждая запись файла принадлежит группе сообщений (внешний ключ, NOT NULL)
+            db_file = db_handler.session.query(DbFile).filter_by(file_path=file_path).one()
+            try:
+                db_file.size = write_message_html(request, db_file.message_group, media_dir / file_path)
+            except OSError as error:
+                unrestored_lines.append(f'{file_path}: {error.strerror or error}')
+                continue
+            restored_count += 1
+        db_handler.session.commit()
+        if restored_count:
+            status_messages.mess_update('', f'HTML files restored: {restored_count}')
+        if unrestored_lines:
+            status_messages.mess_update('', f'HTML files not restored: {len(unrestored_lines)}')
+            for line in limit_list(unrestored_lines, GlobalConst.status_list_max_items):
+                status_messages.mess_update('', line)
         # 2. Download the files that are in the database but not in the local file system, excluding HTML files.
         # Not more than `maintenance_max_downloads` per run: the lock is held all this time, so a lost media directory
         # must not freeze the application for minutes; the next run continues with the rest

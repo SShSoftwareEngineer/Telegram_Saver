@@ -14,7 +14,8 @@ and messages, and saves the ones you choose to an SQLite database and to a local
 - **Tags**: add, remove and rename tags for the checked messages, rename a tag in all messages, sort the tag list,
   pick several tags at once for the tag filter
 - **Export**: selected messages to a standalone HTML page with copied media files
-- **Maintenance**: report of media files without database records, re-download of missing files, database backup
+- **Maintenance**: report of media files without database records, recreation of lost message HTML files, re-download
+  of missing files (up to 100 per run), database backup
 - **Database abstraction**: SQLAlchemy ORM with SQLite (the schema is designed to be portable to PostgreSQL)
 
 ## Architecture
@@ -110,7 +111,8 @@ The page has two tabs:
   them. The buttons that need checked messages are disabled until at least one message is checked.
 
 The status bar at the bottom shows the progress and the result of every operation. Service operations (report of
-files without records, re-download of missing media, backup) are in the database maintenance menu.
+files without records, recreation of lost message HTML files, re-download of missing media, backup) are in the
+database maintenance menu.
 
 ## Database
 
@@ -132,7 +134,6 @@ Telethon is mocked: the tests do not connect to Telegram.
 
 ## Roadmap
 
-- [ ] Security: Origin/Host check for POST requests, protection of maintenance
 - [ ] Filter of archived messages without tags (to tag recently saved messages)
 - [ ] Fully asynchronous `TelegramHandler` and async SQLAlchemy sessions instead of the global lock
 - [ ] PostgreSQL and Alembic migrations (`BigInteger` ID columns)
