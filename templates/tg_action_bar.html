@@ -37,7 +37,10 @@ Variables:
 
     <div class="tg-save_db action-bar-button-area">
         {# Save selected messages to database / Сохранить выбранные сообщения в базе данных #}
+        {# Disabled until a message is checked (see `updateCheckedDependentButtons`) / Неактивна, пока нет отмеченных #}
         <button class="action-bar-button"
+                disabled data-needs-checked=".tg-message-checkbox"
+                title="Saves the checked messages to the database"
                 onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_save_selected_message_to_db')">
             Save selection to database
         </button>

@@ -34,7 +34,8 @@ def make_group(number: int, with_file: bool = True) -> TgMessageGroup:
     """Real message group (with a real image file object) of the fake dialog / Группа сообщений с файлом-изображением"""
     group = TgMessageGroup(f'{DIALOG_ID}_{number}', DIALOG_ID)
     group.date = datetime(2026, 1, number, 3, 4, 5)
-    group.text = f'Message {number}\nsecond line'
+    group.html = f'Message {number}<br>second line'
+    group.plain_text = f'Message {number}\nsecond line'
     group.truncated_text = f'Message {number}'
     group.sender_id = 7
     group.files_report = '1 photo'
@@ -66,13 +67,14 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
     assert session.query(DbDialog).filter_by(dialog_id=DIALOG_ID).one().title == 'Test chat'
     assert {g.grouped_id for g in session.query(DbMessageGroup)} == {groups[0].grouped_id, groups[2].grouped_id}
     saved = session.query(DbMessageGroup).filter_by(grouped_id=groups[0].grouped_id).one()
-    assert (saved.text, saved.sender_id, saved.dialog.title) == ('Message 1\nsecond line', 7, 'Test chat')
+    assert (saved.html, saved.plain_text, saved.sender_id, saved.dialog.title) == (
+        'Message 1<br>second line', 'Message 1\nsecond line', 7, 'Test chat')
     assert sorted(f.file_type_id for f in saved.files) == sorted(
         [MessageFileTypes.IMAGE.type_id, MessageFileTypes.CONTENT.type_id])
     # The HTML file is in the file system and in the database / HTML файл есть в файловой системе и в базе данных
     html_record = next(f for f in saved.files if f.file_type_id == MessageFileTypes.CONTENT.type_id)
     # The path is relative to the media directory, like the paths of the other files / Путь относительно директории медиа
-    assert not html_record.file_path.startswith(ProjectDirs.media_dir)
+    assert not html_record.file_path.startswith(ProjectDirs.media_dir_name)
     html_path = work_dir / ProjectDirs.media_dir / html_record.file_path
     assert html_path.parent == work_dir / ProjectDirs.media_dir / 'Test chat_1001234567891' / '2026-01-01'
     html = html_path.read_text(encoding='utf-8')
@@ -173,3 +175,35 @@ def test_saved_message_is_deleted_with_its_html_and_empty_directories(
     assert response.status_code == 200
     assert not html_files[0].exists()
     assert media_dir.is_dir() and not any(media_dir.iterdir())
+
+
+def save_group_and_read_html(client: TestClient, tg_handler: SimpleNamespace, group: TgMessageGroup,
+                             work_dir: Path) -> tuple[Path, str]:
+    """Saves the group and returns its HTML file and the text of it / Сохраняет группу, возвращает HTML файл и его текст"""
+    tg_handler.current_state.message_group_list = [group]
+    assert client.post('/tg_save_selected_message_to_db', data=checkbox(group)).status_code == 200
+    html_path = next((work_dir / ProjectDirs.media_dir).rglob('*.html'))
+    return html_path, html_path.read_text(encoding='utf-8')
+
+
+def test_saved_html_has_attachments_line_and_does_not_list_itself(client: TestClient, tg_handler: SimpleNamespace,
+                                                                  tg_dialog: SimpleNamespace, work_dir: Path):
+    """The page of a message shows the summary of the attachments and only the media files; saving the group again
+    (its HTML record exists then) gives the same page / Страница сообщения: строка вложений и только медиафайлы"""
+    group = make_group(1)
+    html_path, html = save_group_and_read_html(client, tg_handler, group, work_dir)
+    assert 'Attachments: Image' in html
+    assert '_ctx_' not in html and 'media-files-one-column' in html
+    assert save_group_and_read_html(client, tg_handler, group, work_dir) == (html_path, html)
+
+
+def test_maintenance_restores_html_identical_to_the_saved_one(client: TestClient, tg_handler: SimpleNamespace,
+                                                              tg_dialog: SimpleNamespace, work_dir: Path):
+    """A lost HTML file is rendered again from the database and is the same as the file created when saving"""
+    tg_handler.download_message_file_from_list = MagicMock(return_value='')  # the mocked download left no image
+    html_path, original = save_group_and_read_html(client, tg_handler, make_group(1), work_dir)
+    html_path.unlink()
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert html_path.read_text(encoding='utf-8') == original

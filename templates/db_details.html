@@ -11,7 +11,7 @@ Variables:
 
 {% if db_details %}
     {% set group = db_details.message_group_id %}
-    {% set message_date = db_details.date.strftime(constants.message_datetime_format) %}
+    {% set message_date = db_details.date|local_dt(constants.message_datetime_format) %}
     {% set message_grouped_id = constants.mess_group_id+'_det = '+group %}
 
     {# Hidden element that returns the grouped_id of the corresponding message group for details /
@@ -23,13 +23,14 @@ Variables:
         <b>{{ message_date }}</b>
 
         {# Beginning of dialog title / Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
+        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|truncate(constants.truncated_title_length) }}</span>
     </div>
 
     {# Message text / Вывод текста сообщения #}
-    {% if db_details.text %}
+    {% if db_details.html %}
         <br>
-        {{ db_details.text|replace('\n', '<br>')|safe }}
+        {# Safe HTML built by render_message_html when the message was received / Безопасный HTML из render_message_html #}
+        {{ db_details.html|safe }}
     {% endif %}
 
     {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}

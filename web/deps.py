@@ -3,6 +3,7 @@ Shared objects of the web layer: the global state lock, Jinja2 templates, templa
 Общие объекты веб-слоя: глобальный замок состояния, шаблоны Jinja2, контекст шаблонов и помощник url_for.
 """
 
+from datetime import datetime
 from pathlib import Path
 from threading import Lock
 from typing import Annotated, Any
@@ -15,6 +16,7 @@ from starlette.templating import Jinja2Templates
 from configs.config import GlobalConst, MessageFileTypes, FormCfg
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
+from utils import format_files_report, to_local
 
 # Project root: templates and static files are looked up relative to it, not to the current directory
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
@@ -23,6 +25,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Temporary solution: one lock for the database and the global state (see MIGRATION_PLAN.md)
 # Временное решение: один замок на базу данных и глобальное состояние (см. MIGRATION_PLAN.md)
 state_lock = Lock()
+
+
+def filter_date(value: datetime | None) -> str:
+    """
+    Date of a filter for the value of `<input type="date">`: the local day as `YYYY-MM-DD`, or '' if the date is off
+    Дата фильтра для значения `<input type="date">`: локальный день в виде `YYYY-MM-DD` или '', если даты нет
+    """
+    return to_local(value).strftime('%Y-%m-%d') if value else ''
 
 
 def inject_field_names(_request: Request) -> dict[str, Any]:
@@ -37,10 +47,13 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
         'tg_file_types': MessageFileTypes,
         'form_ctrl_cfg': FormCfg,
         'tg_me': tg_handler.me,
-        'tg_mess_date_from_default': tg_handler.message_sort_filter.date_from_default,
+        'tg_mess_date_from': filter_date(tg_handler.message_sort_filter.date_from),
+        'tg_mess_date_to': filter_date(tg_handler.message_sort_filter.date_to),
         'tg_dialogs': tg_handler.current_state.dialog_list,
         'tg_messages': tg_handler.current_state.message_group_list,
         'tg_details': tg_handler.current_state.message_details,
+        'db_mess_date_from': filter_date(db_handler.message_sort_filter.date_from),
+        'db_mess_date_to': filter_date(db_handler.message_sort_filter.date_to),
         'db_all_dialog_list': db_handler.all_dialogues_list,
         'db_all_tags': db_handler.all_tags_list,
         'db_messages': db_handler.current_state.message_group_list,
@@ -74,6 +87,22 @@ templates = Jinja2Templates(directory=BASE_DIR / 'templates', context_processors
 # Replace the built-in Starlette url_for (it always returns absolute URLs)
 # Заменяем встроенный url_for Starlette (он всегда возвращает абсолютные URL)
 templates.env.globals['url_for'] = url_for
+
+
+def local_dt(value: datetime, fmt: str) -> str:
+    """
+    Jinja2 filter: formats a date and time in the local time zone of the system (the dates are stored and passed in
+    UTC, the user always sees the local time, as in the Telegram client).
+    Фильтр Jinja2: форматирует дату и время в локальном часовом поясе системы (даты хранятся и передаются в UTC,
+    пользователь всегда видит локальное время, как в клиенте Telegram).
+    """
+    return to_local(value).strftime(fmt)
+
+
+templates.env.filters['local_dt'] = local_dt
+# The summary line of the files of a message group is formed in the template (it is not stored in the database)
+# Строка-резюме файлов группы сообщений формируется в шаблоне (в базе данных она не хранится)
+templates.env.globals['format_files_report'] = format_files_report
 
 
 def render_fragment(request: Request, name: str, **context: Any) -> str:

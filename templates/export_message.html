@@ -3,7 +3,9 @@ Export one saved message from the database.
 Variables:
   - date: message date
   - dialog_title: dialog title
-  - text: message text
+  - html: safe HTML of the message text (built by render_message_html)
+  - tags: list of the message tags
+  - files_report: summary line of the attachments (format_files_report)
   - files: list of message files
 #}
 
@@ -47,6 +49,21 @@ Variables:
             text-align: center;
             margin-top: 5px;
         }
+        /* Message text formatting / Форматирование текста сообщения */
+        blockquote {
+            margin: 6px 0;
+            padding-left: 10px;
+            border-left: 3px solid #90a4ae;
+        }
+        .tg-spoiler {
+            background: #9e9e9e;
+            color: transparent;
+            border-radius: 3px;
+        }
+        .tg-spoiler:hover {
+            background: transparent;
+            color: inherit;
+        }
     </style>
 
 </head>
@@ -57,13 +74,26 @@ Variables:
     <b>{{ date }}</b>
 
     {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
-    <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ dialog_title|safe|truncate(constants.truncated_title_length) }}</span>
+    <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ dialog_title|truncate(constants.truncated_title_length) }}</span>
 </div>
 
-{# Displaying the message text / Вывод текста сообщения #}
-{% if text %}
+{# Displaying message tags / Вывод тегов сообщения #}
+{% if tags %}
     <br>
-    {{ text|replace('\n', '<br>')|safe }}
+    <div style="text-align: center;">Message tags: {{ tags|join(', ') }}</div>
+{% endif %}
+
+{# Displaying the message text / Вывод текста сообщения #}
+{% if html %}
+    <br>
+    {# Safe HTML built by render_message_html when the message was received / Безопасный HTML из render_message_html #}
+    {{ html|safe }}
+{% endif %}
+
+{# Displaying the summary of the attachments, e.g. "2 Images, Video" / Вывод строки-резюме вложений #}
+{% if files_report %}
+    <br>
+    <div style="text-align: center; color: #777777">Attachments: {{ files_report }}</div>
 {% endif %}
 
 {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}

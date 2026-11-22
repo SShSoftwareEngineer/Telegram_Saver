@@ -45,8 +45,8 @@ def add_group(session: Session, number: int, dialog_id: int, text: str,  # pylin
     """Adds a message group with tags (the same name is the same tag) and image files; returns its ID
     Добавляет группу сообщений с тегами (одно имя - один тег) и файлами-изображениями; возвращает ее ID"""
     grouped_id = f'{dialog_id}_{number}'
-    group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number, 3, 4, 5), text=text,
-                           truncated_text=text, files_report='', sender_id=7, dialog_id=dialog_id)
+    group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number, 3, 4, 5), html=text,
+                           plain_text=text, truncated_text=text, files_report='', sender_id=7, dialog_id=dialog_id)
     for name in tags:
         group.tags.append(session.query(DbTag).filter_by(name=name).first() or DbTag(name=name))
     for name in file_names:
@@ -74,7 +74,7 @@ def test_apply_filters(client: TestClient, db_handler: DatabaseHandler):
     add_group(session, 1, 1, 'alpha text')
     add_group(session, 2, 2, 'alpha other')
     add_group(session, 3, 2, 'beta text')
-    db_handler.current_state.message_details = {'text': 'old'}
+    db_handler.current_state.message_details = {'html': 'old'}
     db_handler.current_state.selected_message_group_id = '1_1'
     form = {DIALOG_SELECT: ['2'], FormCfg.db_message_filter['message_query']: 'alpha',
             FormCfg.db_message_filter['sorting_field']: '0', FormCfg.db_message_filter['sorting_order']: '0'}
@@ -226,7 +226,7 @@ def test_delete_selected_group_with_tags(client: TestClient, db_handler: Databas
     """A group with tags is deleted (a bulk DELETE fails on the tag links): its files and links go too, the tag that
     is left without messages disappears, the dialog without messages disappears, the response refreshes the lists"""
     first, second = two_groups
-    db_handler.current_state.message_details = {'text': 'old'}
+    db_handler.current_state.message_details = {'html': 'old'}
     db_handler.current_state.selected_message_group_id = first
     response = client.post('/db_delete_selected_from_database', data=checkbox(first))
 

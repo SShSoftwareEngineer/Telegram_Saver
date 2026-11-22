@@ -7,7 +7,8 @@ Run: `python telegram_saver.py` (one worker, no reload: every start logs in to T
 
 import uvicorn
 
+from configs.config import HOST, PORT
 from web.main import app
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='127.0.0.1', port=5000)
+    uvicorn.run(app, host=HOST, port=PORT)

@@ -5,7 +5,6 @@ Exception handlers of the web layer: every error is returned as JSON (the page s
 register_error_handlers: registers the handlers in the application
 """
 
-import html
 import logging
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -13,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from database_handler import get_db_handler
-from utils import status_messages
+from utils import OPERATION_ERROR, status_messages
 from web.deps import state_lock
 
 logger = logging.getLogger(__name__)
@@ -55,9 +54,13 @@ def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
             get_db_handler().session.rollback()
     except Exception:  # pylint: disable=broad-exception-caught
         logger.exception('Session rollback failed')
-    # The status bar text goes to innerHTML on the page, so it is escaped
-    # Текст строки статуса вставляется на странице через innerHTML, поэтому он экранируется
-    status_messages.mess_update(html.escape(f'Error in {request.url.path}'), html.escape(message))
+    # The status bar text is escaped inside `status_messages.mess_update`
+    # Текст строки статуса экранируется внутри `status_messages.mess_update`
+    # The state is passed explicitly: the handler runs outside the middleware, which has already marked the error,
+    # and a plain call would mark the operation as running again
+    # Состояние передается явно: обработчик выполняется вне middleware, который уже отметил ошибку, а обычный вызов
+    # снова пометил бы операцию как идущую
+    status_messages.mess_update(f'Error in {request.url.path}', message, state=OPERATION_ERROR)
     return JSONResponse({'error': message}, status_code=500)
 
 

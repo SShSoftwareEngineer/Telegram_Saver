@@ -53,11 +53,25 @@ function getSelectValue(id) {
     }
 }
 
-// Retrieving the text selected in select by ID / Получение по ID текста, выбранного в select
-function getSelectText(id) {
+// Retrieving the texts of all rows selected in select by ID / Получение по ID текстов всех выбранных строк select
+function getSelectTexts(id) {
     /** @type {HTMLSelectElement} */
     const select = document.getElementById(id);
-    return select?.options[select.selectedIndex]?.text || '';
+    return select ? Array.from(select.selectedOptions).map(option => option.text) : [];
+}
+
+// Fills the tag name field and its hidden old name from a tag list when exactly one tag is selected in it; with
+// several tags (or none) both are cleared, so "Update tag" never renames a tag the user did not point at
+// Заполняет поле имени тега и его скрытое старое имя из списка тегов, когда в нем выбран ровно один тег; при нескольких
+// тегах (или ни одном) оба очищаются, чтобы «Update tag» не переименовал тег, на который пользователь не указывал
+function selectTagForEdit(select, editFieldId, oldFieldId) {
+    const texts = Array.from(select.selectedOptions).map(option => option.text);
+    const name = texts.length === 1 ? texts[0] : '';
+    setInputValue(editFieldId, name);
+    setInputValue(oldFieldId, name);
+    // The selection changed: refresh the buttons that need a selected row / Выбор изменился: обновляем кнопки,
+    // которым нужна выбранная строка
+    updateCheckedDependentButtons();
 }
 
 // Getting the value of a multiple-choice checkbox group by container ID
@@ -128,7 +142,11 @@ function submitFormData(config, url) {
 
 // Universal function for updating elements by id = keys from the response
 // Универсальная функция обновления элементов по id = ключам из ответа
-function updateElementsFromResponse(data) {
+// `resetScroll`: the response loads a new list or new details, so the scroll areas it fills start from the top (after a
+// save or a delete the list is the same, so its scroll position is kept)
+// `resetScroll`: ответ загружает новый список или новые детали, поэтому заполняемые им области прокрутки начинаются с
+// начала (после сохранения или удаления список тот же, поэтому его положение прокрутки сохраняется)
+function updateElementsFromResponse(data, resetScroll = false) {
     Object.keys(data).forEach(key => {
         /** @type {HTMLElement} */
         const element = document.getElementById(key);
@@ -138,7 +156,15 @@ function updateElementsFromResponse(data) {
         }
         // For checkboxes and radio buttons, update checked / Для checkbox и radio - обновляем checked
         if (element instanceof HTMLInputElement && (element.type === 'checkbox' || element.type === 'radio')) {
+            // Setting `checked` from code does not fire `change`; fire it for a checkbox that really changed, so its
+            // handler (the counter of the checked items) runs, as if the user had clicked it
+            // Смена `checked` из кода не вызывает `change`; вызываем его для чек-бокса, который реально изменился,
+            // чтобы сработал его обработчик (счетчик отмеченных), как при клике пользователя
+            const changed = element.checked !== data[key];
             element.checked = data[key];
+            if (changed && element.type === 'checkbox') {
+                element.dispatchEvent(new Event('change', {bubbles: true}));
+            }
         }
         // For input and textarea - update value / Для input and textarea - обновляем value
         else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
@@ -147,15 +173,43 @@ function updateElementsFromResponse(data) {
         // For the other elements, update innerHTML / Для остальных элементов - обновляем innerHTML
         else if (typeof data[key] === 'string') {
             element.innerHTML = data[key];
+            if (resetScroll && element.classList.contains('scroll')) {
+                element.scrollTop = 0;
+            }
         }
+    });
+    // A re-rendered list has new (unchecked) checkboxes that fire no `change`: refresh the buttons that need a checked item
+    // Перерисованный список содержит новые (неотмеченные) чек-боксы без события `change`: обновляем зависящие от них кнопки
+    updateCheckedDependentButtons();
+}
+
+// Enables each button marked with `data-needs-checked="<checkbox selector>"` only while at least one such checkbox is
+// checked, and disables it otherwise. The same for `data-needs-selected="<select ID>"`: the button works only while
+// at least one row of that list is selected
+// Включает каждую кнопку с `data-needs-checked="<селектор чек-боксов>"`, только пока отмечен хотя бы один такой
+// чек-бокс, иначе отключает ее. То же для `data-needs-selected="<ID списка select>"`: кнопка работает, только пока
+// в этом списке выбрана хотя бы одна строка
+function updateCheckedDependentButtons() {
+    document.querySelectorAll('[data-needs-checked]').forEach(button => {
+        button.disabled = document.querySelector(`${button.dataset.needsChecked}:checked`) === null;
+    });
+    document.querySelectorAll('[data-needs-selected]').forEach(button => {
+        const select = document.getElementById(button.dataset.needsSelected);
+        button.disabled = !select || select.selectedOptions.length === 0;
     });
 }
 
+// A page load (also a reload with the checkbox states restored by the browser) / Загрузка страницы (в том числе
+// повторная с состоянием чек-боксов, восстановленным браузером)
+document.addEventListener('DOMContentLoaded', updateCheckedDependentButtons);
+
 // Function that implements button press, with configuration of form elements and URL handler
 // Функция, реализующая нажатие кнопки, с конфигурацией элементов формы и URL обработчика
-function pressFormButton(config, url) {
+// `resetScroll` is true for the buttons that load a new list (the filters), see `updateElementsFromResponse`
+// `resetScroll` равен true у кнопок, загружающих новый список (фильтры), см. `updateElementsFromResponse`
+function pressFormButton(config, url, resetScroll = false) {
     submitFormData(config, url)
-        .then(data => updateElementsFromResponse(data))
+        .then(data => updateElementsFromResponse(data, resetScroll))
         .catch(err => {
             console.error('Error sending form:', err);
             alert('Error: ' + err.message);
@@ -179,7 +233,9 @@ function loadURL(url) {
         })
         .then(data => {
             console.log('Message data received:', data);
-            updateElementsFromResponse(data);
+            // A new chat or new message details: the filled areas start from the top
+            // Новый диалог или детали другого сообщения: заполняемые области начинаются с начала
+            updateElementsFromResponse(data, true);
         })
         .catch(err => {
             console.error('Error loading messages:', err);
@@ -256,16 +312,21 @@ function clearFormFields(ids) {
             element.selectedIndex = -1; // Remove all selections / Снимаем все выделения
         }
     });
+    // A list may have lost its selection: refresh the buttons that need a selected row
+    // Список мог потерять выбор: обновляем кнопки, которым нужна выбранная строка
+    updateCheckedDependentButtons();
 }
 
-// Function to add a tag to the list of keywords for tag filtering
-// Функция добавления тега в список ключевых слов для фильтра по тегам
+// Function to add the selected tags (one or several) to the list of keywords for tag filtering; the tags that are
+// already in the field are skipped
+// Функция добавления выбранных тегов (одного или нескольких) в список ключевых слов для фильтра по тегам; теги, которые
+// уже есть в поле, пропускаются
 function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLineSeparator = '\n') {
-    // Get the selected value from Select and the current value from Input
-    // Получаем выбранное значение из Select и текущее значение из Input
-    const selectedText = getSelectText(selectId);
+    // Get the selected values from Select and the current value from Input
+    // Получаем выбранные значения из Select и текущее значение из Input
+    const selectedTexts = getSelectTexts(selectId);
     const currentValue = getInputValue(textareaId);
-    if (!selectedText) {
+    if (selectedTexts.length === 0) {
         console.warn('Nothing selected in select!');
         return;
     }
@@ -274,20 +335,25 @@ function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLin
         currentValue.split(new RegExp(`[${separator}${newLineSeparator}]`))
             .map(val => val.trim()).filter(val => val) :
         [];
-    // Checking whether such a value already exists / Проверяем, есть ли уже такое значение
-    if (existingValues.includes(selectedText)) {
-        console.log('The value is already in the field!');
+    // Checking which values are not in the field yet / Проверяем, каких значений в поле еще нет
+    const newTexts = selectedTexts.filter((text, index) => !existingValues.includes(text)
+        && selectedTexts.indexOf(text) === index);
+    if (newTexts.length === 0) {
+        console.log('The values are already in the field!');
+        clearFormFields([selectId]);
         return;
     }
-    // Add the value on a new line / Добавляем значение с новой строки
-    const textareaElement = document.getElementById(textareaId);
-    if (textareaElement) {
-        if (currentValue.trim()) {
-            setInputValue(textareaId, currentValue + newLineSeparator + selectedText + separator);
-        } else {
-            setInputValue(textareaId, selectedText + separator)
-        }
+    // Add each value on a new line / Добавляем каждое значение с новой строки
+    if (document.getElementById(textareaId)) {
+        let newValue = currentValue;
+        newTexts.forEach(text => {
+            newValue = newValue.trim() ? newValue + newLineSeparator + text + separator : text + separator;
+        });
+        setInputValue(textareaId, newValue);
     }
+    // The selection is used up: clear it (the button becomes disabled until the next selection)
+    // Выбор использован: сбрасываем его (кнопка неактивна до следующего выбора)
+    clearFormFields([selectId]);
 }
 
 
@@ -296,14 +362,28 @@ function addTagToFilterFromAllTags(selectId, textareaId, separator = ';', newLin
 
 // Function for updating the status string. We check the status every 500 ms.
 // Функция для обновления строки статуса. Проверяем статус каждые 500мс
+// The server returns an empty body if nothing changed since the version we send, so the list is not redrawn
+// (an open list does not jump). After a redraw the last (newest) line is selected, so the closed list shows it.
+// Сервер возвращает пустое тело, если с отправленной версии ничего не изменилось, поэтому список не перерисовывается
+// (открытый список не дергается). После перерисовки выбирается последняя (новая) строка, и закрытый список ее показывает.
+let statusVersion = null;
 setInterval(() => {
-    fetch('/status_output')
-        .then(response => response.json())
+    const url = statusVersion === null ? '/status_output' : `/status_output?since=${statusVersion}`;
+    fetch(url)
+        .then(response => {
+            statusVersion = response.headers.get('X-Status-Version');
+            return response.json();
+        })
         .then(data => {
             if (Object.keys(data).length > 0) {
                 updateElementsFromResponse(data);
+                const report = document.getElementById('sb_report');
+                if (report && report.options.length > 0) {
+                    report.selectedIndex = report.options.length - 1;
+                }
             }
-        });
+        })
+        .catch(err => console.error('Status bar update failed:', err));
 }, 500);
 
 
@@ -356,6 +436,9 @@ function updateCheckboxCounter(checkboxSelector, modifyElementId) {
     } else {
         console.error(`Элемент с ID "${modifyElementId}" не найден.`);
     }
+    // The checked items changed: refresh the buttons that act on them / Отмеченные изменились: обновляем кнопки,
+    // действующие на них
+    updateCheckedDependentButtons();
 }
 
 // Function to delete selected messages with confirmation / Функция удаления выделенных сообщений с подтверждением

@@ -10,29 +10,31 @@ class TgFile: a class to represent a Telegram message file
 class TgMessageGroup: a class to represent a Telegram message group in this program
 class TgMessageSortFilter: a class to represent sorting and filtering of Telegram message groups.
 get_tg_handler: a function returning the shared TelegramHandler (created lazily on the first call)
-convert_text_hyperlinks: a function for converting text hyperlinks in Markdown format [Text](URL) to HTML format
 
 The asyncio event loop of the Telegram client runs in a background daemon thread owned by TelegramHandler
 (see TelegramHandler._run and TelegramHandler.close).
 """
 
+import logging
 from asyncio import new_event_loop, run_coroutine_threadsafe
-from collections import Counter
 from mimetypes import guess_extension
 from sys import maxsize
 from threading import Event, Lock, Thread, current_thread
 from textwrap import shorten
 from dataclasses import dataclass
 from typing import Any, Callable, cast
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive, MessageMediaWebPage
 from telethon import TelegramClient
 from dotenv import dotenv_values
-from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
-from utils import parse_date_string, clean_file_path, status_messages
+from configs.config import BASE_DIR, ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
+from utils import parse_date_string, clean_file_path, format_files_report, local_day_start, status_messages, to_local
+from message_renderer import render_message_html, plain_text_to_html, render_link_html
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,7 +70,8 @@ class TgDialog:
         else:
             self.title = GlobalConst.dialog_no_title
         self.unread_count = dialog.unread_count if dialog.unread_count else 0
-        self.last_message_date = dialog.date.astimezone() if dialog.date else None  # type: ignore
+        # UTC as Telegram gives it / UTC, как отдает Telegram
+        self.last_message_date = dialog.date if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
         self.dialog_dir = clean_file_path(f'{self.title}_{self.dialog_id}')
 
@@ -214,12 +217,13 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
         message_grouped_id (str): message group ID
         message (Message): Telegram message object
         message_id (int): message ID
-        description (str): description of the reference message
+        description (str): description of the reference message (plain text)
         file_name (str): file name
         file_path (str): full file path
         alt_text (str): alternate text for media file
         size (int): size of file
         file_type (MessageFileTypes): file type
+        description_html (str): safe HTML of the description (escaped text, a link with a checked address)
     """
 
     dialog_id: int
@@ -232,6 +236,7 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
     alt_text: str
     size: int
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
+    description_html: str = ''
 
     def is_exists(self) -> bool:
         """
@@ -256,7 +261,7 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
             str: file name
         """
 
-        file_name = (f'{date.astimezone().strftime('%H-%M-%S')}_'
+        file_name = (f'{to_local(date).strftime('%H-%M-%S')}_'
                      f'{file_type.sign}_{message_grouped_id}_{message_id}{file_ext}')
         return clean_file_path(file_name) or file_name
 
@@ -272,8 +277,9 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         ids (list[int]): ID of messages contained in the message group
         files (list[TgFile]): message files contained in a message group
         date (datetime | None): date of message group
-        text (str): text of message group
-        truncated_text (str): truncated text of message group for HTML templates
+        html (str): safe HTML of the message group text (built by `render_message_html`, output with `|safe`)
+        plain_text (str): text of the message group without formatting (for search and truncation)
+        truncated_text (str): truncated plain text of message group
         sender_id (int | None): message sender ID (the number `message.sender_id`, not the raw `Peer` object)
         files_report (str | None): summary of message group files
         saved_to_db (bool): database saving status
@@ -284,7 +290,8 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     ids: list[int]
     files: list[TgFile]
     date: datetime | None = None
-    text: str = ''
+    html: str = ''
+    plain_text: str = ''
     truncated_text: str = ''
     sender_id: int | None = None
     files_report: str | None = ''
@@ -316,10 +323,25 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         # `sender_id` - число (маркированный ID); `message.from_id` - сырой объект `Peer`, который не подходит для БД и
         # шаблонов. Может быть None, например у собственных исходящих сообщений в личном чате.
         self.sender_id = message.sender_id if self.sender_id is None else self.sender_id
-        self.date = message.date.astimezone() if self.date is None else min(self.date, message.date.astimezone())
+        # The date stays in UTC as Telegram gives it; the local time is only for display and file names (`to_local`)
+        # Дата остается в UTC, как ее отдает Telegram; локальное время - только для показа и имен файлов (`to_local`)
+        self.date = message.date if self.date is None else min(self.date, message.date)
         self.ids.append(message.id)
-        if message.text:
-            self.text = message.text if self.text is None else '\n\n'.join([self.text, message.text]).strip()
+        # `raw_text` has no formatting marks; the formatting is in `entities` and goes to `render_message_html`
+        # `raw_text` без знаков форматирования; форматирование лежит в `entities` и обрабатывается `render_message_html`
+        if message.raw_text:
+            self._append_text(message.raw_text, render_message_html(message.raw_text, message.entities))
+
+    def _append_text(self, plain_text: str, html: str) -> None:
+        """
+        Appends a text part to the message group: the plain text and its HTML, separated by an empty line
+        Добавляет часть текста в группу сообщений: обычный текст и его HTML, через пустую строку
+        Attributes:
+            plain_text (str): plain text of the part
+            html (str): safe HTML of the part
+        """
+        self.plain_text = '\n\n'.join([self.plain_text, plain_text]).strip() if self.plain_text else plain_text.strip()
+        self.html = '<br><br>'.join([self.html, html]) if self.html else html
 
     def add_message_file(self, message_file: TgFile | None = None) -> None:
         """
@@ -331,8 +353,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         if message_file:
             self.files.append(message_file)
             if message_file.description:
-                self.text = message_file.description if self.text is None else '\n\n'.join(
-                    [self.text, message_file.description]).strip()
+                self._append_text(message_file.description, message_file.description_html)
 
     def set_files_report(self) -> None:
         """
@@ -340,57 +361,18 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         Формирование строки резюме по имеющимся в группе сообщений файлам и их типам
         """
 
-        alt_texts_list = []
-        for file in self.files:
-            alt_texts_list.append(file.alt_text)
-        alt_texts_dict = dict(sorted(Counter(alt_texts_list).items()))
-        alt_texts_list.clear()
-        for alt_text, count in alt_texts_dict.items():
-            current_report = f'{alt_text} ({count})' if count > 1 else alt_text
-            alt_texts_list.append(current_report)
-        self.files_report = ' '.join(sorted(alt_texts_list))
-
-    def text_hyperlink_conversion(self) -> None:
-        """
-        Converting text hyperlinks of the form [Text](URL) to HTML format
-        Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-        """
-        if self.text:
-            self.text = convert_text_hyperlinks(self.text) or ''
+        self.files_report = format_files_report(file.file_type.type_id for file in self.files)
 
     def set_truncated_text(self) -> None:
         """
         Trimming the length of a message for display in the web interface of the message list
+        The plain text is cut, not the HTML, so a tag can never be cut in half
         Обрезание длины текста сообщения для отображения в веб-интерфейсе списка сообщений
+        Обрезается обычный текст, а не HTML, поэтому тег не может быть разрезан пополам
         """
 
-        if self.text:
-            # If the text of the message does not contain hyperlinks, we trim it to the specified length.
-            # Если текст сообщения не содержит гиперссылок обрезаем до заданной длины
-            if any([self.text.find('<a href') == -1,
-                    self.text.find('<a href') > GlobalConst.truncated_text_length]):
-                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length, placeholder='...')
-            else:
-                self.truncated_text = shorten(self.text, width=GlobalConst.truncated_text_length + 50,
-                                              placeholder='...')
-
-            #     hyperlinks = re.findall(r'.*?(<a href.*?>)(.*?)(<\/a>).*?', self.text)
-            #     if hyperlinks:
-            #         for hyperlink in hyperlinks:
-            #             hyperlink_text = ''.join(hyperlink)
-            #             truncated_text_length = self.text.find(hyperlink_text)
-            #             if truncated_text_length  >= ProjectConst.truncated_text_length:
-            #                 pass
-            #             if truncated_text_length+len(hyperlink[1]) >= ProjectConst.truncated_text_length:
-            #                 self.truncated_text = shorten(self.text, placeholder='...',
-            #                                               width=truncated_text_length + len(hyperlink_text))
-            #                 break
-            # if not self.truncated_text:
-            #     self.truncated_text = self.text
-
-        # <a href = "https://cutt.ly/DrnDxWzA" target = "_blank" >
-        # «Перезавантаження: розширення для працевлаштування» </a>
-        # shorten             из             модуля             textwrap
+        if self.plain_text:
+            self.truncated_text = shorten(self.plain_text, width=GlobalConst.truncated_text_length, placeholder='...')
 
     def get_self_dir(self) -> str:
         """
@@ -399,7 +381,7 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         """
 
         assert self.date is not None, 'The message group must contain the date'
-        date_str = self.date.astimezone().strftime('%Y-%m-%d')
+        date_str = to_local(self.date).strftime('%Y-%m-%d')
         return clean_file_path(date_str) or date_str
 
 
@@ -410,24 +392,28 @@ class TgMessageSortFilter:
     Класс представляющий параметры сортировки и фильтрации группы сообщений
     """
 
+    # A new filter is neutral (no period); the handler sets the defaults with `set_default_filters()`, like the
+    # database handler does. The filter dates are aware (local time of the system): Telethon takes a naive datetime
+    # for UTC.
+    # Новый фильтр нейтральный (без периода); умолчания задает обработчик через `set_default_filters()`, как и
+    # обработчик БД. Даты фильтра aware (локальное время системы): наивную дату Telethon считает UTC.
     _sort_order: bool = True
-    _date_from: datetime | None = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
+    _date_from: datetime | None = None
     _date_to: datetime | None = None
     _message_query: str | None = None
-    date_from_default: str | None = (datetime.now() - timedelta(
-        days=GlobalConst.last_days_by_default)).strftime("%Y-%m-%d")
 
-    def set_default_filters(self):
+    def set_default_filters(self) -> None:
         """
-        Sets default filters
-        Устанавливает фильтры по умолчанию
+        Sets the default filters of the tab: the last `tg_last_days_by_default` days (from the start of the local day),
+        newest first (as the radio buttons of the filter form are set), no text filter.
+        Устанавливает фильтры вкладки по умолчанию: последние `tg_last_days_by_default` дней (с начала локального дня),
+        сначала новые (как выставлены радиокнопки формы фильтра), фильтра по тексту нет.
         """
 
         self._sort_order = True
-        self._date_from = datetime.now() - timedelta(days=GlobalConst.last_days_by_default)
+        self._date_from = local_day_start(GlobalConst.tg_last_days_by_default)
         self._date_to = None
         self._message_query = None
-        self.date_from_default = self.date_from.strftime("%Y-%m-%d")
 
     @property
     def sort_order(self) -> bool:
@@ -481,7 +467,7 @@ class TgMessageSortFilter:
         Attributes:
             value (str): form data
         """
-        self._date_to = parse_date_string(value)
+        self._date_to = parse_date_string(value, end_of_day=True)  # the last day is included / последний день включен
 
     @property
     def message_query(self) -> str | None:
@@ -510,7 +496,10 @@ class TgMessageSortFilter:
         Returns:
             list[TgMessageGroup]: sorted list of message groups
         """
-        return sorted(message_group_list, key=lambda group: group.date or datetime.min, reverse=self.sort_order)
+        # A group without a date goes first/last; the key must be aware like the dates (aware and naive do not compare)
+        # Группа без даты идет первой/последней; ключ должен быть aware, как даты (aware и naive не сравниваются)
+        return sorted(message_group_list, key=lambda group: group.date or datetime.min.replace(tzinfo=timezone.utc),
+                      reverse=self.sort_order)
 
 
 @dataclass
@@ -555,6 +544,12 @@ class TelegramHandler:
 
         # Load Telegram connection settings from file / Загружаем настройки подключения к Telegram из файла
         self._connection_settings = dotenv_values(ProjectDirs.telegram_settings_file)
+        # The handler's own message filter with the defaults (the last days, newest first), like the database handler;
+        # the form of the tab shows its dates. The list of messages stays empty until a chat is selected.
+        # Собственный фильтр сообщений обработчика с умолчаниями (последние дни, сначала новые), как у обработчика БД;
+        # форма вкладки показывает его даты. Список сообщений пуст, пока не выбран чат.
+        self.message_sort_filter = TgMessageSortFilter()
+        self.message_sort_filter.set_default_filters()
         # Start the event loop of the Telegram client in a background daemon thread
         # Запускаем цикл событий клиента Telegram в фоновом потоке (daemon)
         self._loop = new_event_loop()
@@ -571,7 +566,10 @@ class TelegramHandler:
             # so every call that touches client.loop must be made from inside our loop thread
             # Telethon игнорирует аргумент loop: client.loop - это loop, запущенный в вызывающем потоке,
             # поэтому все вызовы, которые обращаются к client.loop, делаем из потока нашего loop
-            self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
+            # The session file is looked up from the project root, not from the current directory (an absolute
+            # SESSION_NAME stays as it is)
+            # Файл сессии ищется от корня проекта, а не от текущей директории (абсолютный SESSION_NAME не меняется)
+            self.client = TelegramClient(str(BASE_DIR / self._connection_settings['SESSION_NAME']),
                                          int(self._connection_settings['API_ID']),
                                          self._connection_settings['API_HASH'])
 
@@ -632,7 +630,7 @@ class TelegramHandler:
                 try:
                     self._run(disconnect_client())
                 except Exception as error:
-                    print(f'Telegram client disconnect error: {error}')
+                    logger.warning('Telegram client disconnect error: %s', error)
             self._loop.call_soon_threadsafe(self._loop.stop)
             self._loop_thread.join(timeout=5)
         if not self._loop.is_running():
@@ -776,13 +774,10 @@ class TelegramHandler:
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
             for message_group in message_group_list.copy():
-                if not self.message_sort_filter.message_query.lower() in message_group.text.lower():
+                if not self.message_sort_filter.message_query.lower() in message_group.plain_text.lower():
                     message_group_list.remove(message_group)
         # Post-processing of the generated message group / Постобработка сформированной группы сообщений
         for tg_message_group in message_group_list:
-            # Converting text hyperlinks of the form [Text](URL) to HTML format
-            # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-            tg_message_group.text_hyperlink_conversion()
             # Create a summary string based on the files available in the group messages and their types
             # Формирование строки резюме по имеющимся в группе сообщений файлам и их типам
             tg_message_group.set_files_report()
@@ -808,7 +803,7 @@ class TelegramHandler:
                                                              message_group_id)
         assert current_message_group is not None and current_message_group.date is not None, \
             'The message group must exist and contain the date'
-        message_date_str = current_message_group.date.strftime(GlobalConst.message_datetime_format)
+        message_date_str = to_local(current_message_group.date).strftime(GlobalConst.message_datetime_format)
         current_dialog = self.get_dialog_by_id(dialog_id)
         # 1. Take the dialog, or None / Берем диалог, или None
         # 2. Take the title from the dialog, or None (if the dialog was None) / У диалога берем title, или None
@@ -820,10 +815,7 @@ class TelegramHandler:
                       'dialog_title': detail_dialog_title,
                       'message_group_id': message_group_id,
                       'date': current_message_group.date,
-                      # Converting text hyperlinks of the form [Text](URL) to HTML format
-                      # Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-                      'text': convert_text_hyperlinks(
-                          current_message_group.text) if current_message_group.text else '',
+                      'html': current_message_group.html,
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'saved_to_db': current_message_group.saved_to_db}
@@ -915,19 +907,24 @@ class TelegramHandler:
             else:
                 file_size = mess_doc.size
         # Get the file description / Получаем описание файла
+        # The description is kept as plain text and as safe HTML (escaped text, a link with a checked address)
+        # Описание хранится как обычный текст и как безопасный HTML (экранированный текст, ссылка с проверенным адресом)
         description = ''
+        description_html = ''
         if file_type == MessageFileTypes.WEBPAGE:
             if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
-                description = (f'<a href = "{message.media.webpage.url}"'
-                               f' target="_blank" >{message.media.webpage.url}</a>')
+                description = message.media.webpage.url
+                description_html = render_link_html(description, description)
             if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
-                description = '\n\n'.join([description,
-                                           shorten(message.media.webpage.description,
-                                                   width=GlobalConst.truncated_text_length, placeholder='...')])
+                page_description = shorten(message.media.webpage.description,
+                                           width=GlobalConst.truncated_text_length, placeholder='...')
+                description = '\n\n'.join(filter(None, [description, page_description]))
+                description_html = '<br><br>'.join(filter(None, [description_html,
+                                                                 plain_text_to_html(page_description)]))
         # Creating TgFile object / Создаем объект TgFile
         tg_file = TgFile(dialog_id=dialog_id, message_grouped_id=message_group.grouped_id,
                          message=message, message_id=message.id,
-                         description=description,
+                         description=description, description_html=description_html,
                          file_name='', file_path='',
                          alt_text=file_type.alt_text,
                          size=file_size,
@@ -1024,25 +1021,6 @@ class TelegramHandler:
                             f'No messages found: {no_messages_found}')
         status_messages.mess_update('', resulting_report)
         return resulting_report
-
-
-def convert_text_hyperlinks(message_text: str | None) -> str | None:
-    """
-    Converting text hyperlinks of the form [Text](URL) to HTML format
-    Преобразование текстовых гиперссылок вида [Text](URL) в HTML формат
-    Attributes:
-        message_text (str | None): message text
-    Returns:
-        str | None: converted message text
-    """
-
-    if message_text:
-        matches = GlobalConst.text_with_url_pattern.findall(message_text)
-        if matches:
-            for match in matches:
-                message_text = message_text.replace(f'[{match[0]}]({match[1]})',
-                                                    f'<a href = "{match[1]}" target="_blank" >{match[0]}</a>')
-    return message_text
 
 
 # Экземпляр TelegramHandler создается лениво, при первом вызове get_tg_handler(), а не при импорте модуля:

@@ -22,13 +22,13 @@ def make_message_group(dialog_id: int = CHANNEL_ID, number: int = 1, sender_id: 
     """Fake message group with the attributes `tg_messages.html` uses (sender 1 is the fake account `tg_me`)
     Заглушка группы сообщений (отправитель 1 - заглушка аккаунта `tg_me`)"""
     return SimpleNamespace(grouped_id=f'{dialog_id}_{number}', dialog_id=dialog_id, date=datetime(2026, 1, 2, 3, 4, 5),
-                           text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
+                           html='Hello<br>world', plain_text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
 
 
 def make_details(message_group_id: str = f'{CHANNEL_ID}_1') -> dict:
     """Fake message details with an image and a video / Заглушка деталей сообщения с изображением и видео"""
     return {'dialog_id': CHANNEL_ID, 'dialog_title': 'Test chat', 'message_group_id': message_group_id,
-            'date': datetime(2026, 1, 2, 3, 4, 5), 'text': 'Hello\nworld', 'saved_to_db': False,
+            'date': datetime(2026, 1, 2, 3, 4, 5), 'html': 'Hello<br>world', 'saved_to_db': False,
             'existing_files': [SimpleNamespace(alt_text='Image', file_path='chat/photo 1.jpg'),
                                SimpleNamespace(alt_text='Video', file_path='chat/clip.mp4')]}
 
@@ -44,6 +44,15 @@ def test_get_dialogs(client: TestClient, tg_handler: SimpleNamespace):
     assert 'Test chat' in data['tg_dialogs'] and 'Friend' in data['tg_dialogs']
     assert f'/tg_messages/{CHANNEL_ID}' in data['tg_dialogs']
     assert len(tg_handler.current_state.dialog_list) == 2
+
+
+def test_get_messages_clears_details(client: TestClient, tg_handler: SimpleNamespace):
+    """Opening another dialog clears the message details in the state, not only in the response
+    Открытие другого диалога очищает детали сообщения в состоянии, а не только в ответе"""
+    tg_handler.current_state.message_details = make_details()
+    tg_handler.get_message_group_list.return_value = [make_message_group(42, 1)]
+    assert client.get('/tg_messages/42').status_code == 200
+    assert tg_handler.current_state.message_details is None
 
 
 @pytest.mark.parametrize('dialog_id', [CHANNEL_ID, -123456789, 987654321])
@@ -77,7 +86,8 @@ def test_get_messages_highlights_own_messages(client: TestClient, tg_handler: Si
 def test_get_messages_files_report_on_its_own_line(client: TestClient, tg_handler: SimpleNamespace):
     """The files report is a block, so it stays on its own line also for a message without text"""
     group = make_message_group()
-    group.text = ''
+    group.html = ''
+    group.plain_text = ''
     tg_handler.get_message_group_list.return_value = [group]
     response = client.get(f'/tg_messages/{CHANNEL_ID}')
     assert '<div><b>1 photo</b></div>' in response.json()['tg_messages']
@@ -112,7 +122,7 @@ def test_get_details(client: TestClient, tg_handler: SimpleNamespace, dialog_id:
     assert set(data) == {'tg_details'}
     assert 'Hello<br>world' in data['tg_details']
     assert 'src="/media_storage/chat/photo%201.jpg"' in data['tg_details']
-    assert 'src="http://testserver/media_storage/chat/clip.mp4"' in data['tg_details']
+    assert 'src="http://127.0.0.1:5000/media_storage/chat/clip.mp4"' in data['tg_details']
     tg_handler.get_message_detail.assert_called_once_with(dialog_id, group_id)
     assert tg_handler.current_state.message_details['message_group_id'] == group_id
 
@@ -170,8 +180,10 @@ def test_message_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
     assert data['tg-messages-count'] == '(1)'
     assert data['tg_details'] == ''
     mess_filter = tg_handler.message_sort_filter
-    assert (mess_filter.sort_order, mess_filter.date_from, mess_filter.date_to, mess_filter.message_query) == (
-        '1', '2026-01-01', '2026-02-01', 'hello')
+    assert mess_filter.sort_order is False  # '1' is "oldest first" / '1' - сначала старые
+    assert mess_filter.date_from == datetime(2026, 1, 1).astimezone()  # the start of the local day
+    assert mess_filter.date_to == datetime(2026, 2, 1, 23, 59, 59, 999999).astimezone()  # the end of the local day
+    assert mess_filter.message_query == 'hello'
     tg_handler.get_message_group_list.assert_called_once_with(CHANNEL_ID)
     assert tg_handler.current_state.message_details is None
 

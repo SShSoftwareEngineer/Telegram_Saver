@@ -13,6 +13,7 @@ from utils import status_messages
 from telegram_handler import get_tg_handler, TgDialog, TgFile
 from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 from web.deps import FormDep, form_list, form_str, render_fragment, state_lock
+from web.message_html import write_message_html
 
 router = APIRouter()
 
@@ -55,6 +56,9 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
         # Устанавливаем в текущем состоянии клиента Telegram ID текущего диалога и список групп сообщений
         tg_handler.current_state.selected_dialog_id = dialog_id
         tg_handler.current_state.message_group_list = tg_message_groups
+        # The details of the previous dialog must not survive a page reload
+        # Детали сообщения прежнего диалога не должны появляться после перезагрузки страницы
+        tg_handler.current_state.message_details = None
         # Refresh message list, message counter, and clear current message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей текущего сообщения
         return JSONResponse({'tg_messages': render_fragment(request, 'tg_messages.html'),
@@ -182,7 +186,8 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                 # Saving a group of messages / Сохраняем группу сообщений
                 db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
                                                             {'date': tg_message_group.date,
-                                                             'text': tg_message_group.text,
+                                                             'html': tg_message_group.html,
+                                                             'plain_text': tg_message_group.plain_text,
                                                              'truncated_text': tg_message_group.truncated_text,
                                                              'files_report': tg_message_group.files_report,
                                                              'sender_id': tg_message_group.sender_id,
@@ -218,14 +223,6 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                 # Not a commit: the group is not saved until the HTML file is written, the rollback is still possible
                 # Это не фиксация: группа не сохранена, пока не записан HTML файл, откат еще возможен
                 db_handler.session.flush()
-                # Get and save the HTML template with the message group content to save to a file
-                # Получаем и сохраняем HTML шаблон с контентом группы сообщений для сохранения в файл
-                message_group_export_data = db_message_group.get_export_data()
-                message_group_export_data.update({'files_report': tg_message_group.files_report})
-                # Correcting file paths so that they can be opened from an HTML file in the same directory
-                # Корректируем пути к файлам для возможности открытия из HTML файла в той же директории
-                for file in message_group_export_data.get('files', []):
-                    file['file_name'] = Path(file['file_path']).name
                 # Generating paths to files and subdirectories in the file system
                 # Формирование пути к файлу и вложенных директорий в файловой системе
                 file_name = TgFile.get_self_file_name(tg_message_group.date,  # type: ignore[arg-type]
@@ -233,13 +230,11 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                                                       MessageFileTypes.CONTENT.default_ext)
                 file_path = (Path(ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir()
                              / file_name)
-                file_path.parent.mkdir(parents=True, exist_ok=True)
-                # Rendering HTML content for a file / Рендеринг HTML контента для файла
-                html_content = render_fragment(request, 'export_message.html', **message_group_export_data)
-                # Save the HTML file with the message content in the file system
-                # Сохраняем HTML файл с контентом сообщения в файловой системе
-                with open(file_path, 'w', encoding='utf-8') as cf:
-                    cf.write(html_content)
+                # Render the HTML file with the message content and save it in the file system (the same code
+                # restores a lost file in maintenance)
+                # Строим HTML файл с контентом сообщения и сохраняем его в файловой системе (тот же код восстанавливает
+                # потерянный файл в сервисном обслуживании)
+                html_size = write_message_html(request, db_message_group, file_path)
                 # Create a record about the HTML file in the database for the corresponding message group. The path is
                 # relative to the media directory, like the other files (deletion and maintenance rely on it)
                 # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений. Путь относительно
@@ -247,8 +242,8 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                 relative_path = file_path.relative_to(ProjectDirs.media_dir).as_posix()
                 db_file = db_handler.upsert_record(DbFile, {'file_path': relative_path},
                                                    {'message_id': 0,
-                                                    'size': len(html_content.encode('utf-8')),
-                                                    'grouped_id': message_group_export_data.get('message_group_id'),
+                                                    'size': html_size,
+                                                    'grouped_id': tg_message_group.grouped_id,
                                                     'file_type_id': MessageFileTypes.CONTENT.type_id})
                 # Set relationships for the file, if not already set
                 # Устанавливаем relationships для файла, если не установлено

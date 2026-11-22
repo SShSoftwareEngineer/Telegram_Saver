@@ -13,8 +13,8 @@ from telegram_handler import TgMessageGroup
 
 def make_message(message_id: int, sender_id: int | None, from_id=None, text: str = 'Hello') -> SimpleNamespace:
     """Fake Telethon message with the attributes `add_message` uses / Заглушка сообщения Telethon"""
-    return SimpleNamespace(id=message_id, sender_id=sender_id, from_id=from_id, text=text,
-                           date=datetime(2026, 1, 2, 3, 4, message_id))
+    return SimpleNamespace(id=message_id, sender_id=sender_id, from_id=from_id, raw_text=text,
+                           entities=None, date=datetime(2026, 1, 2, 3, 4, message_id))
 
 
 def test_sender_is_a_number_not_a_peer():

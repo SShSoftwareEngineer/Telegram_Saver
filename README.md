@@ -10,10 +10,12 @@ and messages, and saves the ones you choose to an SQLite database and to a local
 ## Features
 - **Selective saving**: pick messages from any chat (including "Saved Messages") and save them with their media files
 - **Multi-type content**: text, photos, video, audio, documents, link previews, forwarded messages, sender metadata
-- **Search and filters**: by chat, date, text and tags, both in Telegram and in the archive
-- **Tags**: add, remove and rename tags, rename a tag in all messages, sort the tag list
+- **Search and filters**: by chat, date, text and tags (any or all of the tags), both in Telegram and in the archive
+- **Tags**: add, remove and rename tags for the checked messages, rename a tag in all messages, sort the tag list,
+  pick several tags at once for the tag filter
 - **Export**: selected messages to a standalone HTML page with copied media files
-- **Maintenance**: report of media files without database records, re-download of missing files, database backup
+- **Maintenance**: report of media files without database records, recreation of lost message HTML files, re-download
+  of missing files (up to 100 per run), database backup
 - **Database abstraction**: SQLAlchemy ORM with SQLite (the schema is designed to be portable to PostgreSQL)
 
 ## Architecture
@@ -64,11 +66,15 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    | `PASSWORD` | Cloud (two-step verification) password of the account; leave empty if it is not enabled |
    | `API_ID` | `App api_id` from my.telegram.org |
    | `API_HASH` | `App api_hash` from my.telegram.org |
-   | `SESSION_NAME` | Name of the Telethon session file (created in the project root, e.g. `telegram_saver`) |
+   | `SESSION_NAME` | Name of the Telethon session file (created in the project root whatever the current directory is, e.g. `telegram_saver`) |
 
-   The file is chosen by `PROFILE` in `configs/config.py`: `PROFILE = ''` (default) uses `configs/.env` and
-   `database/telegram_archive.db`; other values (e.g. `'_dev_1'`) use `configs/.env_dev_1` and
-   `database/telegram_archive_dev_1.db`, which allows keeping separate accounts and databases for experiments.
+   The file is chosen by the profile, the environment variable `TELEGRAM_SAVER_PROFILE`. Not set (default) uses
+   `configs/.env` and `database/telegram_archive.db`; a value (e.g. `_dev_1`; letters, digits and `_` only) uses
+   `configs/.env_dev_1` and `database/telegram_archive_dev_1.db`, which allows keeping separate accounts and databases.
+   Set it before the start (PowerShell: `$env:TELEGRAM_SAVER_PROFILE = '_dev_1'`; PyCharm: *Run Configuration* →
+   *Environment variables*). Run one profile at a time: they share `media_storage/`, `exported_messages/` and the port.
+   Give each profile its own `SESSION_NAME`. All paths are built from the project root, so the application can be
+   started from any directory.
 6. **Run the application:**
    ```bash
    python telegram_saver.py
@@ -81,6 +87,11 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    `tools/telegram_qr_login.py` (login by QR code). Then open `http://localhost:5000` in your browser.
 
    Run with **one worker and without `--reload`**: every start logs in to Telegram and the application state is global.
+
+   The server listens only on `127.0.0.1:5000` (`HOST` and `PORT` in `configs/config.py`) and rejects with 403 the
+   requests addressed to another host, sent from another site (`Origin`) or marked `Sec-Fetch-Site: cross-site`, so a
+   web page open in your browser cannot control the application. Open it at `http://127.0.0.1:5000` or
+   `http://localhost:5000`; a reverse proxy or another port needs the same values in the config.
 7. **Stop the application:** press `Ctrl+C` in the terminal. In the PyCharm *Run* window `Ctrl+C` does not reach the
    process: use the **Stop** button.
 
@@ -92,13 +103,16 @@ account and data: never commit or share them.
 The page has two tabs:
 
 - **Telegram**: the list of your chats (with filters by type and title) and the messages of the selected chat
-  (filters by date and text). Check the messages you want and press **Save**: texts, media files and an HTML copy of
-  the message are saved to the database and to `media_storage/`. Already saved messages are marked.
-- **Database**: the archive. Filter by chat, date, text and tags; open a message to see its details and edit its
-  tags; select messages to export them to HTML (`exported_messages/`) or delete them.
+  (filters by date and text). Check the messages you want and press **Save selection to database**: texts, media
+  files and an HTML copy of the message are saved to the database and to `media_storage/`. Already saved messages are
+  marked. Under each message a line summarizes its files, e.g. `2 Images, Video`.
+- **Database**: the archive. Filter by chat, date, text and tags; open a message to see its details. Check messages
+  to tag them (the tag buttons act on the checked messages), export them to HTML (`exported_messages/`) or delete
+  them. The buttons that need checked messages are disabled until at least one message is checked.
 
 The status bar at the bottom shows the progress and the result of every operation. Service operations (report of
-files without records, re-download of missing media, backup) are in the database maintenance menu.
+files without records, recreation of lost message HTML files, re-download of missing media, backup) are in the
+database maintenance menu.
 
 ## Database
 
@@ -120,8 +134,7 @@ Telethon is mocked: the tests do not connect to Telegram.
 
 ## Roadmap
 
-- [ ] Security: escape Telegram text in HTML, Origin/Host check for POST requests, protection of maintenance
-- [ ] Text formatting of Telegram messages (bold, italic, links) via Telethon HTML unparse
+- [ ] Filter of archived messages without tags (to tag recently saved messages)
 - [ ] Fully asynchronous `TelegramHandler` and async SQLAlchemy sessions instead of the global lock
 - [ ] PostgreSQL and Alembic migrations (`BigInteger` ID columns)
 - [ ] Source chats of "Saved Messages": list of chats and a filter by the original chat

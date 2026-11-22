@@ -22,7 +22,7 @@ Variables:
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
 
             {# Forming the date and time of a message as a reference / Формирование даты и времени сообщения как ссылки #}
-            {% set message_date = tg_message.date.strftime(constants.message_datetime_format) %}
+            {% set message_date = tg_message.date|local_dt(constants.message_datetime_format) %}
 
             {# Link to message details for loading / Ссылка на детали сообщения для загрузки #}
             <a href="/tg_details/{{ tg_message.dialog_id }}/{{ tg_message.grouped_id }}"
@@ -46,9 +46,11 @@ Variables:
             {% endif %}
 
             {# Displaying the beginning of the text / Вывод начального фрагмента текста #}
-            {% if tg_message.text %}
-                <div class="{% if tg_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
-                    {{ tg_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+            {% if tg_message.plain_text %}
+                {# The plain text is cut and escaped automatically (no |safe); the line breaks come from the CSS
+                   Обычный текст обрезается и экранируется автоматически (без |safe); переводы строк - через CSS #}
+                <div class="message-preview {% if tg_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
+                    {{- tg_message.plain_text|replace('\n\n', '\n')|truncate(constants.truncated_text_length) -}}
                 </div>
             {% endif %}
 

@@ -2,7 +2,10 @@
 The module contains the project configuration: profile, directories, constants and web form settings.
 Модуль содержит конфигурацию проекта: профиль, директории, константы и настройки веб-форм.
 
-PROFILE: the configuration profile; it sets the suffix of the Telegram settings file and of the database file
+BASE_DIR: the project root, the base of all paths
+PROFILE: the configuration profile (environment variable `TELEGRAM_SAVER_PROFILE`); it sets the suffix of the
+         Telegram settings file and of the database file
+HOST, PORT: the address of the local web server
 class ProjectDirs: directories and files of the project (media, export, Telegram settings, database)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
 class DialogTypes(Enum): IDs and names of the dialog types in Telegram
@@ -12,40 +15,82 @@ class FormCfg: configurations of the web interface form controls
 class TagsSorting: tag sorting options
 """
 
+import os
+import re
+from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
 from enum import Enum
-import re
+
+# The project root: all paths are built from it, so the application works from any current directory
+# Корень проекта: от него строятся все пути, поэтому приложение работает из любой текущей директории
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+PROFILE_ENV_VAR = 'TELEGRAM_SAVER_PROFILE'
+
+
+def read_profile(environ: Mapping[str, str]) -> str:
+    """
+    Returns the configuration profile from the environment variable `TELEGRAM_SAVER_PROFILE` ('' if it is not set).
+    The value becomes a part of file names, so only letters, digits and `_` are allowed (no path separators).
+    Возвращает профиль конфигурации из переменной окружения `TELEGRAM_SAVER_PROFILE` ('' если она не задана).
+    Значение становится частью имен файлов, поэтому допустимы только буквы, цифры и `_` (без разделителей путей).
+    Attributes:
+        environ (Mapping[str, str]): The environment (`os.environ`)
+    Returns:
+        str: The profile suffix
+    """
+
+    profile = environ.get(PROFILE_ENV_VAR, '')
+    if not re.fullmatch(r'[A-Za-z0-9_]*', profile):
+        raise ValueError(f'{PROFILE_ENV_VAR}={profile!r}: only letters, digits and "_" are allowed / '
+                         f'допустимы только буквы, цифры и "_"')
+    return profile
+
 
 # The configuration profile: it selects `configs/.env<PROFILE>` and `database/telegram_archive<PROFILE>.db`.
-# '' (empty) is the working profile: `configs/.env` and `database/telegram_archive.db`.
+# It is set by the environment variable `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
+# PyCharm: the Run Configuration, Environment variables).
+# '' (not set) is the working profile: `configs/.env` and `database/telegram_archive.db`.
 # Other values (e.g. '_dev_1', '_dev_2') are for experiments with separate accounts and databases.
 # Профиль конфигурации: выбирает `configs/.env<PROFILE>` и `database/telegram_archive<PROFILE>.db`.
-# '' (пустая строка) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
+# Задается переменной окружения `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
+# PyCharm: Run Configuration, Environment variables).
+# '' (не задана) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
 # Другие значения (например, '_dev_1', '_dev_2') - для экспериментов с отдельными аккаунтами и базами данных.
-PROFILE = ''
-# PROFILE = '_dev_1'
-# PROFILE = '_dev_2'
+PROFILE = read_profile(os.environ)
+
+# The address of the web server: the launcher listens on it and the request guard (`web/middleware.py`) accepts only
+# requests addressed to it. The app is single-user and local, so it is never bound to a public interface.
+# Адрес веб-сервера: на нем слушает запускатель, а защита запросов (`web/middleware.py`) принимает только запросы,
+# адресованные ему. Приложение однопользовательское и локальное, поэтому к публичному интерфейсу оно не привязывается.
+HOST = '127.0.0.1'
+PORT = 5000
+
 
 @dataclass(frozen=True)
 class ProjectDirs:
     """
     A class to hold the directory paths for a project.
     Класс для хранения путей к директориям проекта.
+    All paths are absolute (built from `BASE_DIR`).
+    Все пути абсолютные (строятся от `BASE_DIR`).
     Attributes:
-        media_dir (str): Directory for storing downloaded media files from Telegram
-        export_dir (str): Directory for exporting messages to HTML files
+        media_dir_name (str): Name of the media directory, also the URL prefix of the media files (`/media_storage/...`)
+        media_dir (Path): Directory for storing downloaded media files from Telegram
+        export_dir (Path): Directory for exporting messages to HTML files
         telegram_settings_file (Path): Telegram API settings file (`configs/.env<PROFILE>`)
         data_base_dir (Path): Directory for storing the SQLite database file
         data_base_file (Path): SQLite database file (`telegram_archive<PROFILE>.db`)
     """
 
-    media_dir = r'media_storage'
-    export_dir = r'exported_messages'
-    telegram_settings_file = Path('configs') / f'.env{PROFILE}'
-    data_base_dir = Path('database')
-    data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
+    media_dir_name = 'media_storage'
+    media_dir = BASE_DIR / media_dir_name
+    export_dir = BASE_DIR / 'exported_messages'
+    telegram_settings_file = BASE_DIR / 'configs' / f'.env{PROFILE}'
+    data_base_dir = BASE_DIR / 'database'
+    data_base_file = data_base_dir / f'telegram_archive{PROFILE}.db'
 
 
 @dataclass(frozen=True)
@@ -58,8 +103,8 @@ class GlobalConst:
     max_download_file_size = 50 * 2 ** 20  # 50 MB - Maximum file size for downloading from Telegram
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
-    last_days_by_default = 30  # Default number of last days for messages filter
-    text_with_url_pattern = re.compile(r"\[(.*?)]\((.*?)\)")  # Regex pattern to match "[text](URL)"
+    tg_last_days_by_default = 30  # Default number of last days for the messages filter of the Telegram tab
+    db_last_days_by_default = 30  # Default number of last days for the messages filter of the database tab
     message_datetime_format = '%d-%m-%Y %H:%M:%S'  # Format for displaying date and time for messages and details
     file_datetime_format = '%Y-%m-%d %H_%M_%S'  # Date and time format for file names
     saved_to_db_label = '✔ Saved'  # Label to indicate that a message has been saved to the database
@@ -73,6 +118,7 @@ class GlobalConst:
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
     dialog_no_title = '<No Title>'  # Title for dialogs without a title
     status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report
+    maintenance_max_downloads = 100  # Maximum number of missing files that maintenance downloads in one run
 
 
 class DialogTypes(Enum):
@@ -210,14 +256,19 @@ class FormCfg:
                          'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
                          'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
-                         'radio': ['sorting_field', 'sorting_order'],
+                         'tag_mode': 'db_tag_mode',
+                         'radio': ['sorting_field', 'sorting_order', 'tag_mode'],
                          'input': ['date_from', 'date_to', 'message_query', 'tag_query'], 'select': ['dialog_select']}
     # Database tag control form configuration / Конфигурация формы управления тегов базы данных
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',
                       'tag_sorting_field': 'db_tag_sorting_field',
+                      # The tag buttons act on the messages checked in the list of the database tab
+                      # Кнопки тегов действуют на сообщения, отмеченные в списке вкладки БД
+                      'db_checkbox_list': 'db-message-checkbox',
                       'input': ['edit_tag_name', 'old_tag_name'],
-                      'select': ['curr_message_tags', 'all_detail_tags'], 'radio': ['tag_sorting_field']}
+                      'select': ['curr_message_tags', 'all_detail_tags'], 'radio': ['tag_sorting_field'],
+                      'checkbox_list': ['db_checkbox_list']}
     # Configuration of checkboxes Telegram messages list / Конфигурация чекбоксов списка сообщений Telegram
     tg_checkbox_list = {'tg_checkbox_list': 'tg-message-checkbox',
                         'checkbox_list': ['tg_checkbox_list']}
@@ -262,8 +313,8 @@ class TagsSorting:
     NAME_DESC = {'field': 'name', 'order': 'desc'}
     USAGE_COUNT_ASC = {'field': 'usage_count', 'order': 'asc'}
     USAGE_COUNT_DESC = {'field': 'usage_count', 'order': 'desc'}
-    UPDATED_AT_ASC = {'field': 'updated_at', 'order': 'asc'}
-    UPDATED_AT_DESC = {'field': 'updated_at', 'order': 'desc'}
+    CREATED_AT_ASC = {'field': 'created_at', 'order': 'asc'}
+    CREATED_AT_DESC = {'field': 'created_at', 'order': 'desc'}
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import ProjectDirs
+from configs.config import MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler
 from utils import status_messages
 
@@ -42,17 +42,66 @@ def test_status_output(client: TestClient):
     assert 'Test report' in data['sb_report']
 
 
+def test_status_reports_are_chronological():
+    """The reports go in the order they were added: the newest is the last option / Новые отчеты идут последними"""
+    status_messages.mess_update('Operation', 'first', new_list=True)
+    status_messages.mess_update('', 'second')
+    status_messages.mess_update('', 'third')
+    options = status_messages.messages['sb_report'].split('\n')
+    assert len(options) == 3
+    assert 'first' in options[0] and 'second' in options[1] and 'third' in options[2]
+    # `report_list` keeps the same order / `report_list` хранит тот же порядок
+    assert [line.split(' - ')[1] for line in status_messages.report_list or []] == ['first', 'second', 'third']
+
+
+def test_status_version_grows_on_every_update():
+    """Each `mess_update` raises the version, also an update without a report line / Версия растет при каждом вызове"""
+    before = status_messages.version
+    status_messages.mess_update('Operation', '', new_list=True)
+    status_messages.mess_update('', 'line')
+    assert status_messages.version == before + 2
+
+
+def test_status_output_sends_version_header(client: TestClient):
+    """The current version is in the header of every answer / Текущая версия в заголовке каждого ответа"""
+    status_messages.mess_update('Test operation', 'Test report', new_list=True)
+    response = client.get('/status_output')
+    assert response.headers['X-Status-Version'] == str(status_messages.version)
+
+
+def test_status_output_unchanged_is_empty(client: TestClient):
+    """With the version the page has already seen the body is empty, so nothing is redrawn; a new update is sent again
+    / С уже показанной версией тело пустое (перерисовки нет); новое обновление снова отправляется"""
+    status_messages.mess_update('Test operation', 'Test report', new_list=True)
+    version = status_messages.version
+    response = client.get(f'/status_output?since={version}')
+    assert response.json() == {}
+    assert response.headers['X-Status-Version'] == str(version)
+    status_messages.mess_update('', 'Another report')
+    response = client.get(f'/status_output?since={version}')
+    assert 'Another report' in response.json()['sb_report']
+    assert response.headers['X-Status-Version'] == str(version + 1)
+
+
+def test_status_output_old_version_gets_messages(client: TestClient):
+    """A version from before a server restart (larger than the current one) is not 'unchanged': the page gets the
+    messages / Версия от запуска до перезапуска сервера (больше текущей) не считается неизменной"""
+    status_messages.mess_update('Test operation', 'Test report', new_list=True)
+    response = client.get(f'/status_output?since={status_messages.version + 100}')
+    assert 'Test report' in response.json()['sb_report']
+
+
 def test_media_file(client: TestClient, work_dir: Path):
     """A file from the media folder is served from the temporary working directory / Раздача медиафайла"""
     (work_dir / ProjectDirs.media_dir / 'photo.txt').write_text('media content', encoding='utf-8')
-    response = client.get(f'/{ProjectDirs.media_dir}/photo.txt')
+    response = client.get(f'/{ProjectDirs.media_dir_name}/photo.txt')
     assert response.status_code == 200
     assert response.text == 'media content'
 
 
 def test_media_file_not_found(client: TestClient):
     """A missing media file gives 404 in JSON, not a plain-text page / Отсутствующий файл - 404 в JSON"""
-    response = client.get(f'/{ProjectDirs.media_dir}/missing.jpg')
+    response = client.get(f'/{ProjectDirs.media_dir_name}/missing.jpg')
     assert response.status_code == 404
     assert 'error' in response.json()
 
@@ -62,8 +111,9 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     """In the database list only the messages of the logged-in account (`sender_id` equals `tg_me.id`) are indented,
     as in the Telegram list / В списке БД с отступом только сообщения владельца аккаунта, как в списке Telegram"""
     def saved_group(number: int, sender_id: int | None) -> SimpleNamespace:
-        return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), text=f'Text {number}',
-                               files_report='1 photo', sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
+        return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), plain_text=f'Text {number}',
+                               files=[SimpleNamespace(file_type_id=MessageFileTypes.IMAGE.type_id)],
+                               sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
 
     monkeypatch.setattr(db_handler.current_state, 'message_group_list', [
         saved_group(1, 1), saved_group(2, 2), saved_group(3, -1001234567891), saved_group(4, None)])
@@ -75,6 +125,7 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     # from the template (the Telegram list has none either) / Пустых строк между сообщениями нет: в списке нет `<br>`
     message_list = response.text.split('id="db_messages"')[1].split('id="db_details"')[0]
     assert '<br>' not in message_list
-    # The files report is a block, so it stays on its own line also for a message without text
-    # Отчет о файлах - блок, поэтому он на своей строке и у сообщения без текста
-    assert message_list.count('<div><b>1 photo</b></div>') == 4
+    # The files report (formed from the files of the group) is a block, so it stays on its own line also for a message
+    # without text / Отчет о файлах (формируется по файлам группы) - блок, поэтому он на своей строке и у сообщения без
+    # текста
+    assert message_list.count('<div><b>Image</b></div>') == 4

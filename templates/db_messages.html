@@ -23,7 +23,7 @@ Variables:
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
 
             {# Forming the date and time of a message as a reference / Формирование даты и времени сообщения как ссылки #}
-            {% set message_date = db_message.date.strftime(constants.message_datetime_format) %}
+            {% set message_date = db_message.date|local_dt(constants.message_datetime_format) %}
 
             {# Link to message details for loading / Ссылка на детали сообщения для загрузки #}
             <a href="/db_details/{{ db_message.grouped_id }}"
@@ -31,7 +31,7 @@ Variables:
                 {{ message_date }}</a>
 
             {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
-            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|safe|truncate(constants.truncated_title_length) }}</span>
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(constants.truncated_title_length) }}</span>
 
             {# Creating a checkbox for marking for export or deletion / Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
@@ -44,15 +44,20 @@ Variables:
 
             {# Displaying the beginning of the text; the messages of the account owner are indented, as in the
                Telegram list / Вывод начального фрагмента текста; сообщения владельца аккаунта с отступом, как в списке Telegram #}
-            {% if db_message.text %}
-                <div class="{% if db_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
-                    {{ db_message.text|replace('\n\n', '<br>')|replace('\n', '<br>')|safe|truncate(constants.truncated_text_length) }}
+            {% if db_message.plain_text %}
+                {# The plain text is cut and escaped automatically (no |safe); the line breaks come from the CSS
+                   Обычный текст обрезается и экранируется автоматически (без |safe); переводы строк - через CSS #}
+                <div class="message-preview {% if db_message.sender_id==tg_me.id %}my-message-in-list{% endif %}">
+                    {{- db_message.plain_text|replace('\n\n', '\n')|truncate(constants.truncated_text_length) -}}
                 </div>
             {% endif %}
 
             {# Displaying information about files in a message group / Вывод строки информации о файлах в группе сообщений #}
-            {% if db_message.files_report %}
-                <div><b>{{ db_message.files_report }}</b></div>
+            {# The line is formed from the files of the group, it is not stored (`files_report` column is not read)
+               Строка формируется по файлам группы, она не хранится (столбец `files_report` не читается) #}
+            {% set files_summary = format_files_report(db_message.files|map(attribute='file_type_id')) %}
+            {% if files_summary %}
+                <div><b>{{ files_summary }}</b></div>
             {% endif %}
         </li>
     {% endfor %}

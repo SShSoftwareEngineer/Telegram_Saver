@@ -58,14 +58,14 @@ Variables:
            id="{{ form_cfg.date_from }}"
            name="{{ form_cfg.date_from }}"
            min="2013-01-01"
-           placeholder="DD/MM/YYYY">
+           value="{{ db_mess_date_from }}">
 {#     Filtering by date to / Фильтр по дате конца периода #}
     <label for="{{ form_cfg.date_to }}">Date to:</label>
     <input type="date" class="date-from-to-buttons"
-           id="{{ form_cfg.date_to }}"#}
+           id="{{ form_cfg.date_to }}"
            name="{{ form_cfg.date_to }}"
            min="2013-01-01"
-           placeholder="DD/MM/YYYY">
+           value="{{ db_mess_date_to }}">
 </div>
 
 
@@ -99,9 +99,17 @@ Variables:
     </button>
 </div>
 
+{# Tag filter mode radiobuttons: any keyword (OR) or every keyword (AND) / Режим фильтра тегов: любое слово или все #}
+<div id="{{ form_cfg.tag_mode }}" class="segmented-radio">
+    <input type="radio" id="db_tag_mode_0" name="{{ form_cfg.tag_mode }}" value="0" checked>
+    <label for="db_tag_mode_0" title="Any of the keywords">OR</label>
+    <input type="radio" id="db_tag_mode_1" name="{{ form_cfg.tag_mode }}" value="1">
+    <label for="db_tag_mode_1" title="All of the keywords">AND</label>
+</div>
+
 
 {# Apply database message filters button / Кнопка применения фильтра #}
 <button class="apply-filters-buttons"
-        onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_message_apply_filters')">
+        onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_message_apply_filters', true)">
     Apply message filters
 </button>

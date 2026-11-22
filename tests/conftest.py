@@ -2,10 +2,12 @@
 Test infrastructure: no network, no Telegram, no real database or media files.
 Тестовая инфраструктура: без сети, без Telegram, без настоящих базы данных и медиафайлов.
 
-Every test runs in its own temporary working directory (the project paths in `ProjectDirs` are relative), the
-Telegram handler is a fake object, the database handler is real but works with a SQLite file in that directory.
-Каждый тест выполняется в своей временной рабочей директории (пути проекта в `ProjectDirs` относительные), обработчик
-Telegram - заглушка, обработчик БД - настоящий, но работает с файлом SQLite в этой директории.
+Every test runs in its own temporary directory: the paths in `ProjectDirs` (absolute) are replaced by paths inside it,
+so a test never touches the real media, export or database. The Telegram handler is a fake object, the database
+handler is real but works with a SQLite file in that directory.
+Каждый тест выполняется в своей временной директории: пути в `ProjectDirs` (абсолютные) заменяются путями внутри нее,
+поэтому тест никогда не трогает настоящие медиа, экспорт и базу данных. Обработчик Telegram - заглушка, обработчик БД -
+настоящий, но работает с файлом SQLite в этой директории.
 """
 
 from collections.abc import Iterator
@@ -16,10 +18,14 @@ import pytest
 from fastapi.testclient import TestClient
 import database_handler
 import telegram_handler
-from configs.config import ProjectDirs
+from configs.config import HOST, PORT, ProjectDirs
 from database_handler import DatabaseHandler
-from telegram_handler import TgCurrentState
+from telegram_handler import TgCurrentState, TgMessageSortFilter
 from web.main import app
+
+# The clients talk to the server address, otherwise the request guard rejects the default `testserver` host
+# Клиенты обращаются к адресу сервера, иначе защита запросов отклонит хост `testserver` по умолчанию
+BASE_URL = f'http://{HOST}:{PORT}'
 
 
 @pytest.fixture(autouse=True)
@@ -28,8 +34,22 @@ def work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     Temporary working directory with the folders the application expects.
     Временная рабочая директория с папками, которые ожидает приложение.
     """
-    (tmp_path / ProjectDirs.data_base_dir).mkdir()
-    (tmp_path / ProjectDirs.media_dir).mkdir()
+    paths = {
+        'media_dir': tmp_path / ProjectDirs.media_dir_name,
+        'export_dir': tmp_path / ProjectDirs.export_dir.name,
+        'telegram_settings_file': tmp_path / 'configs' / ProjectDirs.telegram_settings_file.name,
+        'data_base_dir': tmp_path / ProjectDirs.data_base_dir.name,
+        'data_base_file': tmp_path / ProjectDirs.data_base_dir.name / ProjectDirs.data_base_file.name,
+    }
+    for name, path in paths.items():
+        monkeypatch.setattr(ProjectDirs, name, path)
+    # The media files are served by a mount created when the application was imported: point it to the temp directory
+    # Медиафайлы отдает монтирование, созданное при импорте приложения: направляем его в временную директорию
+    media_mount = next(route for route in app.routes if getattr(route, 'name', None) == 'media_dir')
+    monkeypatch.setattr(media_mount.app, 'directory', paths['media_dir'])
+    monkeypatch.setattr(media_mount.app, 'all_directories', [paths['media_dir']])
+    paths['data_base_dir'].mkdir()
+    paths['media_dir'].mkdir()
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
@@ -42,9 +62,13 @@ def tg_handler(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     Заглушка TelegramHandler с атрибутами, которые используют шаблоны и lifespan. Заменяет кэшированный обработчик,
     поэтому `get_tg_handler()` возвращает ее и не создает настоящий клиент.
     """
+    # The real filter with the defaults, as the real handler sets it (the page shows its dates)
+    # Настоящий фильтр с умолчаниями, как его задает настоящий обработчик (страница показывает его даты)
+    message_filter = TgMessageSortFilter()
+    message_filter.set_default_filters()
     fake = SimpleNamespace(
         me=SimpleNamespace(id=1),
-        message_sort_filter=SimpleNamespace(date_from_default='2026-01-01'),
+        message_sort_filter=message_filter,
         dialog_sort_filter=MagicMock(),
         current_state=TgCurrentState(),
         # Reading methods: the tests set the return values they need
@@ -79,7 +103,7 @@ def client(tg_handler: SimpleNamespace, db_handler: DatabaseHandler) -> Iterator
     TestClient inside `with`: the application lifespan runs. Server exceptions are re-raised into the test.
     TestClient внутри `with`: выполняется lifespan приложения. Исключения сервера пробрасываются в тест.
     """
-    with TestClient(app) as test_client:
+    with TestClient(app, base_url=BASE_URL) as test_client:
         yield test_client
 
 
@@ -89,5 +113,5 @@ def error_client(tg_handler: SimpleNamespace, db_handler: DatabaseHandler) -> It
     TestClient that returns the 500 response instead of re-raising the exception (to test the error handlers).
     TestClient, который возвращает ответ 500 вместо повторного выброса исключения (для проверки обработчиков ошибок).
     """
-    with TestClient(app, raise_server_exceptions=False) as test_client:
+    with TestClient(app, base_url=BASE_URL, raise_server_exceptions=False) as test_client:
         yield test_client

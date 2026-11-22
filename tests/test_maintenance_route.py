@@ -14,30 +14,42 @@ import pytest
 from fastapi.testclient import TestClient
 from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler, DbDialog, DbFile, DbMessageGroup, DbTag
-from utils import status_messages
+from utils import OPERATION_DONE, status_messages
+from web.routers import service
 
 DIALOG_SELECT = FormCfg.db_message_filter['dialog_select']
 ALL_TAGS = FormCfg.db_detail_tags['all_detail_tags']
 
 
 @pytest.fixture(autouse=True)
-def download_mock(tg_handler: SimpleNamespace) -> MagicMock:
-    """The fake Telegram handler gets the download method / Заглушка Telegram получает метод скачивания"""
+def download_mock(tg_handler: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """The fake Telegram handler gets the download method; the list of failed files (it lives as long as the process)
+    starts empty in every test / Заглушка Telegram получает метод скачивания; список неудачных файлов (живет, пока
+    работает процесс) в каждом тесте пуст"""
+    monkeypatch.setattr(service, '_failed_downloads', set())
     tg_handler.download_message_file_from_list = MagicMock(return_value='')
     return tg_handler.download_message_file_from_list
 
 
-def add_message(db_handler: DatabaseHandler, dialog_id: int, title: str, file_paths: tuple[str, ...]) -> None:
-    """Adds a dialog with one message group that has the given files / Диалог с одной группой сообщений и файлами"""
+def add_message(db_handler: DatabaseHandler, dialog_id: int, title: str, file_paths: tuple[str, ...],
+                html_paths: tuple[str, ...] = (), tags: tuple[str, ...] = ()) -> DbMessageGroup:
+    """Adds a dialog with one message group that has the given image files, the records of its HTML files (type
+    Content) and tags / Диалог с одной группой сообщений, файлами-изображениями, записями HTML файлов и тегами"""
     session = db_handler.session
     session.add(DbDialog(dialog_id=dialog_id, title=title, dialog_type_id=DialogTypes.CHANNEL.value))
-    group = DbMessageGroup(grouped_id=f'{dialog_id}_1', date=datetime(2026, 1, 1, 3, 4, 5), text='text',
-                           truncated_text='text', files_report='', sender_id=7, dialog_id=dialog_id)
+    group = DbMessageGroup(grouped_id=f'{dialog_id}_1', date=datetime(2026, 1, 1, 3, 4, 5), html='text',
+                           plain_text='text', truncated_text='text', files_report='', sender_id=7, dialog_id=dialog_id)
     for number, file_path in enumerate(file_paths, start=1):
         group.files.append(DbFile(file_path=file_path, message_id=number, size=10 * number,
                                   file_type_id=MessageFileTypes.IMAGE.type_id))
+    for file_path in html_paths:
+        group.files.append(DbFile(file_path=file_path, message_id=0, size=1,
+                                  file_type_id=MessageFileTypes.CONTENT.type_id))
+    for tag_name in tags:
+        group.tags.append(DbTag(name=tag_name, usage_count=1))
     session.add(group)
     session.commit()
+    return group
 
 
 def make_media_file(work_dir: Path, file_path: str, size: int = 5) -> Path:
@@ -95,10 +107,132 @@ def test_maintenance_does_not_call_download_when_nothing_is_missing(client: Test
     download_mock.assert_not_called()
 
 
+@pytest.fixture
+def small_limit(monkeypatch: pytest.MonkeyPatch) -> int:
+    """A small download limit, to test it with a few files / Малый лимит докачки, чтобы проверять его на нескольких файлах"""
+    monkeypatch.setattr(GlobalConst, 'maintenance_max_downloads', 3)
+    return 3
+
+
+def add_missing_files(db_handler: DatabaseHandler, count: int) -> list[str]:
+    """Adds a message with `count` files that are not on the disk, returns their paths in the download order"""
+    paths = [f'chat/2026-01-01/f{number}.jpg' for number in range(count)]
+    add_message(db_handler, 1, 'chat', tuple(paths))
+    return paths
+
+
+def downloaded_paths(download_mock: MagicMock) -> list[list[str]]:
+    """The paths passed to every call of the download method / Пути, переданные в каждый вызов скачивания"""
+    return [[f['file_path'] for f in call.args[0]] for call in download_mock.call_args_list]
+
+
+def test_maintenance_downloads_up_to_the_limit(client: TestClient, db_handler: DatabaseHandler,
+                                               download_mock: MagicMock, small_limit: int):
+    """Exactly the limit of missing files: all are requested in one call, no hint about the rest"""
+    paths = add_missing_files(db_handler, small_limit)
+    assert client.post('/db_database_maintenance').status_code == 200
+    assert downloaded_paths(download_mock) == [paths]
+    assert not any('run again' in line for line in report())
+
+
+def test_maintenance_limits_downloads_and_continues_next_run(client: TestClient, db_handler: DatabaseHandler,
+                                                             work_dir: Path, download_mock: MagicMock,
+                                                             small_limit: int):
+    """More files than the limit: one run takes the first ones and says so, the next run takes the rest"""
+    def create_files(files: list) -> str:
+        for file in files:
+            make_media_file(work_dir, file['file_path'])
+        return ''
+
+    download_mock.side_effect = create_files
+    paths = add_missing_files(db_handler, small_limit + 2)
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit]]
+    assert any(f'Missing files processed: {small_limit} of {small_limit + 2}, failed to download: 0' in line
+               for line in report())
+    assert any(f'Limit of {small_limit} files per run, run again' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit], paths[small_limit:]]
+    assert not any('run again' in line for line in report())
+
+
+def test_maintenance_does_not_retry_failed_files(client: TestClient, db_handler: DatabaseHandler,
+                                                 download_mock: MagicMock, small_limit: int):
+    """Files that stay missing after the download (the mock creates nothing) are skipped by the next runs, otherwise
+    they would take the limit again and again and the rest would never be reached"""
+    paths = add_missing_files(db_handler, small_limit + 2)
+
+    client.post('/db_database_maintenance')
+    assert any('failed to download: 3' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit], paths[small_limit:]]
+    assert any(f'Skipped {small_limit} files' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert len(download_mock.call_args_list) == 2  # everything was tried, nothing is left to download
+    assert any(f'Skipped {small_limit + 2} files' in line for line in report())
+
+
+HTML_PATH = 'chat/2026-01-01/ctx.html'
+
+
+def test_maintenance_restores_lost_html_from_the_database(client: TestClient, db_handler: DatabaseHandler,
+                                                          work_dir: Path, download_mock: MagicMock):
+    """A lost HTML file is rendered again at the path of its record: text, tags and the attachments line come from
+    the database, the record of the HTML itself is not listed as a file, the size in the record is the new size, and
+    Telegram is not asked for it"""
+    add_message(db_handler, 1, 'chat', ('chat/2026-01-01/kept.jpg',), (HTML_PATH,), tags=('first', 'second'))
+    make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    html_path = work_dir / ProjectDirs.media_dir / HTML_PATH
+    html = html_path.read_text(encoding='utf-8')
+    assert 'text' in html and 'Message tags: first, second' in html and 'Attachments: Image' in html
+    assert 'src="kept.jpg"' in html and 'ctx.html' not in html  # the page does not list itself
+    assert 'media-files-one-column' in html  # one file, not two
+    record = db_handler.session.query(DbFile).filter_by(file_path=HTML_PATH).one()
+    assert record.size == len(html.encode('utf-8')) != 1
+    assert any('HTML files restored: 1' in line for line in report())
+    download_mock.assert_not_called()
+
+
+def test_maintenance_keeps_existing_html(client: TestClient, db_handler: DatabaseHandler, work_dir: Path):
+    """An HTML file that is on the disk is not rendered again / HTML файл, который есть на диске, не пересоздается"""
+    add_message(db_handler, 1, 'chat', (), (HTML_PATH,))
+    path = make_media_file(work_dir, HTML_PATH)
+    path.write_text('my own content', encoding='utf-8')
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert path.read_text(encoding='utf-8') == 'my own content'
+    assert not any('HTML files restored' in line for line in report())
+
+
+def test_maintenance_reports_html_it_cannot_restore(client: TestClient, db_handler: DatabaseHandler, work_dir: Path):
+    """A file that cannot be written (the parent of its directory is a file) is reported and does not stop the
+    others; the operation is not an error / Файл, который нельзя записать, попадает в отчет и не останавливает остальные"""
+    add_message(db_handler, 1, 'chat', (), ('chat/a.html',))  # `chat` becomes a file below, so the path is blocked
+    add_message(db_handler, 2, 'chat2', (), ('chat2/ok.html',))
+    make_media_file(work_dir, 'chat')
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert (work_dir / ProjectDirs.media_dir / 'chat2' / 'ok.html').is_file()
+    lines = report()
+    assert any('HTML files restored: 1' in line for line in lines)
+    assert any('HTML files not restored: 1' in line for line in lines)
+    assert any('chat/a.html:' in line for line in lines)
+    assert status_messages.state == OPERATION_DONE
+
+
 def test_maintenance_reports_files_without_records_and_deletes_nothing(client: TestClient, db_handler: DatabaseHandler,
                                                                        work_dir: Path):
-    """The local files without records are listed with sizes and totals (the names are escaped for HTML); the
-    files, the directories and the files with records stay as they are"""
+    """The local files without records are listed with sizes and totals (the report keeps the original names, they
+    are escaped when the status bar HTML is built); the files, the directories and the files with records stay"""
     add_message(db_handler, 1, 'chat', ('chat/2026-01-01/kept.jpg',))
     kept = make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
     orphan = make_media_file(work_dir, 'chat/2026-01-01/a&b.jpg', size=2048)
@@ -111,7 +245,7 @@ def test_maintenance_reports_files_without_records_and_deletes_nothing(client: T
 
     lines = report()
     assert any('Local files without a record in the database: 2 (3.00 MB)' in line for line in lines)
-    assert any('chat/2026-01-01/a&amp;b.jpg (2.0 KB)' in line for line in lines)
+    assert any('chat/2026-01-01/a&b.jpg (2.0 KB)' in line for line in lines)
     assert any('old/clip.mp4 (3.00 MB)' in line for line in lines)
     assert not any('kept.jpg' in line or 'notes.txt' in line for line in lines)
     assert all(path.exists() for path in (kept, orphan, video, other, empty_dir))
