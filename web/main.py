@@ -16,7 +16,7 @@ from database_handler import get_db_handler
 from utils import status_messages
 from web.deps import BASE_DIR
 from web.errors import register_error_handlers
-from web.middleware import OperationTracker
+from web.middleware import OperationTracker, RequestGuard
 from web.routers import service, telegram, database, tags
 
 
@@ -45,6 +45,9 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 register_error_handlers(app)
 app.add_middleware(OperationTracker)
+# Added last, so it is the outermost: a rejected request reaches nothing else
+# Добавлен последним, поэтому он внешний: отклоненный запрос ничего больше не затрагивает
+app.add_middleware(RequestGuard)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 # The directory is created in lifespan, so it is not checked when the app is built
 # Директория создается в lifespan, поэтому при создании приложения ее наличие не проверяется

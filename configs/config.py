@@ -3,6 +3,7 @@ The module contains the project configuration: profile, directories, constants a
 Модуль содержит конфигурацию проекта: профиль, директории, константы и настройки веб-форм.
 
 PROFILE: the configuration profile; it sets the suffix of the Telegram settings file and of the database file
+HOST, PORT: the address of the local web server
 class ProjectDirs: directories and files of the project (media, export, Telegram settings, database)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
 class DialogTypes(Enum): IDs and names of the dialog types in Telegram
@@ -26,6 +27,14 @@ from enum import Enum
 PROFILE = ''
 # PROFILE = '_dev_1'
 # PROFILE = '_dev_2'
+
+# The address of the web server: the launcher listens on it and the request guard (`web/middleware.py`) accepts only
+# requests addressed to it. The app is single-user and local, so it is never bound to a public interface.
+# Адрес веб-сервера: на нем слушает запускатель, а защита запросов (`web/middleware.py`) принимает только запросы,
+# адресованные ему. Приложение однопользовательское и локальное, поэтому к публичному интерфейсу оно не привязывается.
+HOST = '127.0.0.1'
+PORT = 5000
+
 
 @dataclass(frozen=True)
 class ProjectDirs:

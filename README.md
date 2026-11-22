@@ -82,6 +82,11 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    `tools/telegram_qr_login.py` (login by QR code). Then open `http://localhost:5000` in your browser.
 
    Run with **one worker and without `--reload`**: every start logs in to Telegram and the application state is global.
+
+   The server listens only on `127.0.0.1:5000` (`HOST` and `PORT` in `configs/config.py`) and rejects with 403 the
+   requests addressed to another host, sent from another site (`Origin`) or marked `Sec-Fetch-Site: cross-site`, so a
+   web page open in your browser cannot control the application. Open it at `http://127.0.0.1:5000` or
+   `http://localhost:5000`; a reverse proxy or another port needs the same values in the config.
 7. **Stop the application:** press `Ctrl+C` in the terminal. In the PyCharm *Run* window `Ctrl+C` does not reach the
    process: use the **Stop** button.
 

@@ -16,10 +16,14 @@ import pytest
 from fastapi.testclient import TestClient
 import database_handler
 import telegram_handler
-from configs.config import ProjectDirs
+from configs.config import HOST, PORT, ProjectDirs
 from database_handler import DatabaseHandler
 from telegram_handler import TgCurrentState, TgMessageSortFilter
 from web.main import app
+
+# The clients talk to the server address, otherwise the request guard rejects the default `testserver` host
+# Клиенты обращаются к адресу сервера, иначе защита запросов отклонит хост `testserver` по умолчанию
+BASE_URL = f'http://{HOST}:{PORT}'
 
 
 @pytest.fixture(autouse=True)
@@ -83,7 +87,7 @@ def client(tg_handler: SimpleNamespace, db_handler: DatabaseHandler) -> Iterator
     TestClient inside `with`: the application lifespan runs. Server exceptions are re-raised into the test.
     TestClient внутри `with`: выполняется lifespan приложения. Исключения сервера пробрасываются в тест.
     """
-    with TestClient(app) as test_client:
+    with TestClient(app, base_url=BASE_URL) as test_client:
         yield test_client
 
 
@@ -93,5 +97,5 @@ def error_client(tg_handler: SimpleNamespace, db_handler: DatabaseHandler) -> It
     TestClient that returns the 500 response instead of re-raising the exception (to test the error handlers).
     TestClient, который возвращает ответ 500 вместо повторного выброса исключения (для проверки обработчиков ошибок).
     """
-    with TestClient(app, raise_server_exceptions=False) as test_client:
+    with TestClient(app, base_url=BASE_URL, raise_server_exceptions=False) as test_client:
         yield test_client
