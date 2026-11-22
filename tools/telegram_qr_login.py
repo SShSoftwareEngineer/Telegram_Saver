@@ -16,21 +16,18 @@ Do not share the QR code or the tg://login link: it is a one-time login to the a
 """
 
 import asyncio
-import os
 import sys
 from getpass import getpass
 from pathlib import Path
 
-# The session file name is relative, so work from the project root as the application does
-# Имя файла сессии относительное, поэтому работаем из корня проекта, как и приложение
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-os.chdir(PROJECT_ROOT)
-sys.path.insert(0, str(PROJECT_ROOT))
+# The project root must be importable when the script is started as `python tools/telegram_qr_login.py`
+# Корень проекта должен быть доступен для импорта при запуске как `python tools/telegram_qr_login.py`
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from dotenv import dotenv_values  # noqa: E402
 from telethon import TelegramClient  # noqa: E402
 from telethon.errors import SessionPasswordNeededError, PasswordHashInvalidError  # noqa: E402
-from configs.config import ProjectDirs  # noqa: E402
+from configs.config import BASE_DIR, ProjectDirs  # noqa: E402
 
 try:
     import qrcode
@@ -74,7 +71,9 @@ async def main() -> None:
     """
 
     cfg = dotenv_values(ProjectDirs.telegram_settings_file)
-    client = TelegramClient(cfg['SESSION_NAME'], int(cfg['API_ID']), cfg['API_HASH'])
+    # The same session file as the application uses: relative to the project root
+    # Тот же файл сессии, что использует приложение: относительно корня проекта
+    client = TelegramClient(str(BASE_DIR / cfg['SESSION_NAME']), int(cfg['API_ID']), cfg['API_HASH'])
     await client.connect()
     if await client.is_user_authorized():
         print('Already authorized, nothing to do / Уже авторизован, делать нечего.')

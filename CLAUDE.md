@@ -25,7 +25,9 @@
 
 ## Ключевые факты
 - Запуск: `python telegram_saver.py` (запускатель uvicorn, порт 5000) или `uvicorn web.main:app`.
-- Конфиг: `configs/config.py` (`PROFILE`, `FormCfg`, `ProjectDirs`); секреты в `configs/.env_dev_1` (не в git).
+- Конфиг: `configs/config.py` (`BASE_DIR`, `PROFILE`, `HOST`/`PORT`, `FormCfg`, `ProjectDirs`); секреты в
+  `configs/.env<PROFILE>` (не в git). Профиль - переменная окружения `TELEGRAM_SAVER_PROFILE`; пути `ProjectDirs`
+  абсолютные (в тестах подменяются на временные в `conftest.py`, `media_dir_name` - URL-префикс медиа).
 - Файлы: `telegram_handler.py`, `database_handler.py`, `utils.py` (`status_messages`, `format_files_report`),
   `web/` (роуты и `deps.py` с глобалами Jinja), `templates/`, `static/js/my_scripts.js`.
 - Интерфейс: роуты отдают JSON, ключи = `id` элементов (`updateElementsFromResponse`). Кнопки, которым нужен выбор:

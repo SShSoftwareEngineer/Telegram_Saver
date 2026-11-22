@@ -2,7 +2,9 @@
 The module contains the project configuration: profile, directories, constants and web form settings.
 Модуль содержит конфигурацию проекта: профиль, директории, константы и настройки веб-форм.
 
-PROFILE: the configuration profile; it sets the suffix of the Telegram settings file and of the database file
+BASE_DIR: the project root, the base of all paths
+PROFILE: the configuration profile (environment variable `TELEGRAM_SAVER_PROFILE`); it sets the suffix of the
+         Telegram settings file and of the database file
 HOST, PORT: the address of the local web server
 class ProjectDirs: directories and files of the project (media, export, Telegram settings, database)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
@@ -13,20 +15,51 @@ class FormCfg: configurations of the web interface form controls
 class TagsSorting: tag sorting options
 """
 
+import os
+import re
+from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
 from enum import Enum
 
+# The project root: all paths are built from it, so the application works from any current directory
+# Корень проекта: от него строятся все пути, поэтому приложение работает из любой текущей директории
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+PROFILE_ENV_VAR = 'TELEGRAM_SAVER_PROFILE'
+
+
+def read_profile(environ: Mapping[str, str]) -> str:
+    """
+    Returns the configuration profile from the environment variable `TELEGRAM_SAVER_PROFILE` ('' if it is not set).
+    The value becomes a part of file names, so only letters, digits and `_` are allowed (no path separators).
+    Возвращает профиль конфигурации из переменной окружения `TELEGRAM_SAVER_PROFILE` ('' если она не задана).
+    Значение становится частью имен файлов, поэтому допустимы только буквы, цифры и `_` (без разделителей путей).
+    Attributes:
+        environ (Mapping[str, str]): The environment (`os.environ`)
+    Returns:
+        str: The profile suffix
+    """
+
+    profile = environ.get(PROFILE_ENV_VAR, '')
+    if not re.fullmatch(r'[A-Za-z0-9_]*', profile):
+        raise ValueError(f'{PROFILE_ENV_VAR}={profile!r}: only letters, digits and "_" are allowed / '
+                         f'допустимы только буквы, цифры и "_"')
+    return profile
+
+
 # The configuration profile: it selects `configs/.env<PROFILE>` and `database/telegram_archive<PROFILE>.db`.
-# '' (empty) is the working profile: `configs/.env` and `database/telegram_archive.db`.
+# It is set by the environment variable `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
+# PyCharm: the Run Configuration, Environment variables).
+# '' (not set) is the working profile: `configs/.env` and `database/telegram_archive.db`.
 # Other values (e.g. '_dev_1', '_dev_2') are for experiments with separate accounts and databases.
 # Профиль конфигурации: выбирает `configs/.env<PROFILE>` и `database/telegram_archive<PROFILE>.db`.
-# '' (пустая строка) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
+# Задается переменной окружения `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
+# PyCharm: Run Configuration, Environment variables).
+# '' (не задана) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
 # Другие значения (например, '_dev_1', '_dev_2') - для экспериментов с отдельными аккаунтами и базами данных.
-PROFILE = ''
-# PROFILE = '_dev_1'
-# PROFILE = '_dev_2'
+PROFILE = read_profile(os.environ)
 
 # The address of the web server: the launcher listens on it and the request guard (`web/middleware.py`) accepts only
 # requests addressed to it. The app is single-user and local, so it is never bound to a public interface.
@@ -41,19 +74,23 @@ class ProjectDirs:
     """
     A class to hold the directory paths for a project.
     Класс для хранения путей к директориям проекта.
+    All paths are absolute (built from `BASE_DIR`).
+    Все пути абсолютные (строятся от `BASE_DIR`).
     Attributes:
-        media_dir (str): Directory for storing downloaded media files from Telegram
-        export_dir (str): Directory for exporting messages to HTML files
+        media_dir_name (str): Name of the media directory, also the URL prefix of the media files (`/media_storage/...`)
+        media_dir (Path): Directory for storing downloaded media files from Telegram
+        export_dir (Path): Directory for exporting messages to HTML files
         telegram_settings_file (Path): Telegram API settings file (`configs/.env<PROFILE>`)
         data_base_dir (Path): Directory for storing the SQLite database file
         data_base_file (Path): SQLite database file (`telegram_archive<PROFILE>.db`)
     """
 
-    media_dir = r'media_storage'
-    export_dir = r'exported_messages'
-    telegram_settings_file = Path('configs') / f'.env{PROFILE}'
-    data_base_dir = Path('database')
-    data_base_file = Path(data_base_dir) / f'telegram_archive{PROFILE}.db'
+    media_dir_name = 'media_storage'
+    media_dir = BASE_DIR / media_dir_name
+    export_dir = BASE_DIR / 'exported_messages'
+    telegram_settings_file = BASE_DIR / 'configs' / f'.env{PROFILE}'
+    data_base_dir = BASE_DIR / 'database'
+    data_base_file = data_base_dir / f'telegram_archive{PROFILE}.db'
 
 
 @dataclass(frozen=True)

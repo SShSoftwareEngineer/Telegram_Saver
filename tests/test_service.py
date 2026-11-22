@@ -94,14 +94,14 @@ def test_status_output_old_version_gets_messages(client: TestClient):
 def test_media_file(client: TestClient, work_dir: Path):
     """A file from the media folder is served from the temporary working directory / Раздача медиафайла"""
     (work_dir / ProjectDirs.media_dir / 'photo.txt').write_text('media content', encoding='utf-8')
-    response = client.get(f'/{ProjectDirs.media_dir}/photo.txt')
+    response = client.get(f'/{ProjectDirs.media_dir_name}/photo.txt')
     assert response.status_code == 200
     assert response.text == 'media content'
 
 
 def test_media_file_not_found(client: TestClient):
     """A missing media file gives 404 in JSON, not a plain-text page / Отсутствующий файл - 404 в JSON"""
-    response = client.get(f'/{ProjectDirs.media_dir}/missing.jpg')
+    response = client.get(f'/{ProjectDirs.media_dir_name}/missing.jpg')
     assert response.status_code == 404
     assert 'error' in response.json()
 

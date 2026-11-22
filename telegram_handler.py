@@ -29,7 +29,7 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
     PhotoSizeProgressive, MessageMediaWebPage
 from telethon import TelegramClient
 from dotenv import dotenv_values
-from configs.config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
+from configs.config import BASE_DIR, ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
 from utils import parse_date_string, clean_file_path, format_files_report, local_day_start, status_messages, to_local
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
@@ -563,7 +563,10 @@ class TelegramHandler:
             # so every call that touches client.loop must be made from inside our loop thread
             # Telethon игнорирует аргумент loop: client.loop - это loop, запущенный в вызывающем потоке,
             # поэтому все вызовы, которые обращаются к client.loop, делаем из потока нашего loop
-            self.client = TelegramClient(self._connection_settings['SESSION_NAME'],
+            # The session file is looked up from the project root, not from the current directory (an absolute
+            # SESSION_NAME stays as it is)
+            # Файл сессии ищется от корня проекта, а не от текущей директории (абсолютный SESSION_NAME не меняется)
+            self.client = TelegramClient(str(BASE_DIR / self._connection_settings['SESSION_NAME']),
                                          int(self._connection_settings['API_ID']),
                                          self._connection_settings['API_HASH'])
 

@@ -51,7 +51,8 @@ app.add_middleware(RequestGuard)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 # The directory is created in lifespan, so it is not checked when the app is built
 # Директория создается в lifespan, поэтому при создании приложения ее наличие не проверяется
-app.mount(f'/{ProjectDirs.media_dir}', StaticFiles(directory=ProjectDirs.media_dir, check_dir=False), name='media_dir')
+app.mount(f'/{ProjectDirs.media_dir_name}', StaticFiles(directory=ProjectDirs.media_dir, check_dir=False),
+          name='media_dir')
 app.include_router(service.router)
 app.include_router(telegram.router)
 app.include_router(database.router)

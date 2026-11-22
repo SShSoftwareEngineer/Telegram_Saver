@@ -2,10 +2,12 @@
 Test infrastructure: no network, no Telegram, no real database or media files.
 Тестовая инфраструктура: без сети, без Telegram, без настоящих базы данных и медиафайлов.
 
-Every test runs in its own temporary working directory (the project paths in `ProjectDirs` are relative), the
-Telegram handler is a fake object, the database handler is real but works with a SQLite file in that directory.
-Каждый тест выполняется в своей временной рабочей директории (пути проекта в `ProjectDirs` относительные), обработчик
-Telegram - заглушка, обработчик БД - настоящий, но работает с файлом SQLite в этой директории.
+Every test runs in its own temporary directory: the paths in `ProjectDirs` (absolute) are replaced by paths inside it,
+so a test never touches the real media, export or database. The Telegram handler is a fake object, the database
+handler is real but works with a SQLite file in that directory.
+Каждый тест выполняется в своей временной директории: пути в `ProjectDirs` (абсолютные) заменяются путями внутри нее,
+поэтому тест никогда не трогает настоящие медиа, экспорт и базу данных. Обработчик Telegram - заглушка, обработчик БД -
+настоящий, но работает с файлом SQLite в этой директории.
 """
 
 from collections.abc import Iterator
@@ -32,8 +34,22 @@ def work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     Temporary working directory with the folders the application expects.
     Временная рабочая директория с папками, которые ожидает приложение.
     """
-    (tmp_path / ProjectDirs.data_base_dir).mkdir()
-    (tmp_path / ProjectDirs.media_dir).mkdir()
+    paths = {
+        'media_dir': tmp_path / ProjectDirs.media_dir_name,
+        'export_dir': tmp_path / ProjectDirs.export_dir.name,
+        'telegram_settings_file': tmp_path / 'configs' / ProjectDirs.telegram_settings_file.name,
+        'data_base_dir': tmp_path / ProjectDirs.data_base_dir.name,
+        'data_base_file': tmp_path / ProjectDirs.data_base_dir.name / ProjectDirs.data_base_file.name,
+    }
+    for name, path in paths.items():
+        monkeypatch.setattr(ProjectDirs, name, path)
+    # The media files are served by a mount created when the application was imported: point it to the temp directory
+    # Медиафайлы отдает монтирование, созданное при импорте приложения: направляем его в временную директорию
+    media_mount = next(route for route in app.routes if getattr(route, 'name', None) == 'media_dir')
+    monkeypatch.setattr(media_mount.app, 'directory', paths['media_dir'])
+    monkeypatch.setattr(media_mount.app, 'all_directories', [paths['media_dir']])
+    paths['data_base_dir'].mkdir()
+    paths['media_dir'].mkdir()
     monkeypatch.chdir(tmp_path)
     return tmp_path
 

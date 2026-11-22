@@ -74,7 +74,7 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
     # The HTML file is in the file system and in the database / HTML файл есть в файловой системе и в базе данных
     html_record = next(f for f in saved.files if f.file_type_id == MessageFileTypes.CONTENT.type_id)
     # The path is relative to the media directory, like the paths of the other files / Путь относительно директории медиа
-    assert not html_record.file_path.startswith(ProjectDirs.media_dir)
+    assert not html_record.file_path.startswith(ProjectDirs.media_dir_name)
     html_path = work_dir / ProjectDirs.media_dir / html_record.file_path
     assert html_path.parent == work_dir / ProjectDirs.media_dir / 'Test chat_1001234567891' / '2026-01-01'
     html = html_path.read_text(encoding='utf-8')

@@ -65,11 +65,15 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    | `PASSWORD` | Cloud (two-step verification) password of the account; leave empty if it is not enabled |
    | `API_ID` | `App api_id` from my.telegram.org |
    | `API_HASH` | `App api_hash` from my.telegram.org |
-   | `SESSION_NAME` | Name of the Telethon session file (created in the project root, e.g. `telegram_saver`) |
+   | `SESSION_NAME` | Name of the Telethon session file (created in the project root whatever the current directory is, e.g. `telegram_saver`) |
 
-   The file is chosen by `PROFILE` in `configs/config.py`: `PROFILE = ''` (default) uses `configs/.env` and
-   `database/telegram_archive.db`; other values (e.g. `'_dev_1'`) use `configs/.env_dev_1` and
-   `database/telegram_archive_dev_1.db`, which allows keeping separate accounts and databases for experiments.
+   The file is chosen by the profile, the environment variable `TELEGRAM_SAVER_PROFILE`. Not set (default) uses
+   `configs/.env` and `database/telegram_archive.db`; a value (e.g. `_dev_1`; letters, digits and `_` only) uses
+   `configs/.env_dev_1` and `database/telegram_archive_dev_1.db`, which allows keeping separate accounts and databases.
+   Set it before the start (PowerShell: `$env:TELEGRAM_SAVER_PROFILE = '_dev_1'`; PyCharm: *Run Configuration* →
+   *Environment variables*). Run one profile at a time: they share `media_storage/`, `exported_messages/` and the port.
+   Give each profile its own `SESSION_NAME`. All paths are built from the project root, so the application can be
+   started from any directory.
 6. **Run the application:**
    ```bash
    python telegram_saver.py
