@@ -17,6 +17,10 @@ from web.deps import state_lock, templates
 
 router = APIRouter()
 
+# Paths (relative to the media directory) that maintenance could not download: they are not retried until the restart
+# Пути (относительно директории медиа), которые сервисное обслуживание не смогло скачать: до перезапуска не повторяются
+_failed_downloads: set[str] = set()
+
 
 @router.get('/status_output')
 def status_output(since: int | None = None) -> JSONResponse:
@@ -60,14 +64,16 @@ def db_database_maintenance() -> JSONResponse:
     Database and file system maintenance. Nothing is deleted here: the files and directories of deleted messages are
     removed together with the messages (`/db_delete_selected_from_database`).
         1. Reporting the local files that are not referenced in the database (to delete them manually)
-        2. Downloading files that are referenced in the database but are not present in the local file system
+        2. Downloading files that are referenced in the database but are not present in the local file system (not more
+           than `GlobalConst.maintenance_max_downloads` per run; the files that failed are skipped until the restart)
         3. Backing up the database (SQLite backup API: the database is in the WAL mode)
         4. Refreshing the lists of dialogs (unused ones are deleted) and tags (usage is recalculated,
            unused are deleted)
     Сервисное обслуживание базы данных и файловой системы. Здесь ничего не удаляется: файлы и директории удаленных
     сообщений удаляются вместе с сообщениями (`/db_delete_selected_from_database`).
         1. Отчет о локальных файлах, на которые нет ссылок в базе данных (для ручного удаления)
-        2. Докачка файлов, на которые есть ссылки в базе данных, но которых нет в локальной файловой системе
+        2. Докачка файлов, на которые есть ссылки в базе данных, но которых нет в локальной файловой системе (не больше
+           `GlobalConst.maintenance_max_downloads` за запуск; файлы, которые не скачались, пропускаются до перезапуска)
         3. Резервное копирование базы данных
         4. Обновление списков диалогов (неиспользуемые удаляются) и тегов (пересчет использования, удаление
            неиспользуемых)
@@ -98,15 +104,40 @@ def db_database_maintenance() -> JSONResponse:
                                     f'{f" ({_format_size(total_size)})" if orphan_files else ""}', True)
         for line in limit_list(orphan_lines, GlobalConst.status_list_max_items):
             status_messages.mess_update('', line)
-        # 2. Download the files that are in the database but not in the local file system, excluding HTML files
-        # 2. Докачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе, кроме HTML
-        downloaded_file_list = []
+        # 2. Download the files that are in the database but not in the local file system, excluding HTML files.
+        # Not more than `maintenance_max_downloads` per run: the lock is held all this time, so a lost media directory
+        # must not freeze the application for minutes; the next run continues with the rest
+        # 2. Докачиваем файлы, которые есть в базе данных, но отсутствуют в локальной файловой системе, кроме HTML.
+        # Не больше `maintenance_max_downloads` за запуск: замок держится все это время, поэтому потерянная директория
+        # медиа не должна подвешивать приложение на минуты; следующий запуск продолжит с остатка
+        missing_files = []
+        skipped_count = 0
         for file_path in sorted(database_files - local_files):
+            if Path(file_path).suffix == MessageFileTypes.CONTENT.default_ext:
+                continue
+            if file_path in _failed_downloads:
+                skipped_count += 1
+                continue
             downloaded_file = db_handler.get_file_by_local_path(file_path)
-            if downloaded_file and Path(file_path).suffix != MessageFileTypes.CONTENT.default_ext:
-                downloaded_file_list.append(downloaded_file)
-        if downloaded_file_list:
-            tg_handler.download_message_file_from_list(downloaded_file_list)
+            if downloaded_file:
+                missing_files.append(downloaded_file)
+        batch = missing_files[:GlobalConst.maintenance_max_downloads]
+        if batch:
+            tg_handler.download_message_file_from_list(batch)
+            # A file that is still missing could not be downloaded (e.g. the message is deleted in Telegram): do not
+            # try it again until the restart, otherwise such files would take the whole limit of every run
+            # Файл, которого все еще нет, скачать не удалось (например, сообщение удалено в Telegram): повторно не
+            # пытаемся до перезапуска, иначе такие файлы занимали бы весь лимит каждого запуска
+            failed = [f['file_path'] for f in batch if not (media_dir / f['file_path']).exists()]
+            _failed_downloads.update(failed)
+            status_messages.mess_update('', f'Missing files processed: {len(batch)} of {len(missing_files)}, '
+                                            f'failed to download: {len(failed)}')
+            if len(missing_files) > len(batch):
+                status_messages.mess_update('', f'Limit of {GlobalConst.maintenance_max_downloads} files per run, '
+                                                f'run again to download the rest')
+        if skipped_count:
+            status_messages.mess_update('', f'Skipped {skipped_count} files that could not be downloaded earlier '
+                                            f'(retried after the restart)')
         # 3. Database backup / Резервное копирование базы данных
         database_file = Path(ProjectDirs.data_base_file)
         database_backup = (Path(ProjectDirs.data_base_dir) / 'backup' /

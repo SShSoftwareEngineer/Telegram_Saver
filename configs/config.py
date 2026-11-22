@@ -118,6 +118,7 @@ class GlobalConst:
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
     dialog_no_title = '<No Title>'  # Title for dialogs without a title
     status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report
+    maintenance_max_downloads = 100  # Maximum number of missing files that maintenance downloads in one run
 
 
 class DialogTypes(Enum):

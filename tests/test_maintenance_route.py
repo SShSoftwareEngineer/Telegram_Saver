@@ -15,14 +15,18 @@ from fastapi.testclient import TestClient
 from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler, DbDialog, DbFile, DbMessageGroup, DbTag
 from utils import status_messages
+from web.routers import service
 
 DIALOG_SELECT = FormCfg.db_message_filter['dialog_select']
 ALL_TAGS = FormCfg.db_detail_tags['all_detail_tags']
 
 
 @pytest.fixture(autouse=True)
-def download_mock(tg_handler: SimpleNamespace) -> MagicMock:
-    """The fake Telegram handler gets the download method / Заглушка Telegram получает метод скачивания"""
+def download_mock(tg_handler: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """The fake Telegram handler gets the download method; the list of failed files (it lives as long as the process)
+    starts empty in every test / Заглушка Telegram получает метод скачивания; список неудачных файлов (живет, пока
+    работает процесс) в каждом тесте пуст"""
+    monkeypatch.setattr(service, '_failed_downloads', set())
     tg_handler.download_message_file_from_list = MagicMock(return_value='')
     return tg_handler.download_message_file_from_list
 
@@ -93,6 +97,75 @@ def test_maintenance_does_not_call_download_when_nothing_is_missing(client: Test
     make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
     assert client.post('/db_database_maintenance').status_code == 200
     download_mock.assert_not_called()
+
+
+@pytest.fixture
+def small_limit(monkeypatch: pytest.MonkeyPatch) -> int:
+    """A small download limit, to test it with a few files / Малый лимит докачки, чтобы проверять его на нескольких файлах"""
+    monkeypatch.setattr(GlobalConst, 'maintenance_max_downloads', 3)
+    return 3
+
+
+def add_missing_files(db_handler: DatabaseHandler, count: int) -> list[str]:
+    """Adds a message with `count` files that are not on the disk, returns their paths in the download order"""
+    paths = [f'chat/2026-01-01/f{number}.jpg' for number in range(count)]
+    add_message(db_handler, 1, 'chat', tuple(paths))
+    return paths
+
+
+def downloaded_paths(download_mock: MagicMock) -> list[list[str]]:
+    """The paths passed to every call of the download method / Пути, переданные в каждый вызов скачивания"""
+    return [[f['file_path'] for f in call.args[0]] for call in download_mock.call_args_list]
+
+
+def test_maintenance_downloads_up_to_the_limit(client: TestClient, db_handler: DatabaseHandler,
+                                               download_mock: MagicMock, small_limit: int):
+    """Exactly the limit of missing files: all are requested in one call, no hint about the rest"""
+    paths = add_missing_files(db_handler, small_limit)
+    assert client.post('/db_database_maintenance').status_code == 200
+    assert downloaded_paths(download_mock) == [paths]
+    assert not any('run again' in line for line in report())
+
+
+def test_maintenance_limits_downloads_and_continues_next_run(client: TestClient, db_handler: DatabaseHandler,
+                                                             work_dir: Path, download_mock: MagicMock,
+                                                             small_limit: int):
+    """More files than the limit: one run takes the first ones and says so, the next run takes the rest"""
+    def create_files(files: list) -> str:
+        for file in files:
+            make_media_file(work_dir, file['file_path'])
+        return ''
+
+    download_mock.side_effect = create_files
+    paths = add_missing_files(db_handler, small_limit + 2)
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit]]
+    assert any(f'Missing files processed: {small_limit} of {small_limit + 2}, failed to download: 0' in line
+               for line in report())
+    assert any(f'Limit of {small_limit} files per run, run again' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit], paths[small_limit:]]
+    assert not any('run again' in line for line in report())
+
+
+def test_maintenance_does_not_retry_failed_files(client: TestClient, db_handler: DatabaseHandler,
+                                                 download_mock: MagicMock, small_limit: int):
+    """Files that stay missing after the download (the mock creates nothing) are skipped by the next runs, otherwise
+    they would take the limit again and again and the rest would never be reached"""
+    paths = add_missing_files(db_handler, small_limit + 2)
+
+    client.post('/db_database_maintenance')
+    assert any('failed to download: 3' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert downloaded_paths(download_mock) == [paths[:small_limit], paths[small_limit:]]
+    assert any(f'Skipped {small_limit} files' in line for line in report())
+
+    client.post('/db_database_maintenance')
+    assert len(download_mock.call_args_list) == 2  # everything was tried, nothing is left to download
+    assert any(f'Skipped {small_limit + 2} files' in line for line in report())
 
 
 def test_maintenance_reports_files_without_records_and_deletes_nothing(client: TestClient, db_handler: DatabaseHandler,
