@@ -38,7 +38,7 @@ def add_message(db_handler: DatabaseHandler, dialog_id: int, title: str, file_pa
     session = db_handler.session
     session.add(DbDialog(dialog_id=dialog_id, title=title, dialog_type_id=DialogTypes.CHANNEL.value))
     group = DbMessageGroup(grouped_id=f'{dialog_id}_1', date=datetime(2026, 1, 1, 3, 4, 5), html='text',
-                           plain_text='text', truncated_text='text', files_report='', sender_id=7, dialog_id=dialog_id)
+                           plain_text='text', truncated_text='text', sender_id=7, dialog_id=dialog_id)
     for number, file_path in enumerate(file_paths, start=1):
         group.files.append(DbFile(file_path=file_path, message_id=number, size=10 * number,
                                   file_type_id=MessageFileTypes.IMAGE.type_id))

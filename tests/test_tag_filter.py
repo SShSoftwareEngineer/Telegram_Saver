@@ -28,7 +28,7 @@ def tagged(db_handler: DatabaseHandler) -> DatabaseHandler:
     tags: dict[str, DbTag] = {}
     for grouped_id, names in TAGS_BY_GROUP.items():
         group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, 1, tzinfo=timezone.utc), html='text',
-                               plain_text='text', truncated_text='text', files_report='', sender_id=7, dialog_id=1)
+                               plain_text='text', truncated_text='text', sender_id=7, dialog_id=1)
         for name in names:
             group.tags.append(tags.setdefault(name, DbTag(name=name)))
         session.add(group)

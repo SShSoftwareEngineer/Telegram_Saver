@@ -30,7 +30,7 @@ def add_group(db_handler: DatabaseHandler, grouped_id: str, date: datetime, dial
     if session.get(DbDialog, dialog_id) is None:
         session.add(DbDialog(dialog_id=dialog_id, title='Chat', dialog_type_id=DialogTypes.CHANNEL.value))
     session.add(DbMessageGroup(grouped_id=grouped_id, date=date, html='text', plain_text='text', truncated_text='text',
-                               files_report='', sender_id=7, dialog_id=dialog_id))
+                               sender_id=7, dialog_id=dialog_id))
     session.commit()
 
 

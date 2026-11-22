@@ -32,7 +32,7 @@ def add_group(handler: DatabaseHandler, number: int, tags: tuple[str, ...] = ())
     grouped_id = f'1_{number}'
     group = DbMessageGroup(grouped_id=grouped_id, date=datetime(2026, 1, number), html='text', plain_text='text',
                            truncated_text='text',
-                           files_report='', sender_id=7, dialog_id=1)
+                           sender_id=7, dialog_id=1)
     session.add(group)
     for name in tags:
         group.tags.append(session.query(DbTag).filter_by(name=name).first() or DbTag(name=name))
