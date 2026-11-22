@@ -82,11 +82,11 @@ def test_database_stores_utc_and_returns_aware_utc(db_handler: DatabaseHandler):
 
 
 def test_tag_creation_time_is_utc(db_handler: DatabaseHandler):
-    """The default of `DbTag.updated_at` is the current moment in UTC / Значение по умолчанию - текущий момент в UTC"""
+    """The default of `DbTag.created_at` is the current moment in UTC / Значение по умолчанию - текущий момент в UTC"""
     db_handler.session.add(DbTag(name='tag'))
     db_handler.session.commit()
     db_handler.session.expire_all()
-    value = db_handler.session.query(DbTag).one().updated_at
+    value = db_handler.session.query(DbTag).one().created_at
     assert value.utcoffset() == timedelta(0)
     assert abs(datetime.now(UTC) - value) < timedelta(minutes=1)
 

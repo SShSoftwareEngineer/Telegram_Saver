@@ -56,6 +56,9 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
         # Устанавливаем в текущем состоянии клиента Telegram ID текущего диалога и список групп сообщений
         tg_handler.current_state.selected_dialog_id = dialog_id
         tg_handler.current_state.message_group_list = tg_message_groups
+        # The details of the previous dialog must not survive a page reload
+        # Детали сообщения прежнего диалога не должны появляться после перезагрузки страницы
+        tg_handler.current_state.message_details = None
         # Refresh message list, message counter, and clear current message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей текущего сообщения
         return JSONResponse({'tg_messages': render_fragment(request, 'tg_messages.html'),

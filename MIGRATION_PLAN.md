@@ -316,13 +316,20 @@
   > `tools/telegram_qr_login.py` (там `os.chdir` убран); абсолютный `SESSION_NAME` остается как есть, при запуске из
   > корня файл прежний. Разделение данных профилей (медиа, экспорт) - в перспективных работах.
   > Коммит: `refactor: take the profile from the environment and make project paths absolute`.
-- [ ] P5. Мелочи: `logging` вместо `print`, побочные эффекты в list comprehension. (Переменная цикла
+- [x] P5. Мелочи: `logging` вместо `print`, побочные эффекты в list comprehension. (Переменная цикла
   `tg_message_group` в сохранении исправлена на шаге 7 в FastAPI-версии; Flask-эталон удален на шаге 12.)
   Также: `tg_get_messages` (смена диалога) очищает детали только в JSON, но не `tg_handler.current_state.message_details`
   (после перезагрузки страницы видны детали сообщения из прежнего диалога): добавить `message_details = None` и тест.
   Также: `DbTag.updated_at` только задается при создании тега (`default=datetime.now`) и нигде не обновляется, используется
   лишь для сортировки списка тегов (`UPDATED_AT_ASC/DESC` в `configs/config.py`): переименовать в `created_at` (столбец,
   константы сортировки, тест `test_tag_routes.py`). Тип столбца к этому моменту уже UTC (P13a).
+  > Решения (блок 6, обсуждено): `print` в `telegram_handler.close()` заменен на `logger.warning`; консольный дубль
+  > строки статуса в `utils.py` оставлен как есть (`print`: единственный след операции после перезапуска), скрипты
+  > `tools/` не трогали. Побочных эффектов в list comprehension в коде нет (исправлено раньше). `tg_get_messages`
+  > теперь сбрасывает `message_details = None` (тест `test_get_messages_clears_details`). `DbTag.updated_at` →
+  > `created_at`, константы `TagsSorting.CREATED_AT_ASC/DESC`; подписи в интерфейсе не менялись. Миграции нет: базу
+  > пользователь пересоздает (старая БД с `updated_at` не откроется без пересоздания). Тесты: 376 passed.
+  > Коммит: `refactor: rename DbTag.updated_at to created_at and clear details on dialog change`.
 - [x] P6. Кнопка «Сохранить в БД» (`tg_action_bar.html`) недоступна, пока нет открытого диалога и отмеченных
   сообщений (сейчас роут при этом ничего не делает, но кнопка нажимается).
   > Решения (блок 4, обсуждено): условие одно - отмечено хотя бы одно сообщение (отмеченное значит диалог открыт);

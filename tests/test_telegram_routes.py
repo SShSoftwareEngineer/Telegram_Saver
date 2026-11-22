@@ -46,6 +46,15 @@ def test_get_dialogs(client: TestClient, tg_handler: SimpleNamespace):
     assert len(tg_handler.current_state.dialog_list) == 2
 
 
+def test_get_messages_clears_details(client: TestClient, tg_handler: SimpleNamespace):
+    """Opening another dialog clears the message details in the state, not only in the response
+    Открытие другого диалога очищает детали сообщения в состоянии, а не только в ответе"""
+    tg_handler.current_state.message_details = make_details()
+    tg_handler.get_message_group_list.return_value = [make_message_group(42, 1)]
+    assert client.get('/tg_messages/42').status_code == 200
+    assert tg_handler.current_state.message_details is None
+
+
 @pytest.mark.parametrize('dialog_id', [CHANNEL_ID, -123456789, 987654321])
 def test_get_messages(client: TestClient, tg_handler: SimpleNamespace, dialog_id: int):
     """Messages of a dialog, including negative IDs (channels, groups), become the current state"""

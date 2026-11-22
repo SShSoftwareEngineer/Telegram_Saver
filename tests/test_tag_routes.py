@@ -325,4 +325,4 @@ def test_tag_sorting_by_last_update(client: TestClient, db_handler: DatabaseHand
     response = client.post('/db_tag_all_sorting', data={SORTING: '2'})
     assert response.status_code == 200
     assert option('first') in response.json()[ALL_TAGS] and option('second') in response.json()[ALL_TAGS]
-    assert db_handler.current_state.all_tags_list_sorting['field'] == 'updated_at'
+    assert db_handler.current_state.all_tags_list_sorting['field'] == 'created_at'

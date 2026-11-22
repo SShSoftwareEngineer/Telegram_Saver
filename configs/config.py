@@ -313,8 +313,8 @@ class TagsSorting:
     NAME_DESC = {'field': 'name', 'order': 'desc'}
     USAGE_COUNT_ASC = {'field': 'usage_count', 'order': 'asc'}
     USAGE_COUNT_DESC = {'field': 'usage_count', 'order': 'desc'}
-    UPDATED_AT_ASC = {'field': 'updated_at', 'order': 'asc'}
-    UPDATED_AT_DESC = {'field': 'updated_at', 'order': 'desc'}
+    CREATED_AT_ASC = {'field': 'created_at', 'order': 'asc'}
+    CREATED_AT_DESC = {'field': 'created_at', 'order': 'desc'}
 
 
 if __name__ == '__main__':

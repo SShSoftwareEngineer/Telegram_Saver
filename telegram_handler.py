@@ -15,6 +15,7 @@ The asyncio event loop of the Telegram client runs in a background daemon thread
 (see TelegramHandler._run and TelegramHandler.close).
 """
 
+import logging
 from asyncio import new_event_loop, run_coroutine_threadsafe
 from mimetypes import guess_extension
 from sys import maxsize
@@ -32,6 +33,8 @@ from dotenv import dotenv_values
 from configs.config import BASE_DIR, ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
 from utils import parse_date_string, clean_file_path, format_files_report, local_day_start, status_messages, to_local
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -627,7 +630,7 @@ class TelegramHandler:
                 try:
                     self._run(disconnect_client())
                 except Exception as error:
-                    print(f'Telegram client disconnect error: {error}')
+                    logger.warning('Telegram client disconnect error: %s', error)
             self._loop.call_soon_threadsafe(self._loop.stop)
             self._loop_thread.join(timeout=5)
         if not self._loop.is_running():

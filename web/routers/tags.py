@@ -149,7 +149,7 @@ def db_tag_all_sorting(form: FormDep) -> JSONResponse:
             case '1':
                 db_handler.current_state.all_tags_list_sorting = TagsSorting.USAGE_COUNT_DESC
             case '2':
-                db_handler.current_state.all_tags_list_sorting = TagsSorting.UPDATED_AT_DESC
+                db_handler.current_state.all_tags_list_sorting = TagsSorting.CREATED_AT_DESC
             case _:
                 db_handler.current_state.all_tags_list_sorting = TagsSorting.NAME_ASC
         # Get a list of tags sorted by the current sorting method settings
