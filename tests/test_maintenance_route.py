@@ -290,3 +290,75 @@ def test_maintenance_creates_database_backup(client: TestClient, db_handler: Dat
     finally:
         connection.close()
     assert any('Database backup created' in line for line in report())
+
+
+def make_old_backups(work_dir: Path, count: int) -> Path:
+    """Creates `count` backups dated 2020-01-01..: the bigger the number, the newer the backup / Создает `count` копий
+    с датами 2020 года: чем больше номер, тем новее копия"""
+    backup_dir = work_dir / ProjectDirs.data_base_dir / 'backup'
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    stem, suffix = ProjectDirs.data_base_file.stem, ProjectDirs.data_base_file.suffix
+    for number in range(1, count + 1):
+        (backup_dir / f'{stem}_2020-01-{number:02d} 00_00_00{suffix}').write_bytes(b'old')
+    return backup_dir
+
+
+def test_maintenance_keeps_only_the_latest_backups(client: TestClient, work_dir: Path,
+                                                   monkeypatch: pytest.MonkeyPatch):
+    """With the limit 3 the new backup and the two newest old ones stay, the rest are deleted and reported"""
+    monkeypatch.setattr(GlobalConst, 'db_backup_keep', 3)
+    backup_dir = make_old_backups(work_dir, 5)
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    names = sorted(path.name for path in backup_dir.iterdir())
+    assert len(names) == 3
+    assert any('2020-01-05' in name for name in names) and any('2020-01-04' in name for name in names)
+    assert not any('2020-01-03' in name for name in names)
+    assert any('Old backups removed: 3' in line for line in report())
+
+
+def test_maintenance_does_not_delete_backups_within_the_limit(client: TestClient, work_dir: Path,
+                                                              monkeypatch: pytest.MonkeyPatch):
+    """Not more backups than the limit: nothing is deleted and nothing is reported"""
+    monkeypatch.setattr(GlobalConst, 'db_backup_keep', 3)
+    backup_dir = make_old_backups(work_dir, 2)
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert len(list(backup_dir.iterdir())) == 3
+    assert not any('Old backups removed' in line for line in report())
+
+
+def test_backup_rotation_does_not_touch_foreign_files(work_dir: Path):
+    """Only `<stem>_<date><suffix>` files are rotated: other names, other extensions and directories stay"""
+    backup_dir = make_old_backups(work_dir, 4)
+    stem, suffix = ProjectDirs.data_base_file.stem, ProjectDirs.data_base_file.suffix
+    foreign = [backup_dir / f'{stem}_manual{suffix}', backup_dir / f'{stem}_2020-01-01 00_00_00.txt',
+               backup_dir / 'notes.db']
+    for path in foreign:
+        path.write_bytes(b'mine')
+    (backup_dir / f'{stem}_2019-01-01 00_00_00{suffix}').mkdir()  # A directory with a backup-like name
+
+    deleted, failed = service.rotate_database_backups(backup_dir, stem, suffix, keep=2)
+
+    assert (deleted, failed) == (2, [])
+    assert all(path.exists() for path in foreign)
+    assert (backup_dir / f'{stem}_2019-01-01 00_00_00{suffix}').is_dir()
+    assert len(list(backup_dir.glob(f'{stem}_2020-*{suffix}'))) == 2
+
+
+def test_backup_rotation_reports_files_it_cannot_delete(work_dir: Path, monkeypatch: pytest.MonkeyPatch):
+    """A file that cannot be deleted is reported and the rotation goes on with the other files"""
+    backup_dir = make_old_backups(work_dir, 4)
+    stem, suffix = ProjectDirs.data_base_file.stem, ProjectDirs.data_base_file.suffix
+    locked = f'{stem}_2020-01-01 00_00_00{suffix}'
+    original_unlink = Path.unlink
+
+    def fake_unlink(self: Path, *args, **kwargs):
+        if self.name == locked:
+            raise PermissionError('in use')
+        return original_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'unlink', fake_unlink)
+    deleted, failed = service.rotate_database_backups(backup_dir, stem, suffix, keep=2)
+
+    assert deleted == 1 and failed == [locked]

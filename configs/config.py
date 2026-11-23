@@ -119,6 +119,7 @@ class GlobalConst:
     dialog_no_title = '<No Title>'  # Title for dialogs without a title
     status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report
     maintenance_max_downloads = 100  # Maximum number of missing files that maintenance downloads in one run
+    db_backup_keep = 10  # Number of the latest database backups that maintenance keeps (older ones are deleted)
 
 
 class DialogTypes(Enum):
