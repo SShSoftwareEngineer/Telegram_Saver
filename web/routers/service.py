@@ -3,6 +3,7 @@ Service routes: the main page, the status bar, the database and file system main
 Служебные маршруты: главная страница, строка статуса, сервисное обслуживание базы данных и файловой системы.
 """
 
+import glob
 import sqlite3
 from contextlib import closing
 from datetime import datetime
@@ -21,6 +22,38 @@ router = APIRouter()
 # Paths (relative to the media directory) that maintenance could not download: they are not retried until the restart
 # Пути (относительно директории медиа), которые сервисное обслуживание не смогло скачать: до перезапуска не повторяются
 _failed_downloads: set[str] = set()
+
+
+def rotate_database_backups(backup_dir: Path, stem: str, suffix: str, keep: int) -> tuple[int, list[str]]:
+    """
+    Keeps only the `keep` latest backups in `backup_dir`, deletes the older ones. Only the files named
+    `<stem>_<date><suffix>` (the date in `GlobalConst.file_datetime_format`) are considered: other files are not touched.
+    The age is taken from the date in the name, not from the file time: copying a file does not change its place.
+    Returns the number of deleted files and the names of the files that could not be deleted.
+    Оставляет в `backup_dir` только `keep` последних резервных копий, более старые удаляет. Учитываются только файлы
+    `<stem>_<дата><suffix>` (дата в формате `GlobalConst.file_datetime_format`): остальные не трогаются. Возраст берется
+    из даты в имени, а не из времени файла: копирование файла не меняет его место в порядке.
+    Возвращает число удаленных файлов и имена файлов, которые удалить не удалось.
+    """
+    backups: list[tuple[datetime, Path]] = []
+    for path in backup_dir.glob(f'{glob.escape(stem)}_*{glob.escape(suffix)}'):
+        if not path.is_file():
+            continue
+        try:
+            backups.append((datetime.strptime(path.name.removeprefix(f'{stem}_').removesuffix(suffix),
+                                              GlobalConst.file_datetime_format), path))
+        except ValueError:
+            continue  # Not a backup made by maintenance / Не копия, созданная сервисным обслуживанием
+    backups.sort(key=lambda item: item[0], reverse=True)
+    deleted = 0
+    failed: list[str] = []
+    for _, path in backups[max(keep, 1):]:  # At least the latest backup is always kept / Последняя копия остается всегда
+        try:
+            path.unlink()
+            deleted += 1
+        except OSError:
+            failed.append(path.name)
+    return deleted, failed
 
 
 @router.get('/status_output')
@@ -171,7 +204,8 @@ def db_database_maintenance(request: Request) -> JSONResponse:
         # 3. Database backup / Резервное копирование базы данных
         database_file = Path(ProjectDirs.data_base_file)
         database_backup = (Path(ProjectDirs.data_base_dir) / 'backup' /
-                           f'{database_file.stem}_{datetime.now().strftime("%Y-%m-%d %H_%M_%S")}{database_file.suffix}')
+                           f'{database_file.stem}_{datetime.now().strftime(GlobalConst.file_datetime_format)}'
+                           f'{database_file.suffix}')
         # Create backup file directories if they do not exist / Создаем директории резервного файла, если их нет
         database_backup.parent.mkdir(parents=True, exist_ok=True)
         # The database works in the WAL mode: the recent commits live in the `-wal` file, so copying the main file
@@ -181,6 +215,14 @@ def db_database_maintenance(request: Request) -> JSONResponse:
         with closing(sqlite3.connect(database_file)) as source, closing(sqlite3.connect(database_backup)) as target:
             source.backup(target)
         status_messages.mess_update('', 'Database backup created')
+        # Delete the oldest backups over the limit / Удаляем самые старые копии сверх лимита
+        deleted_backups, failed_backups = rotate_database_backups(
+            database_backup.parent, database_file.stem, database_file.suffix, GlobalConst.db_backup_keep)
+        if deleted_backups:
+            status_messages.mess_update('', f'Old backups removed: {deleted_backups} '
+                                            f'(the latest {GlobalConst.db_backup_keep} are kept)')
+        if failed_backups:
+            status_messages.mess_update('', f'Could not remove old backups: {", ".join(failed_backups)}')
         # 4. Update the list of dialogs in the database, sorting them according to current settings and removing the
         # unused ones / Обновление списка диалогов в базе данных с сортировкой по текущим установкам и удалением
         # неиспользуемых
