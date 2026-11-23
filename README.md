@@ -134,13 +134,18 @@ Telethon is mocked: the tests do not connect to Telegram.
 
 ## Roadmap
 
-- [ ] Filter of archived messages without tags (to tag recently saved messages)
+The detailed plan (in Russian, with the order of work) is in [`ROADMAP.md`](ROADMAP.md). In short, in this order:
+
+- [ ] Backup rotation, filter of archived messages without tags, one style of the controls
+- [ ] Data per profile, preview cache, chat avatars
+- [ ] Download a video before saving, attachments of the `Unknown` type
+- [ ] Frontend optimization (an explicit contract between the routes and the page)
+- [ ] Alembic migrations (`BigInteger` ID columns), source chats of "Saved Messages" (list of chats and a filter),
+  deleting messages from "Saved Messages" in Telegram itself
+- [ ] Export to JSON/CSV/PDF
+- [ ] Scheduled backups, Docker
 - [ ] Fully asynchronous `TelegramHandler` and async SQLAlchemy sessions instead of the global lock
-- [ ] PostgreSQL and Alembic migrations (`BigInteger` ID columns)
-- [ ] Source chats of "Saved Messages": list of chats and a filter by the original chat
-- [ ] Download a video before saving, delete a message in Telegram itself
-- [ ] Export to JSON/CSV/PDF, scheduled backups, Docker
-- [ ] Multi-user mode (state per session instead of global)
+- [ ] Optional: pagination of the archive list, PostgreSQL, multi-user mode (state per session instead of global)
 
 ## License
 

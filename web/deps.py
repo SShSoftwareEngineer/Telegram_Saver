@@ -22,8 +22,8 @@ from utils import format_files_report, to_local
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Temporary solution: one lock for the database and the global state (see MIGRATION_PLAN.md)
-# Временное решение: один замок на базу данных и глобальное состояние (см. MIGRATION_PLAN.md)
+# Temporary solution: one lock for the database and the global state (see ROADMAP.md, F18)
+# Временное решение: один замок на базу данных и глобальное состояние (см. ROADMAP.md, F18)
 state_lock = Lock()
 
 

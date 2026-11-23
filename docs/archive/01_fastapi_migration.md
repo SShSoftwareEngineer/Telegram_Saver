@@ -1,0 +1,277 @@
+# Архив: миграция Telegram Saver с Flask на FastAPI
+
+Архивный файл: миграция выполнена полностью (шаги 0-13), в рабочем плане не нужен, оставлен для справки: решения,
+причины и результаты каждого шага. Как работали: один шаг = один чат, новый чат читал `CLAUDE.md` и план, делал
+только свой шаг, отмечал `[x]` и выдавал текст коммита. Ветка: `fastapi-migration`.
+
+Дальше: [исправления после миграции](02_post_migration_fixes.md). Слова «перспективные работы» в тексте означают
+рабочий файл [`ROADMAP.md`](../../ROADMAP.md) (в нем своя нумерация `F1`-`F26`).
+
+## Принятые решения
+- **Telethon: sync-роуты (`def`) + общий замок** (`threading.Lock`) вокруг вызовов БД и глобального состояния
+  (на первых порах и вокруг Telethon). Замок - временное решение, его замена - в перспективных работах.
+- **`telegram_handler.py`**: бизнес-логику не меняем, но работу с Telethon оптимизируем: ленивое создание
+  `tg_handler`/`db_handler` (шаг 3) и event loop Telethon в фоновом потоке (шаг 3.5). Каждый такой случай
+  согласуется заранее. Полностью async-версия `TelegramHandler` - в перспективных работах (см. конец файла).
+- **Транзакции БД**: хелпер `transaction()` с `rollback` (шаг 3); применяется в роутах с составной
+  записью (шаги 7-9), а обработчик ошибок (шаг 5) только вызывает `rollback()`. Существующие `commit()` в `database_handler.py` не переписываем.
+- Однопользовательское приложение: глобальное состояние (`current_state`, фильтры) сохраняем как есть.
+- Новый код живёт в пакете `web/` (`main.py`, `deps.py`, `routers/`). Старый Flask в `telegram_saver.py`
+  остаётся эталоном до шага 13; после него `telegram_saver.py` - тонкий запускатель uvicorn,
+  чтобы `python telegram_saver.py` работал как в README.
+- Группировка маршрутов через `APIRouter` (аналог Blueprint), без `prefix=`, чтобы URL остались прежними:
+  `routers/telegram.py` (`tg_*`), `routers/database.py` (`db_*` сообщения), `routers/tags.py`,
+  `routers/service.py` (`/`, `/status_output`, `maintenance`). Подключаются через `include_router` в `web/main.py`.
+- В миграцию входит: git/секреты, зависимости, lifespan, сессия БД, обработка ошибок, тесты, README.
+  После неё отдельными коммитами: XSS, CSRF/Origin, защита maintenance.
+- Имена полей форм динамические (`FormCfg`) - читаем `await request.form()`, не `Form(...)`.
+- Нужна замена механизму Flask `url_for` (в 6 шаблонах): **предложение** - глобал `url_for` в Jinja2
+  с Flask-совместимой сигнатурой (`filename`→`path`, `_external`), шаблоны не правим. Подтвердить на шаге 5.
+
+## Шаги миграции
+
+### [x] 0. Подготовка
+- Закоммитить в `master` текущие правки (`pyproject.toml`, опечатка в TODO), создать ветку `fastapi-migration`.
+- Критерий: `git status` чист, ветка создана.
+- Коммит (master): `chore: update pyproject metadata and fix TODO typo`
+
+### [x] 1. Git и секреты (репозиторий публичный - срочно)
+> Выполнено: `.gitignore`, `git rm --cached`. Очистку истории (`filter-repo` + force push) выполняет пользователь.
+- `.gitignore`: исправить `config/.env` → `configs/.env`; добавить `database/*.db`, `database/backup/`.
+- `git rm --cached configs/.env database/telegram_archive.db`; убедиться, что `.env.example` остаётся.
+- Очистка истории от этих файлов: `git filter-repo --invert-paths` + force push. Команды даёт Claude,
+  выполняет пользователь (перед этим - резервная копия клона).
+- Критерий: `git log --all -- database/telegram_archive.db configs/.env` пуст; в .env были только шаблоны,
+  в БД - данные сообщений.
+- Коммит: `chore: stop tracking .env and sqlite database, fix .gitignore`
+
+### [x] 2. Зависимости
+> Выполнено: зависимости добавлены (верхние границы `<1.0.0`), `requirements.txt` удалён (README описывает только Poetry),
+> mypy исправлен. `poetry.lock` в `.gitignore` - в коммит не попадает.
+- `pyproject.toml`: добавить `fastapi`, `uvicorn`, `jinja2`, `python-multipart`, `python-dateutil`, `cryptg`;
+  dev: `httpx`, `pytest`. Flask пока оставить. Решить судьбу `requirements.txt` (удалить или генерировать
+  из poetry; в нём лишние `Flask-SocketIO` и пакет `dotenv`).
+- Заодно (согласовано на шаге 0): `[tool.mypy] python_version = ">=3.14"` → `"3.14"` (mypy не принимает диапазон).
+- Критерий: `poetry install` проходит, `python -c "import fastapi, uvicorn, dateutil"` работает.
+- Коммит: `build: add fastapi stack and missing dependencies`
+
+### [x] 3. Ленивая инициализация Telethon и БД
+> Выполнено: фабрики `get_tg_handler()`/`get_db_handler()` (с замком от гонки при создании), `check_same_thread=False`,
+> `DatabaseHandler.transaction()`. Проверено одноразовым скриптом без сети; ручной прогон Flask - за пользователем.
+- `tg_handler = TelegramHandler()` и `db_handler = DatabaseHandler()` при импорте заменить на фабрики с кэшем
+  `get_tg_handler()`/`get_db_handler()` (первый вызов создаёт объект, дальше возвращается он же; создание
+  защищено от гонки). В `lifespan` (шаг 4) - по одному вызову каждой. Логику Telethon не менять.
+- Старый Flask-код продолжает работать: в `telegram_saver.py` вместо импорта готовых объектов -
+  `tg_handler = get_tg_handler()` и `db_handler = get_db_handler()` в начале модуля (остальные ~97 обращений
+  не меняются).
+- БД: `connect_args={"check_same_thread": False}` в `create_engine` (сессия создаётся в одном потоке, используется
+  в потоках пула; защищает её общий замок); хелпер `DatabaseHandler.transaction()` - контекстный менеджер
+  (`commit` при успехе, `rollback` при исключении, исключение пробрасывается). Только добавить, не применять.
+- Критерий: `import telegram_handler, database_handler` не подключается к Telegram, не запрашивает код и не
+  создаёт БД; одноразовый скрипт с замоканными `TelegramClient` и БД во временной папке подтверждает, что
+  повторный вызов `get_*_handler()` возвращает тот же объект; Flask-версия работает (ручной прогон пользователем).
+- Коммит: `refactor: initialize telegram and database handlers lazily`
+
+### [x] 3.5. Event loop Telethon в фоновом потоке
+> Выполнено: loop и daemon-поток создаются в `TelegramHandler.__init__`, хелпер `_run(coro)` (без тайм-аута, с защитой
+> от вызова из потока loop), `close()` (отключение клиента через корутину внутри loop, остановка и закрытие loop).
+> Telethon 1.45 игнорирует `loop=`: `client.loop` - loop, запущенный в вызывающем потоке. Поэтому `start()` и
+> `disconnect()` вызываются внутри корутин в потоке loop (иначе вход идёт на чужом loop). В Flask - `atexit`.
+> Проверено одноразовыми скриптами без сети; ручной прогон Flask - за пользователем.
+- Сейчас loop Telethon не крутится между вызовами `run_until_complete` (нет keepalive и фонового переподключения),
+  а вызовы из разных потоков конфликтуют («event loop is already running»).
+- Loop запускается один раз при создании `TelegramHandler` через `run_forever()` в отдельном потоке (daemon).
+  ~10 вызовов `loop.run_until_complete(coro)` заменить на хелпер `_run(coro)` =
+  `asyncio.run_coroutine_threadsafe(coro, loop).result()`. Логика Telethon не меняется.
+- Остановка: корректное закрытие клиента и loop при завершении (в `lifespan` на шаге 4, в Flask - `atexit`).
+- Замок остаётся вокруг БД и состояния; вокруг Telethon он больше не обязателен, но снимается только отдельным
+  решением (перспективные работы).
+- Критерий: Flask-версия работает, как раньше (ручной прогон пользователем); параллельные запросы не дают
+  «loop already running».
+- Коммит: `refactor: run telethon event loop in a background thread`
+
+### [x] 4. Каркас FastAPI
+> Выполнено: пакет `web/` (`main.py`, `deps.py`, `routers/service.py`). Глобальный `url_for` подтверждён, значения
+> путей кодируются как во Flask. `/status_output` без замка (страница опрашивает его во время долгих операций).
+> Временные заглушки (501) `tg_get_messages`, `tg_get_details` (`routers/telegram.py`) и `db_get_details`
+> (`routers/database.py`) нужны только для `url_for` в шаблонах - заменить реальными роутами на шагах 6 и 8.
+> Запускать `uvicorn` с одним воркером и без `--reload`. Проверено одноразовыми скриптами без сети (HTML `/` с данными
+> и без, JSON `/status_output`, статика, `lifespan`); ручной запуск `uvicorn web.main:app` - за пользователем.
+- `web/main.py`: `FastAPI(lifespan=...)`, инициализация обработчиков в `lifespan`, общий замок в `web/deps.py`.
+- Jinja2Templates, `StaticFiles` для `/static` и `/media_storage` (папка создаётся при старте),
+  контекстный процессор (12 переменных из `inject_field_names`), глобальный `url_for` (см. решения).
+- Роуты `/` и `/status_output`.
+- Критерий: `uvicorn web.main:app` стартует, `/` отдаёт ту же страницу, что Flask, `/status_output` - тот же JSON.
+- Коммит: `feat: add FastAPI app skeleton with lifespan, templates and static files`
+
+### [x] 5. Обработка ошибок и тестовая инфраструктура
+> Выполнено: `web/errors.py` (`register_error_handlers`): ошибки отдаются как `{"error": ...}` (404/405/422/500).
+> Обработчик 500 - обычная `def` (Starlette запускает её в потоке): под `state_lock` делает `rollback()`, пишет ошибку
+> в статус-бар (с `html.escape`, т.к. строка идёт в `innerHTML`). `tests/`: autouse-фикстура `chdir` во временную папку
+> (пути `ProjectDirs` относительные - после P4 заменить на подмену путей), заглушка `TelegramHandler`, настоящий
+> `DatabaseHandler` на временном SQLite, подмены через `monkeypatch`. `client` (`with TestClient`, исключения
+> пробрасываются) и `error_client` (`raise_server_exceptions=False`). 11 тестов зелёные без сети.
+> `transaction()` в обработчике не применяется (там нужен только `rollback()`) - он для шагов 7-9.
+> Предупреждение pytest: `httpx` с `starlette.testclient` устарел, рекомендуется `httpx2` - вынесено в перспективные работы.
+- Exception handlers: ошибки возвращают JSON (JS ждёт JSON), статусы и логирование вместо `print`.
+  Обработчик вызывает `db_handler.session.rollback()`, чтобы одна ошибка не оставляла сессию в состоянии
+  `PendingRollbackError` до перезапуска.
+- `tests/conftest.py`: TestClient, замоканные `TelegramHandler` и тестовая SQLite-БД в памяти/tmp.
+- Тесты для `/`, `/status_output`, `/media_storage/...`.
+- Критерий: `pytest` зелёный без сети и без Telegram.
+- Коммит: `feat: add JSON error handlers and test infrastructure`
+
+### [x] 6. Роуты Telegram (чтение и фильтры)
+> Выполнено: 5 роутов в `web/routers/telegram.py` (заглушки 501 заменены), все `def` под `state_lock` на весь запрос
+> (включая вызовы Telethon). В `web/deps.py`: `render_fragment(request, name)` (аналог `render_template`: строка для
+> JSON, с контекстным процессором), `FormDep` (`Annotated` + async-зависимость `read_form`: форма читается через
+> `await request.form()`, роут остается `def`), `form_str` (None для отсутствующего поля, как `request.form.get`).
+> Отличия от Flask (согласованы): `dialog_id: int` - нечисловой ID дает 422 в JSON вместо 500 (отрицательные ID
+> каналов и групп проходят); убрана недостижимая ветка `if message_group_id else None` в `tg_get_details`.
+> Тесты: `tests/test_telegram_routes.py` (статус, ключи JSON, отрицательные ID, 422, фильтры, ошибка Telegram) и
+> ВРЕМЕННЫЙ `tests/test_flask_parity.py` - сравнение JSON и HTML с Flask на одном состоянии-заглушке (удалить на шаге 12).
+> Узкие замки (сеть вне замка) и `db_handler` как зависимость - в перспективных работах.
+- `web/routers/telegram.py`: `/tg_dialogs`, `/tg_messages/{dialog_id}`, `/tg_details/{dialog_id}/{message_group_id}`,
+  `/tg_dialog_apply_filters`, `/tg_message_apply_filters`. Учесть отрицательные `dialog_id`.
+- Тесты каждого роута: ответ, статус, ключи JSON.
+- Критерий: ответы совпадают с Flask-версией по структуре.
+- Коммит: `feat: migrate telegram read and filter routes to FastAPI`
+
+### [x] 7. Сохранение сообщений в БД
+> Выполнено: `/tg_save_selected_message_to_db` в `web/routers/telegram.py` (`def` под `state_lock`). Одна транзакция
+> `db_handler.transaction()` на группу сообщений (как во Flask: коммит на группу; ошибка откатывает только текущую
+> группу), `session.begin()` убран (сессия начинает транзакцию сама), `flush()` перед рендером оставлен (не фиксация,
+> откат возможен). `saved_to_db = True` ставится после выхода из `with`. Блок обновления списка диалогов БД и
+> пересчета `saved_to_db` вынесен из цикла (один проход после него; закрыт пункт P5 про перекрытие `tg_message_group`).
+> Если диалог еще не открывался (список сообщений `None`), роут возвращает пустой JSON (во Flask была ошибка 500;
+> страница при пустом JSON ничего не обновляет). Блок выполняется только при непустом выборе (`if selected_messages_ids:`), как раньше во Flask; запросов
+> `message_group_exists` стало меньше.
+> В `web/deps.py`: `render_fragment(..., **context)` (явные значения перекрывают контекстный процессор; шаблон
+> `export_message.html` использует `constants` и `tg_file_types` из него) и `form_list` (аналог `getlist`).
+> Тесты: `tests/test_save_route.py` (5 тестов: сохранение двух из трех групп с повторяющимся полем, пустой выбор,
+> пересчет флагов, повторное сохранение без дубликатов, ошибка на второй группе). В тесте ошибки откат обеспечивают
+> оба слоя (`transaction()` и обработчик 500 из шага 5), поэтому `transaction()` отдельно проверен в
+> `tests/test_database_transaction.py` (3 теста: commit, rollback с повторным выбросом, ошибка БД). Сравнения с Flask
+> в `test_flask_parity.py` для этого роута нет (роут пишет на диск и в БД, Flask-приложение берет те же заглушки).
+- `/tg_save_selected_message_to_db` (самый большой роут): повторяющееся поле формы,
+  рендер `export_message.html` вне запроса, транзакция с откатом при ошибке (`db_handler.transaction()`).
+- Тест с замоканным скачиванием файлов.
+- Коммит: `feat: migrate save-to-database route to FastAPI`
+
+### [x] 8. Роуты БД
+> Выполнено: 4 роута в `web/routers/database.py` (заглушка 501 заменена), все `def` под `state_lock`. Отличия от Flask
+> (согласованы): (1) удаление сообщений через ORM (`session.delete`) в `db_handler.transaction()`: массовый
+> `DELETE` во Flask падал с `IntegrityError` на группах с тегами (у связи с тегами нет `ondelete`); (2) после удаления
+> вызывается `get_all_tag_list()` (тег без сообщений удаляется автоматически), а в ответ добавлены списки
+> `db_all_detail_tags` и очищенное `db_current_message_tags` (раньше тег висел до следующей операции с тегами); (3) папка
+> экспорта создается перед записью HTML (во Flask первый экспорт без файлов падал с `FileNotFoundError`). Случай `None`:
+> теги сообщения без тегов теперь `[]` (отдельный коммит `82b5886`). Несуществующий ID в `/db_details` - 500 в JSON, как во
+> Flask. Flask-эталон не менялся: баг удаления остается в нем до шага 12. Тесты: `tests/test_database_routes.py`
+> (12 тестов, без сравнения с Flask: роуты пишут в БД и на диск). Замеченное (поведение Flask, исправление перенесено
+> на шаг 9): при применении фильтров поле «Message Tags» (`db_current_message_tags`) не очищается, хотя детали
+> сообщения очищаются.
+- `/db_message_apply_filters`, `/db_details/{message_group_id}` (случай `None`),
+  `/db_export_selected_message_to_html`, `/db_delete_selected_from_database`.
+- Коммит: `feat: migrate database message routes to FastAPI`
+
+### [x] 9. Роуты тегов
+> Выполнено: 5 роутов в `web/routers/tags.py` (все `def` под `state_lock`); общий хелпер `run_tag_action(form, method,
+> *, rename)` вместо пяти копий разбора формы (метод обработчика передается несвязанным, например
+> `DatabaseHandler.add_tag_to_message_group`). Отличия от Flask (согласованы): (1) пустой `selected_message_group_id`
+> (детали закрыты): вместо 500 (`NoResultFound`) роут ничего не делает (оба списка `null`) и пишет в статус-бар
+> «No message selected. Select a message first.»; ID несуществующего сообщения остается 500 в JSON (после сброса ID
+> получить его нечем); (2) `selected_message_group_id` сбрасывается в `''` при закрытии деталей: в
+> `/db_message_apply_filters` и `/db_delete_selected_from_database`; (3) `/db_message_apply_filters` очищает поле
+> «Message Tags» (`db_current_message_tags: ''`); (4) URL `/db_all_tag_sorting` → `/db_tag_all_sorting` (роут, шаблон и
+> Flask-эталон). В `database_handler.py` (по просьбе, поведение прежнее, проверено тестами до и после): методы тегов
+> разложены на приватные `_get_message_group`, `_attach_tag`, `_detach_tag`, `_tag_selects` без `commit()`, а публичные
+> методы выполняются одной транзакцией `transaction()`: `update` и `update_everywhere` стали атомарными (раньше
+> несколько коммитов подряд). Это касается и Flask-эталона. Тесты: `tests/test_tag_methods.py` (16, в т.ч. откат при
+> сбое), `tests/test_tag_routes.py` (24), обновлены `tests/test_database_routes.py`.
+> Проверено без сети; ручной прогон тегов в браузере - за пользователем (на шаге 11).
+- `/db_tag_add`, `/db_tag_remove`, `/db_tag_update`, `/db_tag_update_everywhere`, `/db_tag_all_sorting`;
+  общий хелпер вместо пяти копий разбора формы. Случай `selected_message_group_id is None`: `add_tag_to_message_group`
+  падает на `.one()` с `NoResultFound` (воспроизведено в консоли Flask). Заодно (согласовано): URL
+  `/db_all_tag_sorting` → `/db_tag_all_sorting` (в роуте и в `templates/db_detail_tags.html`); функция во Flask уже
+  переименована в `db_tag_all_sorting`. Также (согласовано): `/db_message_apply_filters` очищает поле «Message Tags»
+  (`'db_current_message_tags': ''`) вместе с деталями (+ тест); решить, сбрасывать ли `selected_message_group_id`
+  при закрытии деталей.
+- Коммит: `feat: migrate tag routes to FastAPI`
+
+### [x] 10. Сервисное обслуживание
+> Выполнено. Логика maintenance пересмотрена (согласовано, меняет поведение): очистка диска переехала в удаление
+> сообщений, а maintenance ничего не удаляет. (1) `/db_delete_selected_from_database`: после `commit` удаляются файлы
+> сообщений и оставшиеся пустыми каталоги вверх до `media_dir` (дата → диалог, `media_dir` остается; непустой каталог
+> останавливает подъем; путь вне `media_dir` не затрагивается; ошибка файла - в статус-бар, запрос не падает, файл
+> остается); пересчитываются `saved_to_db` открытого диалога Telegram, в ответ добавляется `tg_messages` (если диалог
+> открыт). Помощники `delete_media_files`, `limit_list` в `utils.py`, константа `GlobalConst.status_list_max_items = 20`.
+> Общих файлов у записей нет (`file_path` уникален, в имени есть `grouped_id` и `message_id`), счетчик в имени не нужен.
+> Текст `confirm` в `my_scripts.js` дополнен «and their files from disk». (2) `/db_database_maintenance`
+> (`web/routers/service.py`): отчет в статус-бар о файлах без записи в БД (имена с размерами, не более 20 строк, затем
+> «...», итог: количество и размер; ничего не удаляется), докачка отсутствующих файлов (кроме `.html`), бэкап БД,
+> обновление списков диалогов и тегов. Исправлено: (a) докачка раньше никогда не срабатывала - во Flask `get_file_by_local_path`
+> получал путь с префиксом `media_storage/`, а в БД пути относительные; (b) бэкап через `shutil.copy2` терял свежие
+> данные: БД в режиме WAL (`PRAGMA journal_mode=WAL`), коммиты лежат в `-wal`; теперь `sqlite3` backup API. Flask-эталон не
+> менялся: оба дефекта остаются в нем до шага 12. Тесты: `tests/test_media_files.py` (9), `tests/test_maintenance_route.py`
+> (7), `tests/test_database_routes.py` (+6, откат теперь проверяет и файл). Ручной прогон в браузере - за пользователем
+> (шаг 11).
+- `/db_database_maintenance`: бэкап, докачка, отчет о файлах без записей, обновление списков.
+- Удаление сообщений: заодно удаляются файлы и пустые каталоги.
+- Коммиты: `feat: delete message files and empty folders on message deletion` и
+  `feat: migrate database maintenance route to FastAPI`
+
+### [x] 11. Запуск через uvicorn и ручная проверка
+> Выполнено. Ручной прогон пользователя с реальным Telethon (БД пересоздана): вкладки Telegram и БД, сохранение нескольких
+> групп, экспорт, удаление (файлы и пустые каталоги), maintenance, двойные клики (очередь на замке, повторных операций нет),
+> остановка кнопкой Stop (чистое завершение `lifespan`). Пропущено по решению пользователя: Ctrl+C в обычном терминале (в
+> окне Run PyCharm Ctrl+C не доходит до процесса) и вход с нуля без `*.session`. Регрессия миграции найдена одна (дефект
+> шага 10, путь HTML, см. ниже) и исправлена; остальные найденные баги и пожелания записаны как P9-P19 и в перспективные
+> работы (баги Flask-версии, к миграции не относятся).
+- Flask-код перенесен без правок в `legacy_flask.py` (эталон для `tests/test_flask_parity.py`, удалить на шаге 12);
+  `telegram_saver.py` → запускатель `uvicorn.run(app, host="127.0.0.1", port=5000)` (объект, а не строка импорта;
+  `python telegram_saver.py` работает как в README).
+- Ручной прогон в браузере с реальным Telethon (запускает пользователь): все кнопки интерфейса, включая сохранение
+  и экспорт, а также незапланированные действия (двойные клики, пустой выбор, смена диалога посреди операции,
+  перезагрузка страницы, остановка по Ctrl+C во время работы).
+- Найдено при ручной проверке (дефект шага 10, исправлен здесь): путь HTML-файла сообщения писался в БД с префиксом
+  `media_storage/` (у остальных файлов путь относительный), поэтому удаление сообщения оставляло HTML и непустые каталоги, а
+  maintenance считал HTML «файлами без записи» и не находил их. Теперь путь относительный (`web/routers/telegram.py`);
+  экспорт не копирует HTML самого сообщения (как раньше). Существующие записи БД правятся один раз:
+  `UPDATE files SET file_path = substr(file_path, 15) WHERE file_path LIKE 'media_storage/%'` (после резервной копии, при
+  остановленном приложении). Flask-эталон не менялся. Тест: `tests/test_save_route.py` (+1).
+- Критерий: чек-лист ниже пройден целиком; отметка `[x]` и коммит - после ручной проверки.
+
+| Блок | Что проверять |
+|---|---|
+| Страница | `/`, статус-бар (`/status_output`), статика, `/media_storage/...` |
+| Telegram | список чатов, фильтры чатов, выбор чата, фильтры сообщений, детали |
+| Сохранение | одна и несколько групп, медиа, повторное сохранение, HTML-файл, пересчет флагов |
+| БД | фильтры, детали, экспорт в HTML, удаление (файлы и пустые папки) |
+| Теги | добавить, удалить, переименовать, переименовать везде, сортировка, без открытого сообщения |
+| Сервис | maintenance: отчет о файлах без записей, докачка, бэкап |
+| Запуск | старт, запрос кода входа, остановка по Ctrl+C |
+- Коммиты: `fix: store HTML file paths relative to the media directory` и `feat: run application via uvicorn`
+
+### [x] 12. Удаление Flask
+> Выполнено: удалены `legacy_flask.py` и `tests/test_flask_parity.py`, зависимость `flask` из `pyproject.toml`
+> (`requirements.txt` пользователь удалил раньше); в `README.md` и подсказке `templates/db_filters.html` Flask заменен на
+> FastAPI; в `.gitignore` отдельные файлы `Notes/` заменены строкой `/Notes/`. Комментарии «как во Flask» оставлены
+> намеренно (поясняют отличия поведения). `poetry.lock` обновляет пользователь (`poetry lock`). Ручной прогон - за
+> пользователем.
+- Удалить Flask-код и зависимость, `requirements.txt`, неиспользуемое, а также временный `tests/test_flask_parity.py`.
+- Критерий: `grep -ri flask` по проекту чист, тесты и ручной прогон проходят.
+- Коммит: `refactor: remove Flask code and dependency`
+
+### [x] 13. README и документация
+> Выполнено: `README.md` переписан (Usage, установка и запуск, получение `API_ID`/`API_HASH`, таблица переменных `.env`,
+> профили, остановка, тесты, Roadmap из перспективных работ; выдуманная статистика и устаревшие разделы убраны).
+> `configs/config.py`: docstring модуля и комментарий к `PROFILE`; **`PROFILE = ''`** (рабочий профиль, `configs/.env`);
+> формат даты `%d-%m-%Y %H:%M:%S` (секунды оставлены, лишний пробел убран). Проверены docstring модулей
+> (`telegram_handler.py`, `database_handler.py`, `utils.py` - исправлены, добавлен русский перевод), длинные строки >120.
+> `configs/.env.example`: `APP_API_ID/APP_API_HASH` → `API_ID/API_HASH` (так читает код и `tools/telegram_qr_login.py`);
+> то же нужно сделать в `configs/.env` вручную (секреты, не трогал). `.gitignore`: `*.session`, `*.session-journal`.
+> TODO из `Notes/legacy_flask.py` перенесены в перспективные работы или закрыты (см. ниже).
+- Переписать Usage (остался от другого проекта), установка и запуск через uvicorn, инструкция по получению
+  параметров Telegram, актуализировать docstring в `configs/config.py`, формат даты (`%H:%M :%S`). Остановка: Ctrl+C
+  в терминале; в окне Run PyCharm - кнопка Stop (Ctrl+C туда не доходит).
+- Коммит: `docs: update README for FastAPI and uvicorn`
