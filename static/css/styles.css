@@ -373,49 +373,39 @@ button[data-needs-checked]:disabled {
     border-radius: 4px;
 }
 
-/* Two-state switch made of radio buttons (the tag filter mode) / Переключатель на два положения из радиокнопок */
-.segmented-radio {
-    position: relative; /* the hidden radio buttons stay inside / скрытые радиокнопки остаются внутри блока */
+/* A group of ordinary radio buttons in one line; wraps if the labels do not fit the width
+   Группа обычных радиокнопок в одну строку; переносится, если метки не помещаются по ширине */
+.radio-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 12px;
+}
+
+/* Radio buttons under a field with a clear button: two columns across the width of the field itself (the clear
+   button and the gap are cut off), so the second button starts a little left of the middle of the field
+   Радиокнопки под полем с кнопкой очистки: две колонки по ширине самого поля (кнопка очистки и зазор отрезаны), так что
+   вторая кнопка начинается чуть левее середины поля */
+.radio-row-under-field {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* two equal cells: symmetric whatever the labels are / две равные ячейки */
-    margin-top: 4px;
-    border: 1px solid #767676;
-    border-radius: 4px;
-    overflow: hidden;
+    grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+    margin-right: calc(1.25rem + 5px); /* the width of .X-button and the gap of .control-X-button */
 }
 
-/* The radio buttons stay in the page (the script reads the value, the keyboard works), only the labels are seen
-   Радиокнопки остаются на странице (скрипт читает значение, работает клавиатура), видны только метки */
-.segmented-radio input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
+/* A radio button with its label: never split between lines / Радиокнопка с меткой: не разрывается между строками */
+.radio-option {
+    white-space: nowrap;
 }
 
-.segmented-radio label {
-    padding: 2px 0;
-    text-align: center;
-    cursor: pointer;
-    background-color: #f5f5f5;
-}
-
-.segmented-radio label ~ label {
-    border-left: 1px solid #767676;
-}
-
-.segmented-radio input:checked + label {
-    background-color: #ddd;
-    font-weight: bold;
-}
-
-.segmented-radio input:focus-visible + label {
-    outline: 2px solid #4a90d9;
-    outline-offset: -2px;
-}
 /* Select element / Элемент выбора Select */
 .select-element {
     padding: 2px;
     border-radius: 4px;
+}
+
+/* The special "(No tags)" item of the list of all tags (messages without tags) / Особый пункт списка всех тегов */
+.no-tags-option {
+    font-weight: bold;
 }
 
 

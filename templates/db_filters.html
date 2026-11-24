@@ -30,22 +30,30 @@ Variables:
 
 
 {# Database messages sort field radiobuttons / Выбор поля сортировки #}
-<p class="group-label">Messages sorting field</p>
-<div id="{{ form_cfg.sorting_field }}">
-    <input type="radio" id="db_mess_sort_field_0" name="{{ form_cfg.sorting_field }}" value="0" checked>
-    <label for="db_mess_sort_field_0">Sort by date</label><br>
-    <input type="radio" id="db_mess_sort_field_1" name="{{ form_cfg.sorting_field }}" value="1">
-    <label for="db_mess_sort_field_1">Sort by chat name</label>
+<p class="group-label">Sort messages by</p>
+<div id="{{ form_cfg.sorting_field }}" class="radio-row">
+    <span class="radio-option">
+        <input type="radio" id="db_mess_sort_field_0" name="{{ form_cfg.sorting_field }}" value="0" checked>
+        <label for="db_mess_sort_field_0">Date</label>
+    </span>
+    <span class="radio-option">
+        <input type="radio" id="db_mess_sort_field_1" name="{{ form_cfg.sorting_field }}" value="1">
+        <label for="db_mess_sort_field_1">Chat name</label>
+    </span>
 </div>
 
 
 {# Database messages sort order radiobuttons / Выбор порядка сортировки #}
 <p class="group-label">Messages sort order</p>
-<div id="{{ form_cfg.sorting_order }}">
-    <input type="radio" id="db_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0">
-    <label for="db_mess_reverse_0">Ascending</label><br>
-    <input type="radio" id="db_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1" checked>
-    <label for="db_mess_reverse_1">Descending</label>
+<div id="{{ form_cfg.sorting_order }}" class="radio-row">
+    <span class="radio-option">
+        <input type="radio" id="db_mess_reverse_0" name="{{ form_cfg.sorting_order }}" value="0">
+        <label for="db_mess_reverse_0">Ascending</label>
+    </span>
+    <span class="radio-option">
+        <input type="radio" id="db_mess_reverse_1" name="{{ form_cfg.sorting_order }}" value="1" checked>
+        <label for="db_mess_reverse_1">Descending</label>
+    </span>
 </div>
 
 
@@ -86,7 +94,7 @@ Variables:
 {# Filtering database messages by tags / Фильтр по тегам сообщений #}
 <label for="{{ form_cfg.tag_query }}" class="group-label">Filter by tags</label>
 <div class="control-X-button">
-    {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: python; fastapi; HTML" %}
+    {% set placeholder_text = "Keywords separated by \"" ~ constants.tag_filter_separator ~ "\". For example: travel; recipes; work" %}
     <textarea class="filter_tags-textarea"
               id="{{ form_cfg.tag_query }}"
               name="{{ form_cfg.tag_query }}"
@@ -100,11 +108,16 @@ Variables:
 </div>
 
 {# Tag filter mode radiobuttons: any keyword (OR) or every keyword (AND) / Режим фильтра тегов: любое слово или все #}
-<div id="{{ form_cfg.tag_mode }}" class="segmented-radio">
-    <input type="radio" id="db_tag_mode_0" name="{{ form_cfg.tag_mode }}" value="0" checked>
-    <label for="db_tag_mode_0" title="Any of the keywords">OR</label>
-    <input type="radio" id="db_tag_mode_1" name="{{ form_cfg.tag_mode }}" value="1">
-    <label for="db_tag_mode_1" title="All of the keywords">AND</label>
+<div id="{{ form_cfg.tag_mode }}" class="radio-row radio-row-under-field">
+    <span class="radio-option">
+        <input type="radio" id="db_tag_mode_0" name="{{ form_cfg.tag_mode }}" value="0" checked>
+        <label for="db_tag_mode_0" title="Any of the keywords">OR</label>
+    </span>
+    <span class="radio-option">
+        <input type="radio" id="db_tag_mode_1" name="{{ form_cfg.tag_mode }}" value="1">
+        <label for="db_tag_mode_1"
+           title="Every keyword; with &quot;{{ constants.no_tags_name }}&quot; the messages without tags are added">AND</label>
+    </span>
 </div>
 
 
