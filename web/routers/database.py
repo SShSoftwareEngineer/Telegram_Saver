@@ -190,8 +190,7 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
                     'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
                     'db_details': '',
                     FormCfg.db_detail_tags['curr_message_tags']: '',
-                    FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_select_content_string(
-                        db_handler.all_tags_list, 'id', 'name'),
+                    FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select(),
                     FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
                         db_handler.current_state.dialog_list, 'dialog_id', 'title')}
         # Deleted messages are no longer saved: recalculate the save flags of the opened Telegram dialog and redraw

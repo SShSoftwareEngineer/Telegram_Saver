@@ -3,7 +3,7 @@ Display details of the selected message from the database.
 Variables:
   - form_cfg: configuration of form controls for filter processing
   - form_ctrl_cfg: class of configurations for all form controls
-  - db_all_tags: list of all tags in the database
+  - db_all_tags_select: the <option> items of the list of all tags ("(No tags)" first, then the tags of the database)
   - constants: global constants
 #}
 
@@ -119,9 +119,7 @@ Variables:
             size="14"
             multiple
             onchange="selectTagForEdit(this, '{{ form_cfg.edit_tag_name }}', '{{ form_cfg.old_tag_name }}');">
-        {% for db_tag in db_all_tags %}
-            <option value="{{ db_tag.id }}">{{ db_tag.name }}</option>
-        {% endfor %}
+        {{ db_all_tags_select }}
     </select>
     <button type="button"
             title="Clears the selection in the list"

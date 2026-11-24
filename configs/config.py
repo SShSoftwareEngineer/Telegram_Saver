@@ -115,6 +115,8 @@ class GlobalConst:
     select_in_telegram = 'select_in_telegram'  # Key name for message selection in Telegram for HTML templates
     select_in_database = 'select_in_database'  # Key name for message selection in database for HTML templates
     tag_filter_separator = ';'  # Separator for tags in the filter tags field
+    no_tags_name = '(No tags)'  # Name of the special "tag" of the messages without tags (not stored, no real tag has it)
+    no_tags_id = 0  # Value of its option in the list of all tags (the IDs of real tags start from 1)
     me_dialog_title = 'Saved Messages (Favorites)'  # Title for the "Saved Messages" dialog
     dialog_no_title = '<No Title>'  # Title for dialogs without a title
     status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report

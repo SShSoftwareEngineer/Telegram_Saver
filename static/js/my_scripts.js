@@ -64,9 +64,12 @@ function getSelectTexts(id) {
 // several tags (or none) both are cleared, so "Update tag" never renames a tag the user did not point at
 // Заполняет поле имени тега и его скрытое старое имя из списка тегов, когда в нем выбран ровно один тег; при нескольких
 // тегах (или ни одном) оба очищаются, чтобы «Update tag» не переименовал тег, на который пользователь не указывал
+// The special "(No tags)" item (class `no-tags-option`) is not a tag: it only goes to the filter, so it never fills the
+// fields / Особый пункт «(No tags)» (класс `no-tags-option`) не тег: он только переносится в фильтр, поля не заполняет
 function selectTagForEdit(select, editFieldId, oldFieldId) {
-    const texts = Array.from(select.selectedOptions).map(option => option.text);
-    const name = texts.length === 1 ? texts[0] : '';
+    const options = Array.from(select.selectedOptions);
+    const texts = options.map(option => option.text);
+    const name = texts.length === 1 && !options[0].classList.contains('no-tags-option') ? texts[0] : '';
     setInputValue(editFieldId, name);
     setInputValue(oldFieldId, name);
     // The selection changed: refresh the buttons that need a selected row / Выбор изменился: обновляем кнопки,

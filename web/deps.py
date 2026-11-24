@@ -11,6 +11,7 @@ from urllib.parse import quote
 from fastapi import Depends, Request
 from jinja2 import pass_context
 from jinja2.runtime import Context
+from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
 from configs.config import GlobalConst, MessageFileTypes, FormCfg
@@ -55,7 +56,7 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
         'db_mess_date_from': filter_date(db_handler.message_sort_filter.date_from),
         'db_mess_date_to': filter_date(db_handler.message_sort_filter.date_to),
         'db_all_dialog_list': db_handler.all_dialogues_list,
-        'db_all_tags': db_handler.all_tags_list,
+        'db_all_tags_select': Markup(db_handler.get_all_tags_select()),
         'db_messages': db_handler.current_state.message_group_list,
         'db_details': db_handler.current_state.message_details,
     }

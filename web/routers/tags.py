@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.datastructures import FormData
 from configs.config import FormCfg, GlobalConst, TagsSorting
 from utils import status_messages
-from database_handler import DatabaseHandler, TagChange, get_db_handler
+from database_handler import DatabaseHandler, TagChange, get_db_handler, is_no_tags_name
 from web.deps import FormDep, form_list, form_str, state_lock
 
 router = APIRouter()
@@ -25,6 +25,7 @@ router = APIRouter()
 TagMethod = Callable[..., TagChange]
 
 NO_MESSAGES_CHECKED = 'No messages checked. Check the messages first.'
+RESERVED_TAG_NAME = f'"{GlobalConst.no_tags_name}" is a reserved name: it is not a tag and cannot be added or changed.'
 
 
 def message_group_id(checkbox_value: str) -> str:
@@ -74,7 +75,11 @@ def run_tag_action(form: FormData, method: TagMethod, *, rename: bool, report: s
         # The open message is not the target of the action: it only gets its tag field refreshed if it is affected
         # Открытое сообщение не цель действия: ему только обновляется поле тегов, если оно затронуто
         open_message_id = db_handler.current_state.selected_message_group_id
-        if tag_names and not everywhere and not checked_ids:
+        if any(is_no_tags_name(name) for name in tag_names):
+            # "(No tags)" is only an item of the tag filter, not a tag: nothing can be done with it
+            # «(No tags)» - только пункт фильтра по тегам, а не тег: с ним ничего делать нельзя
+            status_messages.mess_update('Changing message tags', RESERVED_TAG_NAME, new_list=True)
+        elif tag_names and not everywhere and not checked_ids:
             status_messages.mess_update('Changing message tags', NO_MESSAGES_CHECKED, new_list=True)
         elif tag_names:
             # One transaction for all the checked messages; get the lists of the open message tags and of all tags
@@ -157,5 +162,4 @@ def db_tag_all_sorting(form: FormDep) -> JSONResponse:
         db_handler.all_tags_list = db_handler.get_all_tag_list()
         # Update the list of all tags in the database form
         # Обновление списка всех тегов в форме базы данных
-        return JSONResponse({form_cfg['all_detail_tags']:
-                             db_handler.get_select_content_string(db_handler.all_tags_list, 'id', 'name')})
+        return JSONResponse({form_cfg['all_detail_tags']: db_handler.get_all_tags_select()})

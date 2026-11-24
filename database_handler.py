@@ -12,6 +12,7 @@ class DbMessageGroup(Base): a class to represent a message group in the database
 class UtcDateTime(TypeDecorator): a column type for date and time stored in UTC
 utc_now: a function returning the current moment as an aware datetime in UTC
 class DbTag(Base): a class to represent a tag associated with a message group in the database.
+is_no_tags_name: a function telling whether a name is the special "(No tags)" name of the tag filter
 class TagChange: the result of a tag operation for the page (the number of changed groups, the SELECT strings)
 class DbCurrentState: a class representing the current state of the database client
 class DbMessageSortFilter: a class to represent sorting and filtering of message groups in the database.
@@ -35,6 +36,14 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship,
 from sqlalchemy.types import TypeDecorator
 from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
 from utils import format_files_report, local_day_start, parse_date_string, status_messages, to_local, to_utc
+
+
+def is_no_tags_name(name: str) -> bool:
+    """
+    True if the name is the special "(No tags)" name (ignoring spaces around and the case): such a tag cannot be created
+    Истина, если имя - особое «(No tags)» (без учета пробелов по краям и регистра): такой тег создать нельзя
+    """
+    return name.strip().casefold() == GlobalConst.no_tags_name.casefold()
 
 
 class UtcDateTime(TypeDecorator):  # pylint: disable=too-many-ancestors,abstract-method
@@ -705,6 +714,21 @@ class DatabaseHandler:
         query_result = self.session.execute(select_stmt).scalars().all()
         return list(query_result)
 
+    def get_all_tags_select(self) -> str:
+        """
+        The content of the list of all tags for the page: the special "(No tags)" item (ID 0, bold, always the first one,
+        whatever the sorting is), then the tags of `all_tags_list`. The item is not a tag of the database: it only
+        goes to the tag filter.
+        Содержимое списка всех тегов для страницы: особый пункт «(No tags)» (ID 0, жирный, всегда первый, при любой
+        сортировке), затем теги из `all_tags_list`. Пункт не тег БД: он только переносится в фильтр по тегам.
+        """
+
+        no_tags_option = (f'<option value="{GlobalConst.no_tags_id}" class="no-tags-option" '
+                          f'title="Not a tag: in the filter it adds the messages without tags to the result" >'
+                          f'{escape(GlobalConst.no_tags_name)}</option>')
+        tag_options = self.get_select_content_string(self.all_tags_list, 'id', 'name')
+        return f'{no_tags_option}\n{tag_options}' if tag_options else no_tags_option
+
     def get_message_group_list(self) -> list[DbMessageGroup]:
         """
         Getting a list of message groups based on filters and sorting
@@ -735,7 +759,14 @@ class DatabaseHandler:
             select_stmt = select_stmt.where(DbMessageGroup.plain_text.ilike(
                 f'%{escape_like(self.message_sort_filter.message_query)}%', escape=LIKE_ESCAPE_CHAR))
         # Filter by message tags / Фильтр по тегам сообщений
-        if self.message_sort_filter.tag_query:
+        # The special keyword "(No tags)" adds the messages without tags to the result of the other keywords (or is the
+        # whole result if it is alone); it is not searched in the tag names
+        # Особое слово «(No tags)» добавляет к результату остальных слов сообщения без тегов (или само является всем
+        # результатом, если оно одно); в именах тегов оно не ищется
+        tag_keywords = [keyword for keyword in self.message_sort_filter.tag_query or []
+                        if not is_no_tags_name(keyword)]
+        with_untagged = len(tag_keywords) < len(self.message_sort_filter.tag_query or [])
+        if tag_keywords or with_untagged:
             # Create a list of expressions with conditions for searching for key phrases in tags (a part of a tag,
             # `%`, `_` and `\` are ordinary characters, like in the search by message text)
             # Создаем список выражений с условиями для поиска ключевых фраз в тегах (часть тега, `%`, `_` и `\` -
@@ -746,9 +777,15 @@ class DatabaseHandler:
             # И: каждое слово должно совпасть с каким-либо тегом сообщения (не обязательно с одним и тем же)
             tag_conditions = [DbMessageGroup.tags.any(DbTag.name.ilike(f'%{escape_like(keyword)}%',
                                                                        escape=LIKE_ESCAPE_CHAR))
-                              for keyword in self.message_sort_filter.tag_query]
-            select_stmt = select_stmt.where(
-                and_(*tag_conditions) if self.message_sort_filter.tag_match_all else or_(*tag_conditions))
+                              for keyword in tag_keywords]
+            if tag_conditions:
+                tag_filter = and_(*tag_conditions) if self.message_sort_filter.tag_match_all else or_(*tag_conditions)
+                # With "(No tags)" the untagged messages are added whatever the mode is
+                # С «(No tags)» сообщения без тегов добавляются при любом режиме
+                select_stmt = select_stmt.where(or_(tag_filter, ~DbMessageGroup.tags.any()) if with_untagged
+                                                else tag_filter)
+            else:
+                select_stmt = select_stmt.where(~DbMessageGroup.tags.any())
         # Sort by dialogues / Сортировка по диалогам
         if self.message_sort_filter.sorting_field == self.message_sort_filter.sort_by_title:
             select_stmt = select_stmt.join(DbDialog).order_by(
@@ -938,8 +975,7 @@ class DatabaseHandler:
         current_tags_select = (self.get_select_content_string(current_group.tags, 'id', 'name')
                                if current_group else None)
         self.all_tags_list = self.get_all_tag_list()
-        return TagChange(changed, current_tags_select,
-                         self.get_select_content_string(self.all_tags_list, 'id', 'name'))
+        return TagChange(changed, current_tags_select, self.get_all_tags_select())
 
     def add_tag_to_message_groups(self, tag_name: str, message_group_ids: Iterable[str],
                                   current_group_id: str = '') -> TagChange:

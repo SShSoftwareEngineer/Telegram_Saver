@@ -237,5 +237,4 @@ def db_database_maintenance(request: Request) -> JSONResponse:
         return JSONResponse({
             FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
                 db_handler.current_state.dialog_list, 'dialog_id', 'title'),
-            FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_select_content_string(
-                db_handler.all_tags_list, 'id', 'name')})
+            FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select()})
