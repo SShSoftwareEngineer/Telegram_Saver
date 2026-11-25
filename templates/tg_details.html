@@ -7,6 +7,7 @@ Variables:
   - constants: global constants
   - tg_file_types: Telegram file types
 #}
+{% from 'avatar.html' import avatar %}
 
 
 {% if tg_details %}
@@ -31,7 +32,7 @@ Variables:
         <b>{{ message_date }}</b>
 
         {# Beginning of dialog title / Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ tg_details.dialog_title|truncate(25) }}</span>
+        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(tg_details.dialog_id, tg_details.dialog_title, True) }} {{ tg_details.dialog_title|truncate(25) }}</span>
     </div>
 
     {# Message text / Вывод текста сообщения #}
@@ -46,18 +47,23 @@ Variables:
         <br>
         <div class="media-files-area">
             {% for message_file in tg_details.existing_files %}
+                {# A saved message has its files in the media directory, an unsaved one - previews in the cache #}
+                {# У сохраненного сообщения файлы в директории медиа, у несохраненного - превью в кэше #}
+                {% set in_media = message_file.is_exists() %}
+                {% set file_endpoint = 'media_dir' if in_media else 'cache_dir' %}
+                {% set file_name = message_file.file_path if in_media else message_file.preview_path %}
                 <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
                                 {% else %} media-files-one-column {% endif %}">
 
                     {# Displaying of graphics files / Вывод графических файлов #}
                     {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
-                        <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
+                        <img src="{{ url_for(file_endpoint, filename=file_name) }}"
                              alt="{{ message_file.alt_text }}" class="media-files-container">
                     {% endif %}
 
                     {# Displaying of video files / Вывод видео файлов #}
                     {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video src="{{ url_for('media_dir', filename=message_file.file_path, _external=True) }}"
+                        <video src="{{ url_for(file_endpoint, filename=file_name, _external=True) }}"
                                controls preload="metadata" class="media-files-container">
                             Video is not supported by your browser
                         </video>

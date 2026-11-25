@@ -11,7 +11,7 @@ import html
 import re
 from pathlib import Path
 from fastapi.testclient import TestClient
-from configs.config import FormCfg
+from config import FormCfg
 
 CFG = FormCfg.db_detail_tags
 SCRIPT = Path(__file__).resolve().parent.parent / 'static' / 'js' / 'my_scripts.js'

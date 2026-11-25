@@ -13,7 +13,7 @@ from types import SimpleNamespace
 from typing import Any
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import FormCfg, GlobalConst
+from config import FormCfg, GlobalConst
 from database_handler import DbMessageSortFilter
 import telegram_handler
 from telegram_handler import TgMessageSortFilter
@@ -136,7 +136,7 @@ def test_telegram_handler_creates_its_own_default_filter(monkeypatch: pytest.Mon
 
         async def get_me(self):
             """The account / Аккаунт"""
-            return SimpleNamespace(id=1)
+            return SimpleNamespace(id=1, first_name='Test', last_name=None, username=None)
 
         async def get_dialogs(self):
             """No dialogs / Нет диалогов"""
@@ -147,7 +147,7 @@ def test_telegram_handler_creates_its_own_default_filter(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(telegram_handler, 'TelegramClient', FakeClient)
     monkeypatch.setattr(telegram_handler, 'dotenv_values', lambda *_: {
-        'SESSION_NAME': 'x', 'API_ID': '1', 'API_HASH': 'x', 'PHONE': 'x', 'PASSWORD': 'x'})
+        'API_ID': '1', 'API_HASH': 'x', 'PHONE': 'x', 'PASSWORD': 'x'})
     first, second = telegram_handler.TelegramHandler(), telegram_handler.TelegramHandler()
     try:
         start = local_day_start(GlobalConst.tg_last_days_by_default)

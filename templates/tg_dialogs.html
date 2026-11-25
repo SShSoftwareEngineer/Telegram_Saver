@@ -8,13 +8,16 @@ Variables:
   - tg_file_types: Telegram file types
 #}
 
+{% from 'avatar.html' import avatar %}
+
 {# Displaying a list of Telegram dialogs as hyperlinks / Вывод списка диалогов Telegram в виде гиперссылок #}
-<ul class="dialogs-messages-list">
+<ul class="dialogs-messages-list chat-list">
     {% for tg_dialog in tg_dialogs %}
         <li class="{{ loop.cycle('alternating-lines-white', 'alternating-lines-gray') }}">
             <a href="/tg_messages/{{ tg_dialog.dialog_id }}"
                onclick="loadURL('{{ url_for('tg_get_messages', dialog_id=tg_dialog.dialog_id) }}'); return false;">
-                {{ tg_dialog.title }}
+                {{ avatar(tg_dialog.dialog_id, tg_dialog.title) }}
+                <span class="dialog-title">{{ tg_dialog.title }}</span>
             </a>
         </li>
     {% endfor %}

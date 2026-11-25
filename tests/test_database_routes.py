@@ -13,7 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import (DatabaseHandler, DbCurrentState, DbDialog, DbFile, DbMessageGroup, DbMessageSortFilter,
                               DbTag, message_group_tag_links)
 from utils import status_messages

@@ -10,7 +10,7 @@ name is never renamed.
 import html
 import re
 from fastapi.testclient import TestClient
-from configs.config import FormCfg
+from config import FormCfg
 
 CFG = FormCfg.db_detail_tags
 CLEAR_CALL = re.compile(r'onclick="((?:(?!onclick=)[^"])*?clearFormFields\(\[([^\]]*)\]\))')

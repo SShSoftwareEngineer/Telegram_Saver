@@ -29,9 +29,13 @@
 
 ## Ключевые факты
 - Запуск: `python telegram_saver.py` (запускатель uvicorn, порт 5000) или `uvicorn web.main:app`.
-- Конфиг: `configs/config.py` (`BASE_DIR`, `PROFILE`, `HOST`/`PORT`, `FormCfg`, `ProjectDirs`); секреты в
-  `configs/.env<PROFILE>` (не в git). Профиль - переменная окружения `TELEGRAM_SAVER_PROFILE`; пути `ProjectDirs`
-  абсолютные (в тестах подменяются на временные в `conftest.py`, `media_dir_name` - URL-префикс медиа).
+- Конфиг: `config.py` в корне (`BASE_DIR`, `PROFILE`, `HOST`/`PORT`, `FormCfg`, `ProjectDirs`), выбор и создание
+  профилей - `profiles.py`. Профиль = каталог `profiles/<имя профиля>/` (не в git): `.env` (секреты), `telegram.session`,
+  `profile.json` (ID аккаунта, сверяется при входе), `database/` (БД и `backup/`), `media_storage/`,
+  `exported_messages/`, `cache/` (превью `previews/`, аватарки `_avatars/<dialog_id>/<photo_id>.jpg`; maintenance его
+  не сверяет, старше 30 дней чистится при старте). Имя профиля - `--profile` или `TELEGRAM_SAVER_PROFILE` (запускатель
+  выставляет сам), иначе единственный каталог или меню. URL `/media_storage` и `/cache` не зависят от профиля. Пути
+  `ProjectDirs` абсолютные (в тестах подменяются на временные в `conftest.py`).
 - Файлы: `telegram_handler.py`, `database_handler.py`, `utils.py` (`status_messages`, `format_files_report`),
   `web/` (роуты и `deps.py` с глобалами Jinja), `templates/`, `static/js/my_scripts.js`.
 - Интерфейс: роуты отдают JSON, ключи = `id` элементов (`updateElementsFromResponse`). Кнопки, которым нужен выбор:

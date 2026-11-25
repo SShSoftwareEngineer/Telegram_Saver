@@ -13,7 +13,7 @@ from collections.abc import Callable
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from starlette.datastructures import FormData
-from configs.config import FormCfg, GlobalConst, TagsSorting
+from config import FormCfg, GlobalConst, TagsSorting
 from utils import status_messages
 from database_handler import DatabaseHandler, TagChange, get_db_handler, is_no_tags_name
 from web.deps import FormDep, form_list, form_str, state_lock

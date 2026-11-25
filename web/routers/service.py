@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from configs.config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DbFile, get_db_handler
 from telegram_handler import get_tg_handler
 from utils import limit_list, status_messages

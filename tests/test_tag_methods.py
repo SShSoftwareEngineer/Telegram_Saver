@@ -10,7 +10,7 @@ check that an operation on several groups is one transaction.
 from datetime import datetime
 import pytest
 from sqlalchemy import func, select
-from configs.config import DialogTypes
+from config import DialogTypes
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbMessageGroup, DbTag, message_group_tag_links
 
 

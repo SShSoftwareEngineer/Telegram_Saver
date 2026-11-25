@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import MessageFileTypes, ProjectDirs
+from config import MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler
 from utils import status_messages
 
@@ -113,7 +113,7 @@ def test_index_highlights_own_saved_messages(client: TestClient, db_handler: Dat
     def saved_group(number: int, sender_id: int | None) -> SimpleNamespace:
         return SimpleNamespace(grouped_id=f'42_{number}', date=datetime(2026, 1, number, 3, 4, 5), plain_text=f'Text {number}',
                                files=[SimpleNamespace(file_type_id=MessageFileTypes.IMAGE.type_id)],
-                               sender_id=sender_id, dialog=SimpleNamespace(title='Chat'))
+                               sender_id=sender_id, dialog=SimpleNamespace(dialog_id=1, title='Chat'))
 
     monkeypatch.setattr(db_handler.current_state, 'message_group_list', [
         saved_group(1, 1), saved_group(2, 2), saved_group(3, -1001234567891), saved_group(4, None)])

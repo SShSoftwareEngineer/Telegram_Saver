@@ -11,7 +11,7 @@ from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
-from configs.config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from utils import clean_file_path, delete_media_files, limit_list, status_messages
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler, DbMessageGroup
@@ -129,9 +129,8 @@ def db_export_selected_message_to_html(  # pylint: disable=too-many-locals
                                        export_date=datetime.now().strftime(GlobalConst.message_datetime_format))
         export_dir = Path(ProjectDirs.export_dir)
         export_dir.mkdir(parents=True, exist_ok=True)
-        with open(export_dir / f'{export_date_time} - {len(exported_messages)} messages.html', 'w',
-                  encoding='utf-8') as cf:
-            cf.write(html_content)
+        (export_dir / f'{export_date_time} - {len(exported_messages)} messages.html').write_text(
+            html_content, encoding='utf-8')
         # Status bar update / Обновление строки статуса
         status_messages.mess_update('', f'{len(export_messages_id)} messages exported to HTML file')
         # Updating the form to uncheck the exported messages

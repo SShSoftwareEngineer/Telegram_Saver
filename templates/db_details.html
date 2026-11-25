@@ -7,6 +7,7 @@ Variables:
   - constants: global constants
   - db_file_types: Telegram file types
 #}
+{% from 'avatar.html' import avatar %}
 
 
 {% if db_details %}
@@ -23,7 +24,7 @@ Variables:
         <b>{{ message_date }}</b>
 
         {# Beginning of dialog title / Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_details.dialog_title|truncate(constants.truncated_title_length) }}</span>
+        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(db_details.dialog_id, db_details.dialog_title, True) }} {{ db_details.dialog_title|truncate(constants.truncated_title_length) }}</span>
     </div>
 
     {# Message text / Вывод текста сообщения #}

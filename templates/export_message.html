@@ -2,7 +2,8 @@
 Export one saved message from the database.
 Variables:
   - date: message date
-  - dialog_title: dialog title
+  - dialog_id, dialog_title: dialog ID and title
+  - avatar_uri: the avatar of the dialog as a `data:` address, or None (a circle with the initials is drawn)
   - html: safe HTML of the message text (built by render_message_html)
   - tags: list of the message tags
   - files_report: summary line of the attachments (format_files_report)
@@ -49,6 +50,23 @@ Variables:
             text-align: center;
             margin-top: 5px;
         }
+        /* Avatar of the chat, or a circle with the initials / Аватарка чата или круг с инициалами */
+        .avatar {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            object-fit: cover;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        .avatar-stub {
+            color: #ffffff;
+            font-size: 9px;
+            font-weight: bold;
+            line-height: 20px;
+            text-align: center;
+        }
         /* Message text formatting / Форматирование текста сообщения */
         blockquote {
             margin: 6px 0;
@@ -74,7 +92,10 @@ Variables:
     <b>{{ date }}</b>
 
     {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
-    <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ dialog_title|truncate(constants.truncated_title_length) }}</span>
+    <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp;
+        {%- if avatar_uri %} <img class="avatar" src="{{ avatar_uri }}" alt="">
+        {%- else %} <span class="avatar avatar-stub" style="background-color: {{ avatar_color(dialog_id) }}">{{ avatar_initials(dialog_title) }}</span>
+        {%- endif %} {{ dialog_title|truncate(constants.truncated_title_length) }}</span>
 </div>
 
 {# Displaying message tags / Вывод тегов сообщения #}

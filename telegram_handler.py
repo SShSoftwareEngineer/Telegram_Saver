@@ -16,7 +16,8 @@ The asyncio event loop of the Telegram client runs in a background daemon thread
 """
 
 import logging
-from asyncio import new_event_loop, run_coroutine_threadsafe
+import shutil
+from asyncio import Semaphore, gather, new_event_loop, run_coroutine_threadsafe
 from mimetypes import guess_extension
 from sys import maxsize
 from threading import Event, Lock, Thread, current_thread
@@ -30,11 +31,20 @@ from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize
     PhotoSizeProgressive, MessageMediaWebPage
 from telethon import TelegramClient
 from dotenv import dotenv_values
-from configs.config import BASE_DIR, ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes
-from utils import parse_date_string, clean_file_path, format_files_report, local_day_start, status_messages, to_local
+from config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, ensure_profile_selected
+from profiles import read_profile_info, write_profile_info
+from utils import (parse_date_string, clean_file_path, format_files_report, local_day_start, remove_empty_dirs,
+                   status_messages, to_local)
 from message_renderer import render_message_html, plain_text_to_html, render_link_html
 
 logger = logging.getLogger(__name__)
+
+
+class ProfileAccountError(RuntimeError):
+    """
+    The logged-in Telegram account is not the one the profile belongs to (the launcher reports it as a message)
+    Вошедший аккаунт Telegram не тот, которому принадлежит профиль (запускатель сообщает об этом сообщением)
+    """
 
 
 @dataclass
@@ -48,6 +58,8 @@ class TgDialog:
         unread_count (int): number of unread messages
         last_message_date (datetime | None): date and time of last message
         type (DialogTypes): dialog type
+        photo_id (int | None): ID of the current photo (avatar) of the chat, None if it has no photo
+        entity (Any): Telethon entity of the chat (to download the avatar)
     """
 
     dialog_id: int
@@ -74,6 +86,11 @@ class TgDialog:
         self.last_message_date = dialog.date if dialog.date else None  # type: ignore
         self.type = TgDialog.set_type(dialog.is_channel, dialog.is_group, dialog.is_user)
         self.dialog_dir = clean_file_path(f'{self.title}_{self.dialog_id}')
+        # The photo ID comes with the dialog list, so it is known without a request to Telegram
+        # ID фото приходит вместе со списком диалогов, поэтому известен без запроса к Telegram
+        self.entity = getattr(dialog, 'entity', None)
+        photo_id = getattr(getattr(self.entity, 'photo', None), 'photo_id', None)
+        self.photo_id = photo_id if isinstance(photo_id, int) else None
 
     @staticmethod
     def set_type(is_channel: bool, is_group: bool, is_user: bool) -> DialogTypes:
@@ -244,6 +261,23 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
         Проверяет, существует ли файл в файловой системе
         """
         return (Path(ProjectDirs.media_dir) / self.file_path).exists() if self.file_path else False
+
+    @property
+    def preview_path(self) -> str:
+        """
+        The path of the preview of the file relative to the cache directory (`previews/<the path in the media
+        directory>`): saving a message moves the file from the cache to the media directory under the same path
+        Путь превью файла относительно директории кэша (`previews/<путь в директории медиа>`): при сохранении сообщения
+        файл переносится из кэша в директорию медиа по тому же пути
+        """
+        return f'previews/{self.file_path}' if self.file_path else ''
+
+    def is_cached(self) -> bool:
+        """
+        Checks whether the preview of the file exists in the cache
+        Проверяет, существует ли превью файла в кэше
+        """
+        return (Path(ProjectDirs.cache_dir) / self.preview_path).exists() if self.file_path else False
 
     @staticmethod
     def get_self_file_name(date: datetime, file_type: MessageFileTypes, message_grouped_id: str,
@@ -542,6 +576,7 @@ class TelegramHandler:
         Инициализирует обработчик сообщений Telegram.
         """
 
+        ensure_profile_selected()
         # Load Telegram connection settings from file / Загружаем настройки подключения к Telegram из файла
         self._connection_settings = dotenv_values(ProjectDirs.telegram_settings_file)
         # The handler's own message filter with the defaults (the last days, newest first), like the database handler;
@@ -566,10 +601,10 @@ class TelegramHandler:
             # so every call that touches client.loop must be made from inside our loop thread
             # Telethon игнорирует аргумент loop: client.loop - это loop, запущенный в вызывающем потоке,
             # поэтому все вызовы, которые обращаются к client.loop, делаем из потока нашего loop
-            # The session file is looked up from the project root, not from the current directory (an absolute
-            # SESSION_NAME stays as it is)
-            # Файл сессии ищется от корня проекта, а не от текущей директории (абсолютный SESSION_NAME не меняется)
-            self.client = TelegramClient(str(BASE_DIR / self._connection_settings['SESSION_NAME']),
+            # The session file is in the directory of the profile (Telethon adds the `.session` extension)
+            # Файл сессии лежит в каталоге профиля (расширение `.session` добавляет Telethon)
+            ProjectDirs.session_file.parent.mkdir(parents=True, exist_ok=True)
+            self.client = TelegramClient(str(ProjectDirs.session_file),
                                          int(self._connection_settings['API_ID']),
                                          self._connection_settings['API_HASH'])
 
@@ -579,6 +614,8 @@ class TelegramHandler:
             self._run(start_client())
             # Get your Telegram username / Получаем имя пользователя Telegram
             self.me = self._run(self.client.get_me())
+            # The account must be the one the profile belongs to / Аккаунт должен быть тем, которому принадлежит профиль
+            self._check_profile_account()
             # Get a list of all Telegram account dialogues / Получаем список всех диалогов аккаунта Telegram
             self.all_dialogues_list = self.get_dialog_list()
             # Set the current status of the Telegram client / Устанавливаем текущее состояние клиента Telegram
@@ -593,6 +630,25 @@ class TelegramHandler:
             # Не оставляем поток loop работать, если вход не удался или был прерван
             self.close()
             raise
+
+    def _check_profile_account(self) -> None:
+        """
+        Compares the ID of the logged-in account with the one in `profile.json` of the profile; the first login
+        writes the ID and the name there (the name is refreshed on every start). A different account is refused:
+        its messages would get into the archive of another one.
+        Сверяет ID вошедшего аккаунта с ID в `profile.json` профиля; при первом входе ID и имя записываются туда
+        (имя обновляется при каждом запуске). Другой аккаунт не допускается: его сообщения попали бы в архив чужого.
+        """
+
+        saved_id = read_profile_info(ProjectDirs.profile_dir).get('user_id')
+        if saved_id is not None and saved_id != self.me.id:
+            raise ProfileAccountError(
+                f'The profile belongs to the Telegram account {saved_id}, but the session is of {self.me.id}: '
+                f'use another profile or remove {ProjectDirs.profile_info_file}\n'
+                f'Профиль принадлежит аккаунту Telegram {saved_id}, а сессия - аккаунта {self.me.id}: '
+                f'выберите другой профиль или удалите {ProjectDirs.profile_info_file}')
+        name = ' '.join(filter(None, [self.me.first_name, self.me.last_name])) or self.me.username or str(self.me.id)
+        write_profile_info(ProjectDirs.profile_dir, self.me.id, name)
 
     def _run(self, coro):
         """
@@ -690,7 +746,65 @@ class TelegramHandler:
             if self.dialog_sort_filter.check_filters(tg_dialog):
                 dialog_list.append(tg_dialog)
         status_messages.mess_update('Loading chat lists', f'{len(dialog_list)} chats loaded from Telegram')
+        self.sync_avatars(dialog_list)
         return self.dialog_sort_filter.sort_dialog_list(dialog_list)
+
+    def sync_avatars(self, dialog_list: list[TgDialog]) -> None:
+        """
+        Brings the avatars of the chats in the cache (`cache/_avatars/<dialog_id>/<photo_id>.jpg`) up to date: a chat
+        whose current photo is already there is skipped (without a request), otherwise the small photo is downloaded
+        (several at once) and the older files of the chat are deleted. A chat without a photo loses its old avatars.
+        A failure of one avatar does not stop the others: it is tried again on the next load of the list.
+        Приводит аватарки чатов в кэше (`cache/_avatars/<dialog_id>/<photo_id>.jpg`) в актуальное состояние: чат, у
+        которого текущее фото уже есть, пропускается (без запроса), иначе маленькое фото скачивается (по несколько
+        одновременно), а прежние файлы чата удаляются. Чат без фото теряет старые аватарки. Сбой одной аватарки не
+        останавливает остальные: она будет запрошена снова при следующей загрузке списка.
+        Attributes:
+            dialog_list (list[TgDialog]): the chats whose avatars are checked
+        """
+
+        avatars_dir = Path(ProjectDirs.cache_dir) / GlobalConst.cache_avatars_dir
+        jobs: list[tuple[TgDialog, Path]] = []
+        for tg_dialog in dialog_list:
+            dialog_dir = avatars_dir / str(tg_dialog.dialog_id)
+            if tg_dialog.photo_id is None:
+                if dialog_dir.is_dir():
+                    shutil.rmtree(dialog_dir, ignore_errors=True)
+                continue
+            avatar_path = dialog_dir / f'{tg_dialog.photo_id}.jpg'
+            if not avatar_path.exists():
+                jobs.append((tg_dialog, avatar_path))
+        if not jobs:
+            return
+        status_messages.mess_update('', f'Downloading chat avatars: {len(jobs)}')
+
+        async def download_all() -> int:
+            limit = Semaphore(GlobalConst.avatar_parallel_downloads)
+
+            async def download_one(tg_dialog: TgDialog, avatar_path: Path) -> bool:
+                async with limit:
+                    temp_path = avatar_path.with_name(f'{avatar_path.name}.part')
+                    try:
+                        avatar_path.parent.mkdir(parents=True, exist_ok=True)
+                        # The file appears under its final name only when it is complete
+                        # Файл появляется под окончательным именем, только когда он загружен полностью
+                        if not await self.client.download_profile_photo(tg_dialog.entity, file=temp_path,
+                                                                        download_big=False):
+                            return False
+                        temp_path.replace(avatar_path)
+                        for old_path in avatar_path.parent.glob('*.jpg'):
+                            if old_path != avatar_path:
+                                old_path.unlink(missing_ok=True)
+                        return True
+                    except Exception as error:  # pylint: disable=broad-exception-caught
+                        logger.warning('Avatar of the chat %s was not downloaded: %s', tg_dialog.dialog_id, error)
+                        temp_path.unlink(missing_ok=True)
+                        return False
+
+            return sum(await gather(*(download_one(tg_dialog, path) for tg_dialog, path in jobs)))
+
+        downloaded = self._run(download_all())
+        status_messages.mess_update('', f'Chat avatars downloaded: {downloaded} of {len(jobs)}')
 
     def get_message_list(self, dialog_id: int) -> list[Message]:
         """
@@ -819,15 +933,18 @@ class TelegramHandler:
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'saved_to_db': current_message_group.saved_to_db}
-        # Download files, except videos, contained in the detailed message, if they are not in the file system
-        # Скачиваем файлы, кроме видео, содержащиеся в детальном сообщении, если их нет в файловой системе
+        # Download the previews of the files, except videos, contained in the detailed message, to the cache (a saved
+        # message has its files in the media directory, they are not downloaded again)
+        # Скачиваем превью файлов, кроме видео, содержащихся в детальном сообщении, в кэш (у сохраненного сообщения
+        # файлы лежат в директории медиа, повторно они не скачиваются)
         tg_details_files = cast(list[TgFile], tg_details.get('files', []))
         for tg_file in tg_details_files:
-            if not tg_file.is_exists():
+            if not tg_file.is_exists() and not tg_file.is_cached():
                 if tg_file.file_type != MessageFileTypes.VIDEO:
                     status_messages.mess_update('', f'Downloading file {tg_file.file_path}')
-                    self.download_message_file(tg_file)
-        tg_details['existing_files'] = [tg_file for tg_file in tg_details_files if tg_file.is_exists()]
+                    self.download_message_file(tg_file, to_cache=True)
+        tg_details['existing_files'] = [tg_file for tg_file in tg_details_files
+                                        if tg_file.is_exists() or tg_file.is_cached()]
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
@@ -938,34 +1055,48 @@ class TelegramHandler:
         tg_file.file_path = file_path.as_posix()
         return tg_file
 
-    def download_message_file(self, tg_file: TgFile) -> str | None:
+    def download_message_file(self, tg_file: TgFile, to_cache: bool = False) -> str | None:
         """
-        Downloading a message file
-        Загрузка файла сообщения
+        Downloading a message file to the media directory (saving a message), or to the cache of previews. Saving
+        takes a file that is already in the cache from there (moves it), without downloading it again.
+        Загрузка файла сообщения в директорию медиа (сохранение сообщения) или в кэш превью. При сохранении файл,
+        который уже есть в кэше, берется оттуда (переносится), без повторной загрузки.
         Attributes:
             tg_file (TgFile): message file object
+            to_cache (bool): True - download the preview to the cache (`cache/previews/...`), the file is not saved
         Returns:
             str | None: message file path if downloaded, else None
         """
 
         downloading_param = {}
         result = None
+        media_path = Path(ProjectDirs.media_dir) / tg_file.file_path
+        target_path = Path(ProjectDirs.cache_dir) / tg_file.preview_path if to_cache else media_path
         # Checking file existence / Проверка существования файла
-        if not tg_file.is_exists():
-            # Check file size is 0 < tg_file.size <= GlobalConst.max_download_file_size
-            # Проверка размера файла на 0 < tg_file.size <= GlobalConst.max_download_file_size
-            if 0 < tg_file.size <= GlobalConst.max_download_file_size:
-                # Create the appropriate directories, if necessary, and download the file
-                # Создаем соответствующие директории, при необходимости, и загружаем файл
-                (Path(ProjectDirs.media_dir) / tg_file.file_path).parent.mkdir(parents=True, exist_ok=True)
-                downloading_param['message'] = tg_file.message
-                downloading_param['file'] = Path(ProjectDirs.media_dir) / tg_file.file_path
-                if tg_file.file_type == MessageFileTypes.THUMBNAIL:
-                    downloading_param['thumb'] = -1
-                result = self._run(self.client.download_media(**downloading_param))
-        else:
-            # If the file already exists, return its full path / Если файл уже существует, то возвращаем его полный путь
+        if media_path.exists() or (to_cache and target_path.exists()):
+            # If the file already exists, return its path / Если файл уже существует, то возвращаем его путь
             result = tg_file.file_path
+        elif not to_cache and tg_file.is_cached():
+            # The preview of the file is in the cache: move it to the media directory under the same relative path
+            # Превью файла есть в кэше: переносим его в директорию медиа по тому же относительному пути
+            media_path.parent.mkdir(parents=True, exist_ok=True)
+            cached_path = Path(ProjectDirs.cache_dir) / tg_file.preview_path
+            shutil.move(cached_path, media_path)
+            # The directories of the preview are left empty: nothing else would delete them
+            # Каталоги превью остались пустыми: больше их никто не удалит
+            remove_empty_dirs(cached_path.parent, Path(ProjectDirs.cache_dir) / 'previews')
+            result = tg_file.file_path
+        # Check file size is 0 < tg_file.size <= GlobalConst.max_download_file_size
+        # Проверка размера файла на 0 < tg_file.size <= GlobalConst.max_download_file_size
+        elif 0 < tg_file.size <= GlobalConst.max_download_file_size:
+            # Create the appropriate directories, if necessary, and download the file
+            # Создаем соответствующие директории, при необходимости, и загружаем файл
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            downloading_param['message'] = tg_file.message
+            downloading_param['file'] = target_path
+            if tg_file.file_type == MessageFileTypes.THUMBNAIL:
+                downloading_param['thumb'] = -1
+            result = self._run(self.client.download_media(**downloading_param))
         return result
 
     def download_message_file_from_list(self, downloaded_file_list: list) -> str:

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler, DbDialog, DbFile, DbMessageGroup, DbTag
 from utils import OPERATION_DONE, status_messages
 from web.routers import service

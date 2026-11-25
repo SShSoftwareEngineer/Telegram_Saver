@@ -16,6 +16,7 @@ delete_media_files: a function to delete media files and the directories left em
 status_messages: a global instance of StatusMessages
 """
 
+import base64
 import re
 from collections import Counter
 from collections.abc import Iterable
@@ -24,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
-from configs.config import MessageFileTypes
+from config import GlobalConst, MessageFileTypes
 
 # States of the operation shown in the status bar / Состояния операции в строке статуса
 OPERATION_RUNNING = 'running'
@@ -322,6 +323,135 @@ def delete_media_files(media_dir: str | Path, file_paths: Iterable[str]) -> tupl
             except OSError:  # the directory is not empty (or is busy): the directories above are not empty either
                 break
             parent = parent.parent
+    return deleted_count, errors
+
+
+def find_avatar(cache_dir: Path, dialog_id: int) -> str | None:
+    """
+    Finds the avatar of a dialog in the cache: the file `_avatars/<dialog_id>/<photo_id>.jpg` (the newest if there are
+    several). Returns its path relative to the cache directory, or None if there is none (no network, no database).
+    Ищет аватарку диалога в кэше: файл `_avatars/<dialog_id>/<photo_id>.jpg` (самый новый, если их несколько).
+    Возвращает его путь относительно директории кэша или None, если ее нет (без сети и базы данных).
+    """
+
+    avatar_dir = cache_dir / GlobalConst.cache_avatars_dir / str(dialog_id)
+    try:
+        files = [path for path in avatar_dir.glob('*.jpg') if path.is_file()]
+        newest = max(files, key=lambda path: path.stat().st_mtime, default=None)
+    except OSError:
+        return None
+    return newest.relative_to(cache_dir).as_posix() if newest else None
+
+
+def avatar_data_uri(cache_dir: Path, dialog_id: int, max_bytes: int = 200 * 2 ** 10) -> str | None:
+    """
+    The avatar of a dialog from the cache as a `data:` address, to put it into a standalone HTML file (the file is
+    opened from the disk, so it cannot link to the cache). None if there is no avatar or it is unexpectedly big.
+    Аватарка диалога из кэша в виде адреса `data:` для автономного HTML файла (файл открывается с диска, поэтому
+    ссылаться на кэш он не может). None, если аватарки нет или она неожиданно большая.
+    """
+
+    relative_path = find_avatar(cache_dir, dialog_id)
+    if not relative_path:
+        return None
+    try:
+        content = (cache_dir / relative_path).read_bytes()
+    except OSError:
+        return None
+    if len(content) > max_bytes:
+        return None
+    return f'data:image/jpeg;base64,{base64.b64encode(content).decode("ascii")}'
+
+
+def avatar_initials(title: str | None) -> str:
+    """
+    The initials for a chat without a photo, as in Telegram: the first letters of the first two words of the title
+    (one letter for a single word, '?' if there is no letter at all).
+    Инициалы для чата без фото, как в Telegram: первые буквы первых двух слов названия (одна буква для одного слова,
+    '?', если букв нет совсем).
+    """
+
+    words = re.findall(r'[^\W_]+', title or '')[:2]
+    return ''.join(word[0] for word in words).upper() or '?'
+
+
+def avatar_color(dialog_id: int) -> str:
+    """
+    The background color of the stub of an avatar: it depends only on the dialog ID, so the chat has the same color
+    on both tabs and after every start.
+    Цвет фона заглушки аватарки: зависит только от ID диалога, поэтому у чата один и тот же цвет на обеих вкладках и
+    после каждого запуска.
+    """
+
+    return f'hsl({abs(int(dialog_id)) * 47 % 360}, 45%, 48%)'
+
+
+def remove_empty_dirs(directory: Path, stop: Path) -> None:
+    """
+    Deletes `directory` and then its parents while they are empty, up to `stop` (it stays). A directory outside of
+    `stop` is never touched.
+    Удаляет `directory`, затем его родителей, пока они пусты, вплоть до `stop` (он остается). Каталог вне `stop` не
+    затрагивается никогда.
+    """
+
+    while directory != stop and stop in directory.parents:
+        try:
+            directory.rmdir()
+        except OSError:  # not empty, or already deleted / не пуст или уже удален
+            break
+        directory = directory.parent
+
+
+def _cache_files(cache_dir: Path) -> list[Path]:
+    """
+    The files of the cache without the chat avatars (`GlobalConst.cache_avatars_dir`): the previews and the videos
+    Файлы кэша без аватарок чатов (`GlobalConst.cache_avatars_dir`): превью и видео
+    """
+
+    if not cache_dir.is_dir():
+        return []
+    avatars_dir = cache_dir / GlobalConst.cache_avatars_dir
+    return [path for path in cache_dir.rglob('*') if path.is_file() and avatars_dir not in path.parents]
+
+
+def clean_cache(cache_dir: Path, max_age_days: int, now: datetime | None = None) -> tuple[int, list[str]]:
+    """
+    Deletes the cached previews and videos that were last changed more than `max_age_days` ago, and the directories
+    left empty. The chat avatars are never deleted. Errors do not stop the work: the file stays and its error is
+    returned.
+    Удаляет кэшированные превью и видео, измененные последний раз более `max_age_days` дней назад, и оставшиеся пустыми
+    директории. Аватарки чатов не удаляются никогда. Ошибки не прерывают работу: файл остается, а его ошибка
+    возвращается.
+    Attributes:
+        cache_dir (Path): Cache directory
+        max_age_days (int): Maximum age of a file in days
+        now (datetime | None): The current time (for tests)
+    Returns:
+        tuple[int, list[str]]: Number of deleted files and the error descriptions
+    """
+
+    limit = ((now or datetime.now()) - timedelta(days=max_age_days)).timestamp()
+    deleted_count = 0
+    errors: list[str] = []
+    for path in _cache_files(cache_dir):
+        try:
+            if path.stat().st_mtime < limit:
+                path.unlink()
+                deleted_count += 1
+        except OSError as error:
+            errors.append(f'{path.name}: {error.strerror or error}')
+    # Delete the directories left empty, the deepest first; the avatars directory and the cache itself stay
+    # Удаляем оставшиеся пустыми директории, самые глубокие первыми; директория аватарок и сам кэш остаются
+    avatars_dir = cache_dir / GlobalConst.cache_avatars_dir
+    if cache_dir.is_dir():
+        for directory in sorted((path for path in cache_dir.rglob('*') if path.is_dir()),
+                                key=lambda item: len(item.parts), reverse=True):
+            if directory == avatars_dir or avatars_dir in directory.parents:
+                continue
+            try:
+                directory.rmdir()
+            except OSError:  # not empty / не пуста
+                pass
     return deleted_count, errors
 
 

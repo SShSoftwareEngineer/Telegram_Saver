@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from sqlalchemy import text
-from configs.config import DialogTypes, GlobalConst, MessageFileTypes
+from config import DialogTypes, GlobalConst, MessageFileTypes
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbMessageGroup, DbMessageSortFilter, DbTag
 from telegram_handler import TgFile, TgMessageGroup, TgMessageSortFilter
 from utils import parse_date_string, to_local, to_utc

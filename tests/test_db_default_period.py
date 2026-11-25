@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import DialogTypes, FormCfg, GlobalConst
+from config import DialogTypes, FormCfg, GlobalConst
 from database_handler import DatabaseHandler, DbDialog, DbMessageGroup, DbMessageSortFilter
 from utils import local_day_start
 

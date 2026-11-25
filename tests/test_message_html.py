@@ -15,7 +15,7 @@ from telethon.tl.types import (MessageEntityBlockquote, MessageEntityBold, Messa
                                MessageEntityHashtag, MessageEntityItalic, MessageEntityMentionName, MessageEntityPre,
                                MessageEntitySpoiler, MessageEntityStrike, MessageEntityTextUrl, MessageEntityUnderline,
                                MessageEntityUrl)
-from configs.config import DialogTypes
+from config import DialogTypes
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbMessageGroup, DbMessageSortFilter
 from message_renderer import get_safe_url, plain_text_to_html, render_link_html, render_message_html
 from telegram_handler import TgFile, TgMessageGroup

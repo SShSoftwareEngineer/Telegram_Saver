@@ -58,7 +58,12 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    3. Create an application: any *App title* and *Short name*; the platform and description do not matter.
    4. Copy **App api_id** and **App api_hash** from the page. Keep them private: they identify your application and
       belong to your account.
-5. **Create the settings file** `configs/.env` (it is excluded from git; `configs/.env.example` is a template):
+5. **Create a profile.** A profile is a directory `profiles/<profile name>/` with all the data of one Telegram account:
+   `.env` (settings), `telegram.session`, `profile.json` (ID and name of the account), `database/` (the database and
+   its backups), `media_storage/`, `exported_messages/` and `cache/` (previews, chat avatars). The profile name is any name
+   you choose (letters, digits, `_` and `-`), it is the directory name and is stored nowhere else. The directory is
+   excluded from git. The easiest way is to start the application (step 6): with no profiles it offers to create one
+   (the file `.env` is copied from the template `.env.example`). Fill in `profiles/<profile name>/.env`:
 
    | Variable | Description |
    |---|---|
@@ -66,37 +71,41 @@ and messages, and saves the ones you choose to an SQLite database and to a local
    | `PASSWORD` | Cloud (two-step verification) password of the account; leave empty if it is not enabled |
    | `API_ID` | `App api_id` from my.telegram.org |
    | `API_HASH` | `App api_hash` from my.telegram.org |
-   | `SESSION_NAME` | Name of the Telethon session file (created in the project root whatever the current directory is, e.g. `telegram_saver`) |
 
-   The file is chosen by the profile, the environment variable `TELEGRAM_SAVER_PROFILE`. Not set (default) uses
-   `configs/.env` and `database/telegram_archive.db`; a value (e.g. `_dev_1`; letters, digits and `_` only) uses
-   `configs/.env_dev_1` and `database/telegram_archive_dev_1.db`, which allows keeping separate accounts and databases.
-   Set it before the start (PowerShell: `$env:TELEGRAM_SAVER_PROFILE = '_dev_1'`; PyCharm: *Run Configuration* →
-   *Environment variables*). Run one profile at a time: they share `media_storage/`, `exported_messages/` and the port.
-   Give each profile its own `SESSION_NAME`. All paths are built from the project root, so the application can be
-   started from any directory.
+   **A second profile** (another account) is created by hand: create the directory `profiles/<second name>/`, copy
+   `.env` from the first profile into it and change the settings (at least `PHONE`). Do not copy `telegram.session`,
+   `profile.json` and `database/`: they belong to the first account. The other directories are created by the
+   application at the first start. With one profile the application takes it without asking, so nothing hints at
+   this; with two or more profiles the console menu appears at the start (its item `0` creates a profile too).
+
+   Which profile runs: `python telegram_saver.py --profile <profile name>`; without the argument the environment variable
+   `TELEGRAM_SAVER_PROFILE` (the launcher sets it itself; set it by hand only to start `uvicorn web.main:app`
+   directly); without it the only existing profile; with several profiles a numbered menu in the console (with the
+   account names) that also creates a new profile. To change the profile, restart the application. The first login
+   stores the account ID in `profile.json`; later the application refuses to work if the session belongs to another
+   account. The profile in use is shown in the header of the page.
 6. **Run the application:**
    ```bash
    python telegram_saver.py
    ```
-   or, equivalently:
+   or, with the profile in the environment variable:
    ```bash
    uvicorn web.main:app --host 127.0.0.1 --port 5000
    ```
    On the first start Telegram sends a login code (enter it in the console). If the code does not arrive, use
-   `tools/telegram_qr_login.py` (login by QR code). Then open `http://localhost:5000` in your browser.
+   `tools/telegram_qr_login.py [--profile <profile name>]` (login by QR code). Then open `http://localhost:5000` in your browser.
 
    Run with **one worker and without `--reload`**: every start logs in to Telegram and the application state is global.
 
-   The server listens only on `127.0.0.1:5000` (`HOST` and `PORT` in `configs/config.py`) and rejects with 403 the
+   The server listens only on `127.0.0.1:5000` (`HOST` and `PORT` in `config.py`) and rejects with 403 the
    requests addressed to another host, sent from another site (`Origin`) or marked `Sec-Fetch-Site: cross-site`, so a
    web page open in your browser cannot control the application. Open it at `http://127.0.0.1:5000` or
    `http://localhost:5000`; a reverse proxy or another port needs the same values in the config.
 7. **Stop the application:** press `Ctrl+C` in the terminal. In the PyCharm *Run* window `Ctrl+C` does not reach the
    process: use the **Stop** button.
 
-The session file (`*.session`), `configs/.env*`, the database (`*.db`) and `media_storage/` give access to your
-account and data: never commit or share them.
+The directory `profiles/` (the `.env` settings, the session files, the databases and the media) gives access to
+your account and data: never commit or share it.
 
 ## Usage
 
@@ -119,7 +128,7 @@ database maintenance menu.
 ### Current: SQLite
 
 - **Pros**: zero configuration, a single file, suitable for personal use
-- **Location**: `database/telegram_archive<PROFILE>.db`
+- **Location**: `profiles/<profile name>/database/telegram_archive.db`
 
 ### PostgreSQL
 
@@ -137,7 +146,7 @@ Telethon is mocked: the tests do not connect to Telegram.
 The detailed plan (in Russian, with the order of work) is in [`ROADMAP.md`](ROADMAP.md). In short, in this order:
 
 - [ ] Backup rotation, filter of archived messages without tags, one style of the controls
-- [ ] Data per profile, preview cache, chat avatars
+- [x] Data per profile, preview cache, chat avatars
 - [ ] Download a video before saving, attachments of the `Unknown` type
 - [ ] Frontend optimization (an explicit contract between the routes and the page)
 - [ ] Alembic migrations (`BigInteger` ID columns), source chats of "Saved Messages" (list of chats and a filter),

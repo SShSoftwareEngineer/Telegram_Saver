@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import DialogTypes, FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DatabaseHandler, DbDialog, DbFile, DbMessageGroup
 from telegram_handler import TgFile, TgMessageGroup
 

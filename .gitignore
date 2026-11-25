@@ -166,6 +166,8 @@ Support Materials/
 
 .idea/
 
+# Profiles: the settings, session, database, media, export and cache of the Telegram accounts
+/profiles/
 media_storage/
 /exported_messages/
 
