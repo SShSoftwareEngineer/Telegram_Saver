@@ -3,10 +3,10 @@ The module contains the project configuration: profile, directories, constants a
 Модуль содержит конфигурацию проекта: профиль, директории, константы и настройки веб-форм.
 
 BASE_DIR: the project root, the base of all paths
-PROFILE: the configuration profile (environment variable `TELEGRAM_SAVER_PROFILE`); it sets the suffix of the
-         Telegram settings file and of the database file
+PROFILE: the profile (environment variable `TELEGRAM_SAVER_PROFILE`): the name of the directory `profiles/<PROFILE>/`
+         with all the data of one Telegram account
 HOST, PORT: the address of the local web server
-class ProjectDirs: directories and files of the project (media, export, Telegram settings, database)
+class ProjectDirs: directories and files of the profile (settings, session, database, media, export, cache)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
 class DialogTypes(Enum): IDs and names of the dialog types in Telegram
 class MessageFileTypes(Enum): names, types, extensions and signatures of message files
@@ -16,50 +16,41 @@ class TagsSorting: tag sorting options
 """
 
 import os
-import re
-from collections.abc import Mapping
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
 from enum import Enum
+from profiles import (CACHE_DIR_NAME, DATABASE_DIR_NAME, EXPORT_DIR_NAME, MEDIA_DIR_NAME, PROFILE_ENV_VAR,
+                      PROFILES_DIR, list_profiles, read_profile)
 
 # The project root: all paths are built from it, so the application works from any current directory
 # Корень проекта: от него строятся все пути, поэтому приложение работает из любой текущей директории
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent
 
-PROFILE_ENV_VAR = 'TELEGRAM_SAVER_PROFILE'
+# The profile of this run: the directory `profiles/<PROFILE>/` holds all the data of one Telegram account. It comes from
+# the environment variable `TELEGRAM_SAVER_PROFILE` (the launcher `telegram_saver.py` sets it after the choice of the
+# profile; with a direct `uvicorn web.main:app` it can be set by hand, PowerShell:
+# `$env:TELEGRAM_SAVER_PROFILE='work'`),
+# otherwise the only existing profile is taken. '' means that no profile is selected (see `ensure_profile_selected`).
+# Профиль этого запуска: каталог `profiles/<PROFILE>/` хранит все данные одного аккаунта Telegram. Берется из переменной
+# окружения `TELEGRAM_SAVER_PROFILE` (запускатель `telegram_saver.py` выставляет ее после выбора профиля; при прямом
+# `uvicorn web.main:app` ее можно задать вручную, PowerShell: `$env:TELEGRAM_SAVER_PROFILE='work'`), иначе берется
+# единственный существующий профиль. '' - профиль не выбран (см. `ensure_profile_selected`).
+_existing_profiles = list_profiles()
+PROFILE = read_profile(os.environ) or (_existing_profiles[0] if len(_existing_profiles) == 1 else '')
 
 
-def read_profile(environ: Mapping[str, str]) -> str:
+def ensure_profile_selected() -> None:
     """
-    Returns the configuration profile from the environment variable `TELEGRAM_SAVER_PROFILE` ('' if it is not set).
-    The value becomes a part of file names, so only letters, digits and `_` are allowed (no path separators).
-    Возвращает профиль конфигурации из переменной окружения `TELEGRAM_SAVER_PROFILE` ('' если она не задана).
-    Значение становится частью имен файлов, поэтому допустимы только буквы, цифры и `_` (без разделителей путей).
-    Attributes:
-        environ (Mapping[str, str]): The environment (`os.environ`)
-    Returns:
-        str: The profile suffix
+    Raises an error if no profile is selected (the application must not create its data outside a profile).
+    Выбрасывает ошибку, если профиль не выбран (приложение не должно создавать свои данные вне профиля).
     """
 
-    profile = environ.get(PROFILE_ENV_VAR, '')
-    if not re.fullmatch(r'[A-Za-z0-9_]*', profile):
-        raise ValueError(f'{PROFILE_ENV_VAR}={profile!r}: only letters, digits and "_" are allowed / '
-                         f'допустимы только буквы, цифры и "_"')
-    return profile
+    if not PROFILE:
+        raise RuntimeError('No profile selected: start the application with `python telegram_saver.py` or set '
+                           f'{PROFILE_ENV_VAR} / Профиль не выбран: запустите `python telegram_saver.py` '
+                           f'или задайте {PROFILE_ENV_VAR}')
 
-
-# The configuration profile: it selects `configs/.env<PROFILE>` and `database/telegram_archive<PROFILE>.db`.
-# It is set by the environment variable `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
-# PyCharm: the Run Configuration, Environment variables).
-# '' (not set) is the working profile: `configs/.env` and `database/telegram_archive.db`.
-# Other values (e.g. '_dev_1', '_dev_2') are for experiments with separate accounts and databases.
-# Профиль конфигурации: выбирает `configs/.env<PROFILE>` и `database/telegram_archive<PROFILE>.db`.
-# Задается переменной окружения `TELEGRAM_SAVER_PROFILE` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='_dev_1'`,
-# PyCharm: Run Configuration, Environment variables).
-# '' (не задана) - рабочий профиль: `configs/.env` и `database/telegram_archive.db`.
-# Другие значения (например, '_dev_1', '_dev_2') - для экспериментов с отдельными аккаунтами и базами данных.
-PROFILE = read_profile(os.environ)
 
 # The address of the web server: the launcher listens on it and the request guard (`web/middleware.py`) accepts only
 # requests addressed to it. The app is single-user and local, so it is never bound to a public interface.
@@ -69,28 +60,46 @@ HOST = '127.0.0.1'
 PORT = 5000
 
 
+# The directory of the selected profile (a stub name if no profile is selected, so nothing is created outside
+# `profiles/`)
+# Каталог выбранного профиля (имя-заглушка, если профиль не выбран, чтобы ничего не создавалось вне `profiles/`)
+_profile_dir = PROFILES_DIR / (PROFILE or '_not_selected')
+
+
 @dataclass(frozen=True)
 class ProjectDirs:
     """
-    A class to hold the directory paths for a project.
-    Класс для хранения путей к директориям проекта.
-    All paths are absolute (built from `BASE_DIR`).
-    Все пути абсолютные (строятся от `BASE_DIR`).
+    A class to hold the directory paths of the selected profile.
+    Класс для хранения путей к каталогам выбранного профиля.
+    All paths are absolute (built from the project root).
+    Все пути абсолютные (строятся от корня проекта).
     Attributes:
-        media_dir_name (str): Name of the media directory, also the URL prefix of the media files (`/media_storage/...`)
+        profile_dir (Path): Directory of the profile (`profiles/<PROFILE>/`)
+        media_dir_name (str): Name of the media directory, also the URL prefix of the media files
+                              (`/media_storage/...`);
+                              the prefix does not depend on the profile, so the links in the database stay valid
         media_dir (Path): Directory for storing downloaded media files from Telegram
         export_dir (Path): Directory for exporting messages to HTML files
-        telegram_settings_file (Path): Telegram API settings file (`configs/.env<PROFILE>`)
-        data_base_dir (Path): Directory for storing the SQLite database file
-        data_base_file (Path): SQLite database file (`telegram_archive<PROFILE>.db`)
+        cache_dir_name (str): Name of the cache directory, also the URL prefix of the cached files (`/cache/...`)
+        cache_dir (Path): Directory of the cache (previews, chat avatars); maintenance does not check it
+        telegram_settings_file (Path): Telegram API settings file (`.env` of the profile)
+        session_file (Path): Telethon session file without the extension (Telethon adds `.session`)
+        profile_info_file (Path): `profile.json` (ID and name of the Telegram account of the profile)
+        data_base_dir (Path): Directory for storing the SQLite database file and its backups
+        data_base_file (Path): SQLite database file
     """
 
-    media_dir_name = 'media_storage'
-    media_dir = BASE_DIR / media_dir_name
-    export_dir = BASE_DIR / 'exported_messages'
-    telegram_settings_file = BASE_DIR / 'configs' / f'.env{PROFILE}'
-    data_base_dir = BASE_DIR / 'database'
-    data_base_file = data_base_dir / f'telegram_archive{PROFILE}.db'
+    profile_dir = _profile_dir
+    media_dir_name = MEDIA_DIR_NAME
+    media_dir = _profile_dir / media_dir_name
+    export_dir = _profile_dir / EXPORT_DIR_NAME
+    cache_dir_name = CACHE_DIR_NAME
+    cache_dir = _profile_dir / cache_dir_name
+    telegram_settings_file = _profile_dir / '.env'
+    session_file = _profile_dir / 'telegram'
+    profile_info_file = _profile_dir / 'profile.json'
+    data_base_dir = _profile_dir / DATABASE_DIR_NAME
+    data_base_file = data_base_dir / 'telegram_archive.db'
 
 
 @dataclass(frozen=True)
@@ -122,6 +131,9 @@ class GlobalConst:
     status_list_max_items = 20  # Maximum number of list items (e.g. file names) shown in the status bar report
     maintenance_max_downloads = 100  # Maximum number of missing files that maintenance downloads in one run
     db_backup_keep = 10  # Number of the latest database backups that maintenance keeps (older ones are deleted)
+    cache_max_age_days = 30  # Previews and videos in the cache older than this are deleted at the start
+    avatar_parallel_downloads = 5  # Number of chat avatars downloaded from Telegram at the same time
+    cache_avatars_dir = '_avatars'  # Subdirectory of the cache with the chat avatars (the cleaning does not touch it)
 
 
 class DialogTypes(Enum):
