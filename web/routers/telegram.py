@@ -8,7 +8,7 @@ Every route is a regular `def` (Starlette runs it in a thread) and holds the glo
 from pathlib import Path
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
-from configs.config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
+from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from utils import status_messages
 from telegram_handler import get_tg_handler, TgDialog, TgFile
 from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType

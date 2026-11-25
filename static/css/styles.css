@@ -69,6 +69,14 @@ html, body {
     display: block;
 }
 
+/* The active profile in the tab bar, on the right / Активный профиль в панели вкладок, справа */
+.profile-name {
+    float: right;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: #555;
+}
+
 
 /* ======= Styles for tab content ======== */
 /* ==== Стили для содержимого вкладок ==== */
@@ -416,6 +424,53 @@ button[data-needs-checked]:disabled {
 .dialogs-messages-list {
     list-style-type: none;
     padding-left: 5px;
+}
+
+/* The avatar of a chat: the photo or a circle with the initials, on the left of the title (32 px; small in the message
+   rows and details) / Аватарка чата: фото или круг с инициалами, слева от названия (32 px; маленькая в строках
+   сообщений и деталях) */
+.avatar {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+.avatar-small {
+    width: 20px;
+    height: 20px;
+    margin-right: 4px;
+}
+
+.avatar-stub {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 32px;
+    text-align: center;
+    user-select: none;
+}
+
+.avatar-stub.avatar-small {
+    font-size: 9px;
+    line-height: 20px;
+}
+
+/* A chat in the list: the avatar and the title in one row; the underline is only under the title (with
+   `vertical-align` the underline of the link was drawn apart from the text and looked like underscores)
+   Чат в списке: аватарка и название в одной строке; подчеркивание только под названием (при `vertical-align`
+   подчеркивание ссылки рисовалось отдельно от текста и выглядело как знаки подчеркивания) */
+.chat-list a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.chat-list a .dialog-title {
+    text-decoration: underline;
 }
 
 /* Odd alternating colored rows, white color / Нечетные чередующиеся цветные строки в списках, цвет белый */

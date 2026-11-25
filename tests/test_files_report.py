@@ -10,7 +10,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event
-from configs.config import DialogTypes, MessageFileTypes
+from config import DialogTypes, MessageFileTypes
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbFile, DbMessageGroup, DbMessageSortFilter
 from telegram_handler import TgMessageGroup
 from utils import format_files_report

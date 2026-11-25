@@ -11,7 +11,7 @@ renamed. The database is real (a temporary SQLite file).
 
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import FormCfg, GlobalConst
+from config import FormCfg, GlobalConst
 from database_handler import DatabaseHandler, DbCurrentState, DbMessageSortFilter, is_no_tags_name
 from utils import status_messages
 from test_tag_methods import add_group, all_tags, group_tags

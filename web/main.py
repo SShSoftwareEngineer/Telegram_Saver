@@ -10,10 +10,10 @@ from pathlib import Path
 from anyio import to_thread
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from configs.config import ProjectDirs
+from config import GlobalConst, ProjectDirs, ensure_profile_selected
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
-from utils import status_messages
+from utils import clean_cache, status_messages
 from web.deps import BASE_DIR
 from web.errors import register_error_handlers
 from web.middleware import OperationTracker, RequestGuard
@@ -28,7 +28,12 @@ async def lifespan(_app: FastAPI):
     Создает обработчики при старте (вход в Telegram блокирующий, поэтому выполняется в потоке) и закрывает Telegram
     при остановке (аналог Flask `atexit`).
     """
+    ensure_profile_selected()
     Path(ProjectDirs.media_dir).mkdir(parents=True, exist_ok=True)
+    Path(ProjectDirs.cache_dir).mkdir(parents=True, exist_ok=True)
+    # Old previews and videos are deleted at the start (the chat avatars are not touched)
+    # Старые превью и видео удаляются при старте (аватарки чатов не трогаются)
+    await to_thread.run_sync(clean_cache, Path(ProjectDirs.cache_dir), GlobalConst.cache_max_age_days)
     tg_handler = await to_thread.run_sync(get_tg_handler)
     try:
         await to_thread.run_sync(get_db_handler)
@@ -53,6 +58,8 @@ app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 # Директория создается в lifespan, поэтому при создании приложения ее наличие не проверяется
 app.mount(f'/{ProjectDirs.media_dir_name}', StaticFiles(directory=ProjectDirs.media_dir, check_dir=False),
           name='media_dir')
+app.mount(f'/{ProjectDirs.cache_dir_name}', StaticFiles(directory=ProjectDirs.cache_dir, check_dir=False),
+          name='cache_dir')
 app.include_router(service.router)
 app.include_router(telegram.router)
 app.include_router(database.router)

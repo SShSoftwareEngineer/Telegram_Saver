@@ -7,7 +7,7 @@ from datetime import datetime
 from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import FormCfg
+from config import FormCfg
 
 # Negative IDs are normal in Telegram: groups and channels / Отрицательные ID - норма в Telegram: группы и каналы
 CHANNEL_ID = -1001234567891
@@ -25,12 +25,17 @@ def make_message_group(dialog_id: int = CHANNEL_ID, number: int = 1, sender_id: 
                            html='Hello<br>world', plain_text='Hello\nworld', sender_id=sender_id, files_report='1 photo', saved_to_db=False)
 
 
+def make_file(alt_text: str, file_path: str, in_media: bool = True) -> SimpleNamespace:
+    """Fake message file: in the media directory (saved message) or only in the cache (preview)"""
+    return SimpleNamespace(alt_text=alt_text, file_path=file_path, preview_path=f'previews/{file_path}',
+                           is_exists=lambda: in_media)
+
+
 def make_details(message_group_id: str = f'{CHANNEL_ID}_1') -> dict:
     """Fake message details with an image and a video / Заглушка деталей сообщения с изображением и видео"""
     return {'dialog_id': CHANNEL_ID, 'dialog_title': 'Test chat', 'message_group_id': message_group_id,
             'date': datetime(2026, 1, 2, 3, 4, 5), 'html': 'Hello<br>world', 'saved_to_db': False,
-            'existing_files': [SimpleNamespace(alt_text='Image', file_path='chat/photo 1.jpg'),
-                               SimpleNamespace(alt_text='Video', file_path='chat/clip.mp4')]}
+            'existing_files': [make_file('Image', 'chat/photo 1.jpg'), make_file('Video', 'chat/clip.mp4')]}
 
 
 def test_get_dialogs(client: TestClient, tg_handler: SimpleNamespace):
@@ -125,6 +130,16 @@ def test_get_details(client: TestClient, tg_handler: SimpleNamespace, dialog_id:
     assert 'src="http://127.0.0.1:5000/media_storage/chat/clip.mp4"' in data['tg_details']
     tg_handler.get_message_detail.assert_called_once_with(dialog_id, group_id)
     assert tg_handler.current_state.message_details['message_group_id'] == group_id
+
+
+def test_get_details_of_unsaved_message_uses_the_cache(client: TestClient, tg_handler: SimpleNamespace):
+    """The files of an unsaved message are previews: the links lead to the cache, not to the media directory"""
+    details = make_details()
+    details['existing_files'] = [make_file('Image', 'chat/photo 1.jpg', in_media=False)]
+    tg_handler.get_message_detail.return_value = details
+    response = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1')
+    assert 'src="/cache/previews/chat/photo%201.jpg"' in response.json()['tg_details']
+    assert '/media_storage/' not in response.json()['tg_details']
 
 
 def test_get_details_not_a_number(client: TestClient, tg_handler: SimpleNamespace):

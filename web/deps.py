@@ -14,10 +14,12 @@ from jinja2.runtime import Context
 from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
-from configs.config import GlobalConst, MessageFileTypes, FormCfg
+import config
+from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs
+from profiles import profile_title
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
-from utils import format_files_report, to_local
+from utils import avatar_color, avatar_initials, find_avatar, format_files_report, to_local
 
 # Project root: templates and static files are looked up relative to it, not to the current directory
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
@@ -48,6 +50,7 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
         'tg_file_types': MessageFileTypes,
         'form_ctrl_cfg': FormCfg,
         'tg_me': tg_handler.me,
+        'profile_title': profile_title(config.PROFILE) if config.PROFILE else '',
         'tg_mess_date_from': filter_date(tg_handler.message_sort_filter.date_from),
         'tg_mess_date_to': filter_date(tg_handler.message_sort_filter.date_to),
         'tg_dialogs': tg_handler.current_state.dialog_list,
@@ -104,6 +107,20 @@ templates.env.filters['local_dt'] = local_dt
 # The summary line of the files of a message group is formed in the template (it is not stored in the database)
 # Строка-резюме файлов группы сообщений формируется в шаблоне (в базе данных она не хранится)
 templates.env.globals['format_files_report'] = format_files_report
+
+
+def avatar_src(dialog_id: int) -> str:
+    """
+    Jinja2 global: the URL of the avatar of a dialog from the cache, or '' if there is none (the page then shows the
+    stub with the initials). The cache is only read: no request to Telegram.
+    Глобал Jinja2: URL аватарки диалога из кэша или '', если ее нет (тогда страница показывает заглушку с инициалами).
+    Кэш только читается: запроса к Telegram нет.
+    """
+    relative_path = find_avatar(Path(ProjectDirs.cache_dir), dialog_id)
+    return quote(f'/{ProjectDirs.cache_dir_name}/{relative_path}') if relative_path else ''
+
+
+templates.env.globals.update(avatar_src=avatar_src, avatar_initials=avatar_initials, avatar_color=avatar_color)
 
 
 def render_fragment(request: Request, name: str, **context: Any) -> str:

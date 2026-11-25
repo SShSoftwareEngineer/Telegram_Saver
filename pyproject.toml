@@ -42,6 +42,6 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# Project modules (configs, web, telegram_handler...) are in the repository root
-# Модули проекта (configs, web, telegram_handler...) лежат в корне репозитория
+# Project modules (config, web, telegram_handler...) are in the repository root
+# Модули проекта (config, web, telegram_handler...) лежат в корне репозитория
 pythonpath = ["."]

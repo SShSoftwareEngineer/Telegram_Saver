@@ -10,7 +10,7 @@ depend on the time zone of the machine: the expected values are local times conv
 from datetime import datetime, time, timedelta
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import DialogTypes, FormCfg, GlobalConst
+from config import DialogTypes, FormCfg, GlobalConst
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbMessageGroup, DbMessageSortFilter
 from telegram_handler import TgMessageSortFilter
 from utils import local_day_start, parse_date_string

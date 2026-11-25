@@ -34,7 +34,7 @@ from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, 
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, Session
 from sqlalchemy.types import TypeDecorator
-from configs.config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
+from config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
 from utils import format_files_report, local_day_start, parse_date_string, status_messages, to_local, to_utc
 
 

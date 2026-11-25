@@ -10,7 +10,7 @@ import logging
 from starlette.datastructures import Headers
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
-from configs.config import HOST, PORT
+from config import HOST, PORT
 from utils import request_status_touches, status_messages
 
 logger = logging.getLogger(__name__)

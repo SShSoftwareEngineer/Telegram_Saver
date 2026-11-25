@@ -1,0 +1,17 @@
+{#
+The avatar of a chat: the photo from the cache, or a circle with the initials (the color depends on the dialog ID).
+Macro `avatar(dialog_id, title, small=False)`; the cache is only read, Telegram is not asked (so it works on the
+database tab too).
+Аватарка чата: фото из кэша или круг с инициалами (цвет зависит от ID диалога). Макрос
+`avatar(dialog_id, title, small=False)`; кэш только читается, Telegram не запрашивается (поэтому работает и на
+вкладке БД).
+#}
+{% macro avatar(dialog_id, title, small=False) -%}
+    {%- set src = avatar_src(dialog_id) -%}
+    {%- if src -%}
+        <img class="avatar{{ ' avatar-small' if small }}" src="{{ src }}" alt="">
+    {%- else -%}
+        <span class="avatar avatar-stub{{ ' avatar-small' if small }}"
+              style="background-color: {{ avatar_color(dialog_id) }}">{{ avatar_initials(title) }}</span>
+    {%- endif -%}
+{%- endmacro %}

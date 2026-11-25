@@ -1,6 +1,7 @@
 {#
 Application home page.
 Variables:
+- profile_title: the active profile (the profile name and the account name), shown in the tab bar
 - the lists (tg_dialogs, tg_messages, db_messages) and the filter dates come from the context processor; a counter
   next to a list is shown only when the list is not empty and always equals its length
 #}
@@ -26,6 +27,8 @@ Variables:
     <div class="tabs">
         <button class="tab-button active" onclick="openTab(event, 'tab1')">Telegram</button>
         <button class="tab-button" onclick="openTab(event, 'tab2')">Database</button>
+        {# The active profile: the set of data the application works with / Активный профиль: набор данных #}
+        {% if profile_title %}<span class="profile-name" title="Profile">Profile: {{ profile_title }}</span>{% endif %}
     </div>
 
     {# Content area container / Контейнер области контента #}

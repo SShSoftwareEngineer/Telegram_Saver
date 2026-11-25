@@ -18,7 +18,8 @@ import pytest
 from fastapi.testclient import TestClient
 import database_handler
 import telegram_handler
-from configs.config import HOST, PORT, ProjectDirs
+import config
+from config import HOST, PORT, ProjectDirs
 from database_handler import DatabaseHandler
 from telegram_handler import TgCurrentState, TgMessageSortFilter
 from web.main import app
@@ -37,17 +38,27 @@ def work_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     paths = {
         'media_dir': tmp_path / ProjectDirs.media_dir_name,
         'export_dir': tmp_path / ProjectDirs.export_dir.name,
-        'telegram_settings_file': tmp_path / 'configs' / ProjectDirs.telegram_settings_file.name,
+        'cache_dir': tmp_path / ProjectDirs.cache_dir_name,
+        'profile_dir': tmp_path,
+        'telegram_settings_file': tmp_path / ProjectDirs.telegram_settings_file.name,
+        'session_file': tmp_path / ProjectDirs.session_file.name,
+        'profile_info_file': tmp_path / ProjectDirs.profile_info_file.name,
         'data_base_dir': tmp_path / ProjectDirs.data_base_dir.name,
         'data_base_file': tmp_path / ProjectDirs.data_base_dir.name / ProjectDirs.data_base_file.name,
     }
     for name, path in paths.items():
         monkeypatch.setattr(ProjectDirs, name, path)
+    # A profile is selected (the lifespan refuses to start without one)
+    # Профиль выбран (lifespan отказывается стартовать без него)
+    monkeypatch.setattr(config, 'PROFILE', 'test')
     # The media files are served by a mount created when the application was imported: point it to the temp directory
     # Медиафайлы отдает монтирование, созданное при импорте приложения: направляем его в временную директорию
     media_mount = next(route for route in app.routes if getattr(route, 'name', None) == 'media_dir')
     monkeypatch.setattr(media_mount.app, 'directory', paths['media_dir'])
     monkeypatch.setattr(media_mount.app, 'all_directories', [paths['media_dir']])
+    cache_mount = next(route for route in app.routes if getattr(route, 'name', None) == 'cache_dir')
+    monkeypatch.setattr(cache_mount.app, 'directory', paths['cache_dir'])
+    monkeypatch.setattr(cache_mount.app, 'all_directories', [paths['cache_dir']])
     paths['data_base_dir'].mkdir()
     paths['media_dir'].mkdir()
     monkeypatch.chdir(tmp_path)

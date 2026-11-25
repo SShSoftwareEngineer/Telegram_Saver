@@ -7,7 +7,7 @@ error) and the creation of the database folder.
 
 from pathlib import Path
 import pytest
-from configs.config import ProjectDirs
+from config import ProjectDirs
 from database_handler import DatabaseHandler, DbDialog
 
 

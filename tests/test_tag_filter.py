@@ -9,7 +9,7 @@ characters.
 from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
-from configs.config import DialogTypes, FormCfg
+from config import DialogTypes, FormCfg
 from database_handler import DatabaseHandler, DbCurrentState, DbDialog, DbMessageGroup, DbMessageSortFilter, DbTag
 
 FILTER_CFG = FormCfg.db_message_filter

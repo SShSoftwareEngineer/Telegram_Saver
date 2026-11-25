@@ -1,12 +1,12 @@
 """
 One-off Telegram login via QR code. Use it when the login code does not arrive (SMS / in-app message).
-It creates the same .session file the application uses, so the app will not ask for a code afterwards.
+It creates the same session file of the profile (`profiles/<profile name>/telegram.session`) the application uses, so the app will not ask for a code afterwards.
 Разовый вход в Telegram по QR-коду. Используется, когда код входа не приходит (SMS / сообщение в приложении).
 Создает тот же файл .session, что использует приложение, поэтому код после этого запрашиваться не будет.
 
 Usage / Запуск (from any folder / из любой папки):
     poetry run pip install qrcode
-    poetry run python tools/telegram_qr_login.py
+    poetry run python tools/telegram_qr_login.py [--profile <profile name>]
 Then in the Telegram app: Settings -> Devices -> Link Desktop Device -> scan the QR from the console.
 Затем в приложении Telegram: Настройки -> Устройства -> Подключить устройство -> отсканировать QR из консоли.
 The cloud (2FA) password, if enabled, is asked in the console and is never stored.
@@ -16,6 +16,7 @@ Do not share the QR code or the tg://login link: it is a one-time login to the a
 """
 
 import asyncio
+import os
 import sys
 from getpass import getpass
 from pathlib import Path
@@ -27,7 +28,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import dotenv_values  # noqa: E402
 from telethon import TelegramClient  # noqa: E402
 from telethon.errors import SessionPasswordNeededError, PasswordHashInvalidError  # noqa: E402
-from configs.config import BASE_DIR, ProjectDirs  # noqa: E402
+from profiles import PROFILE_ENV_VAR, choose_profile  # noqa: E402
+
+# The profile is chosen like in the launcher (`--profile <profile name>`, the variable, the only profile or the menu) before
+# `config` is imported: it reads the profile when it is imported
+# Профиль выбирается как в запускателе (`--profile <имя профиля>`, переменная, единственный профиль или меню) до импорта
+# `config`: он читает профиль при своем импорте
+os.environ[PROFILE_ENV_VAR] = choose_profile(sys.argv[1:], os.environ)
+from config import ProjectDirs  # noqa: E402
 
 try:
     import qrcode
@@ -71,9 +79,10 @@ async def main() -> None:
     """
 
     cfg = dotenv_values(ProjectDirs.telegram_settings_file)
-    # The same session file as the application uses: relative to the project root
-    # Тот же файл сессии, что использует приложение: относительно корня проекта
-    client = TelegramClient(str(BASE_DIR / cfg['SESSION_NAME']), int(cfg['API_ID']), cfg['API_HASH'])
+    # The same session file as the application uses: in the directory of the profile
+    # Тот же файл сессии, что использует приложение: в каталоге профиля
+    ProjectDirs.session_file.parent.mkdir(parents=True, exist_ok=True)
+    client = TelegramClient(str(ProjectDirs.session_file), int(cfg['API_ID']), cfg['API_HASH'])
     await client.connect()
     if await client.is_user_authorized():
         print('Already authorized, nothing to do / Уже авторизован, делать нечего.')

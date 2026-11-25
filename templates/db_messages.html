@@ -8,6 +8,7 @@ Variables:
   - tg_me: the logged-in Telegram account (its messages are indented)
   - db_file_types: Telegram file types
 #}
+{% from 'avatar.html' import avatar %}
 
 
 {# Displaying a list of message groups from the database / Вывод списка групп сообщений из базы данных #}
@@ -31,7 +32,7 @@ Variables:
                 {{ message_date }}</a>
 
             {# Displaying the beginning of the dialog title / Вывод начала названия диалога #}
-            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ db_message.dialog.title|truncate(constants.truncated_title_length) }}</span>
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(db_message.dialog.dialog_id, db_message.dialog.title, True) }} {{ db_message.dialog.title|truncate(constants.truncated_title_length) }}</span>
 
             {# Creating a checkbox for marking for export or deletion / Создание чекбокса для отметки на экспорт или удаление #}
             <span class="message-checkbox">
