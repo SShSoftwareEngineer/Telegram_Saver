@@ -1,0 +1,39 @@
+{#
+Macro: one media file of a message, the same for the details of the tabs and for the exported HTML files.
+Imported with context (it uses `tg_file_types`).
+  - kind: the file type text (`alt_text` of the file type)
+  - src: address of the file
+  - name: file name (shown under the file in the exported files and as the name of a file of an unknown type)
+  - size: file size in bytes (shown for a file of an unknown type)
+  - many: the message has several files (two columns instead of one)
+  - caption: show the file name under the file
+  - the content of a `call` block (if any) stands above an image or a video, inside its area
+Image and video fill the area; audio is a player of the usual height; a file of an unknown type is a line
+"name · size" with a link to download it. Макрос: один файл сообщения, одинаковый для деталей вкладок и экспорта.
+#}
+{% macro media_file(kind, src, name, size, many, caption=False) %}
+    {% if kind in (tg_file_types.IMAGE.alt_text, tg_file_types.VIDEO.alt_text) %}
+        <div class="{{ 'media-files-two-column' if many else 'media-files-one-column' }}">
+            {% if caller is defined %}{{ caller() }}{% endif %}
+            {% if kind == tg_file_types.IMAGE.alt_text %}
+                <img src="{{ src }}" alt="{{ kind }}" class="media-files-container">
+            {% else %}
+                <video src="{{ src }}" controls preload="metadata" class="media-files-container">
+                    Video is not supported by your browser
+                </video>
+            {% endif %}
+            {% if caption %}<div class="media-file-name">{{ name }}</div>{% endif %}
+        </div>
+    {% elif kind == tg_file_types.AUDIO.alt_text %}
+        <div class="media-files-inline">
+            <audio src="{{ src }}" controls preload="metadata" class="media-files-audio">
+                Audio is not supported by your browser
+            </audio>
+            {% if caption %}<div class="media-file-name">{{ name }}</div>{% endif %}
+        </div>
+    {% elif kind == tg_file_types.UNKNOWN.alt_text %}
+        <div class="media-files-inline media-file-name">
+            <a href="{{ src }}" download="{{ name }}">{{ name }}</a> &middot; {{ size|file_size }}
+        </div>
+    {% endif %}
+{% endmacro %}

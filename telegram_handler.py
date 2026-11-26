@@ -33,11 +33,42 @@ from telethon import TelegramClient
 from dotenv import dotenv_values
 from config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, ensure_profile_selected
 from profiles import read_profile_info, write_profile_info
-from utils import (parse_date_string, clean_file_path, format_files_report, local_day_start, remove_empty_dirs,
+from utils import (parse_date_string, clean_file_path, format_file_size, format_files_report, local_day_start,
+                   remove_empty_dirs,
                    status_messages, to_local)
-from message_renderer import render_message_html, plain_text_to_html, render_link_html
+from message_renderer import render_message_html
+from media_text import describe_media
 
 logger = logging.getLogger(__name__)
+
+# How a message file is downloaded, by its size (the limits are in `GlobalConst`) / Как загружается файл сообщения
+DOWNLOAD_AUTO = 'auto'  # to the cache when the details are opened; at saving too / в кэш при открытии деталей
+DOWNLOAD_BUTTON = 'button'  # by the button; at saving automatically / по кнопке; при сохранении само
+DOWNLOAD_CONFIRM = 'confirm'  # only by the button "Download anyway"; at saving only if it is in the cache already
+DOWNLOAD_NONE = 'none'  # the size is unknown: not downloaded / размер неизвестен: не загружается
+# Pictures are small and are the preview itself: they are downloaded automatically up to the size of the button
+# Картинки небольшие и сами являются превью: загружаются автоматически до размера кнопки
+PICTURE_TYPES = (MessageFileTypes.PHOTO, MessageFileTypes.IMAGE, MessageFileTypes.THUMBNAIL, MessageFileTypes.WEBPAGE)
+
+
+def make_progress_reporter(operation: str) -> Callable[[int, int], None]:
+    """
+    Callback for `download_media`: writes the percent to the status bar, every 5 percent
+    Колбэк для `download_media`: пишет процент в строку статуса, каждые 5%
+    Attributes:
+        operation (str): the operation text of the status bar
+    """
+
+    last_percent = -1
+
+    def show_progress(current: int, total: int) -> None:
+        nonlocal last_percent
+        percent = current * 100 // total if total else 0
+        if percent // 5 != last_percent // 5:
+            last_percent = percent
+            status_messages.mess_update(operation, '', progress=f'{percent}%')
+
+    return show_progress
 
 
 class ProfileAccountError(RuntimeError):
@@ -255,6 +286,37 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
     file_type: MessageFileTypes = MessageFileTypes.UNKNOWN
     description_html: str = ''
 
+    @property
+    def type_label(self) -> str:
+        """
+        The name of the file type for the buttons: `video`, `audio`, ...; for a file of an unknown type the extension
+        (`PDF`, `ZIP`) if it is known, else `file`
+        Название типа файла для кнопок: `video`, `audio`, ...; для файла неизвестного типа расширение (`PDF`, `ZIP`),
+        если оно известно, иначе `file`
+        """
+
+        if self.file_type != MessageFileTypes.UNKNOWN:
+            return self.alt_text.lower()
+        extension = Path(self.file_name).suffix.lstrip('.')
+        return extension.upper() if extension and f'.{extension}' != MessageFileTypes.UNKNOWN.default_ext else 'file'
+
+    @property
+    def download_level(self) -> str:
+        """
+        How the file is downloaded, by its size: `DOWNLOAD_AUTO`, `DOWNLOAD_BUTTON`, `DOWNLOAD_CONFIRM` or
+        `DOWNLOAD_NONE` (the size is unknown). The limits are `GlobalConst.auto_preview_size` and
+        `GlobalConst.button_download_size`; a picture is automatic up to the second one.
+        Как загружается файл, по его размеру. Пределы - `GlobalConst.auto_preview_size` и
+        `GlobalConst.button_download_size`; картинка автоматическая до второго.
+        """
+
+        if self.size <= 0:
+            return DOWNLOAD_NONE
+        if self.size <= GlobalConst.auto_preview_size or (
+                self.file_type in PICTURE_TYPES and self.size <= GlobalConst.button_download_size):
+            return DOWNLOAD_AUTO
+        return DOWNLOAD_BUTTON if self.size <= GlobalConst.button_download_size else DOWNLOAD_CONFIRM
+
     def is_exists(self) -> bool:
         """
         Checks whether a file exists in the file system
@@ -365,6 +427,13 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         # `raw_text` без знаков форматирования; форматирование лежит в `entities` и обрабатывается `render_message_html`
         if message.raw_text:
             self._append_text(message.raw_text, render_message_html(message.raw_text, message.entities))
+        # The text of the media without a file (poll, location, contact, a web page without a picture); the text of
+        # the media with a file goes with the file (`add_message_file`)
+        # Текст медиа без файла (опрос, геопозиция, контакт, веб-страница без картинки); текст медиа с файлом
+        # добавляется вместе с файлом (`add_message_file`)
+        media_text = None if getattr(message, 'file', None) else describe_media(getattr(message, 'media', None))
+        if media_text:
+            self._append_text(*media_text)
 
     def _append_text(self, plain_text: str, html: str) -> None:
         """
@@ -933,20 +1002,58 @@ class TelegramHandler:
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
                       'saved_to_db': current_message_group.saved_to_db}
-        # Download the previews of the files, except videos, contained in the detailed message, to the cache (a saved
-        # message has its files in the media directory, they are not downloaded again)
-        # Скачиваем превью файлов, кроме видео, содержащихся в детальном сообщении, в кэш (у сохраненного сообщения
-        # файлы лежат в директории медиа, повторно они не скачиваются)
+        # Download the previews of the files to the cache (a saved message has its files in the media directory, they
+        # are not downloaded again): only the small ones (`DOWNLOAD_AUTO`), the others wait for the button
+        # Скачиваем превью файлов в кэш (у сохраненного сообщения файлы лежат в директории медиа, повторно они не
+        # скачиваются): только небольшие (`DOWNLOAD_AUTO`), остальные ждут кнопки
         tg_details_files = cast(list[TgFile], tg_details.get('files', []))
         for tg_file in tg_details_files:
-            if not tg_file.is_exists() and not tg_file.is_cached():
-                if tg_file.file_type != MessageFileTypes.VIDEO:
-                    status_messages.mess_update('', f'Downloading file {tg_file.file_path}')
-                    self.download_message_file(tg_file, to_cache=True)
+            if not tg_file.is_exists() and not tg_file.is_cached() and tg_file.download_level == DOWNLOAD_AUTO:
+                status_messages.mess_update('', f'Downloading file {tg_file.file_path}')
+                self.download_message_file(tg_file, to_cache=True)
         tg_details['existing_files'] = [tg_file for tg_file in tg_details_files
                                         if tg_file.is_exists() or tg_file.is_cached()]
+        # The files that are not downloaded yet and wait for the button (the page marks the ones over
+        # `button_download_size` as "Download anyway")
+        # Файлы, которые еще не загружены и ждут кнопки (страница помечает файлы больше `button_download_size`
+        # как «Download anyway»)
+        tg_details['pending_files'] = [tg_file for tg_file in tg_details_files
+                                       if not tg_file.is_exists() and not tg_file.is_cached()
+                                       and tg_file.download_level in (DOWNLOAD_BUTTON, DOWNLOAD_CONFIRM)]
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
+
+    def download_pending_file(self, dialog_id: int, message_group_id: str, file_path: str) -> dict:
+        """
+        Downloads a file of the open message to the cache by the button, whatever its size; the status bar shows the
+        percent. Then the details of the message are built again, now with the file.
+        Загружает файл открытого сообщения в кэш по кнопке, любого размера; строка статуса показывает процент. Затем
+        детали сообщения строятся заново, уже с файлом.
+        Attributes:
+            dialog_id (int): dialog ID
+            message_group_id (str): message group ID
+            file_path (str): the path of the file in the media directory (`TgFile.file_path`), it identifies the file
+        Returns:
+            dict: details of the message group
+        Raises:
+            LookupError: the message group has no such file waiting for the button
+            RuntimeError: the file was not downloaded
+        """
+
+        message_group = self.get_message_group_by_id(self.current_state.message_group_list or [], message_group_id)
+        tg_file = next((tg_file for tg_file in (message_group.files if message_group else [])
+                        if tg_file.file_path == file_path), None)
+        if tg_file is None or tg_file.download_level not in (DOWNLOAD_BUTTON, DOWNLOAD_CONFIRM):
+            raise LookupError(f'There is no file {file_path} to download by the button in the message group '
+                              f'{message_group_id}')
+        operation = f'Downloading {tg_file.type_label} {tg_file.file_name}'
+        status_messages.mess_update(operation, f'Downloading {format_file_size(tg_file.size)}', True)
+        if not self.download_message_file(tg_file, to_cache=True, progress_callback=make_progress_reporter(operation),
+                                          ignore_limit=True):
+            raise RuntimeError(f'Failed to download the file {tg_file.file_path}')
+        details = self.get_message_detail(dialog_id, message_group_id)
+        status_messages.mess_update(operation, 'Downloaded')
+        return details
 
     def get_message_file_info(self, dialog_id: int, message_group: TgMessageGroup,
                               # pylint: disable=too-many-statements, too-many-branches
@@ -1026,18 +1133,9 @@ class TelegramHandler:
         # Get the file description / Получаем описание файла
         # The description is kept as plain text and as safe HTML (escaped text, a link with a checked address)
         # Описание хранится как обычный текст и как безопасный HTML (экранированный текст, ссылка с проверенным адресом)
-        description = ''
-        description_html = ''
-        if file_type == MessageFileTypes.WEBPAGE:
-            if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
-                description = message.media.webpage.url
-                description_html = render_link_html(description, description)
-            if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
-                page_description = shorten(message.media.webpage.description,
-                                           width=GlobalConst.truncated_text_length, placeholder='...')
-                description = '\n\n'.join(filter(None, [description, page_description]))
-                description_html = '<br><br>'.join(filter(None, [description_html,
-                                                                 plain_text_to_html(page_description)]))
+        # The same builder as for the media without a file (`TgMessageGroup.add_message`)
+        # Тот же построитель, что и для медиа без файла (`TgMessageGroup.add_message`)
+        description, description_html = describe_media(message.media) or ('', '')
         # Creating TgFile object / Создаем объект TgFile
         tg_file = TgFile(dialog_id=dialog_id, message_grouped_id=message_group.grouped_id,
                          message=message, message_id=message.id,
@@ -1055,7 +1153,9 @@ class TelegramHandler:
         tg_file.file_path = file_path.as_posix()
         return tg_file
 
-    def download_message_file(self, tg_file: TgFile, to_cache: bool = False) -> str | None:
+    def download_message_file(self, tg_file: TgFile, to_cache: bool = False,
+                              progress_callback: Callable[[int, int], None] | None = None,
+                              ignore_limit: bool = False) -> str | None:
         """
         Downloading a message file to the media directory (saving a message), or to the cache of previews. Saving
         takes a file that is already in the cache from there (moves it), without downloading it again.
@@ -1064,6 +1164,9 @@ class TelegramHandler:
         Attributes:
             tg_file (TgFile): message file object
             to_cache (bool): True - download the preview to the cache (`cache/previews/...`), the file is not saved
+            progress_callback (Callable | None): called by Telethon with the downloaded and the total bytes
+            ignore_limit (bool): download a file over `GlobalConst.button_download_size` too (the button "Download
+                anyway"); a file of an unknown size (0) is never downloaded
         Returns:
             str | None: message file path if downloaded, else None
         """
@@ -1086,9 +1189,9 @@ class TelegramHandler:
             # Каталоги превью остались пустыми: больше их никто не удалит
             remove_empty_dirs(cached_path.parent, Path(ProjectDirs.cache_dir) / 'previews')
             result = tg_file.file_path
-        # Check file size is 0 < tg_file.size <= GlobalConst.max_download_file_size
-        # Проверка размера файла на 0 < tg_file.size <= GlobalConst.max_download_file_size
-        elif 0 < tg_file.size <= GlobalConst.max_download_file_size:
+        # Check file size is 0 < tg_file.size <= GlobalConst.button_download_size (or any size above 0 if the limit
+        # is ignored) / Проверка размера файла: 0 < size <= GlobalConst.button_download_size (или любой размер > 0)
+        elif tg_file.size > 0 and (ignore_limit or tg_file.size <= GlobalConst.button_download_size):
             # Create the appropriate directories, if necessary, and download the file
             # Создаем соответствующие директории, при необходимости, и загружаем файл
             target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1096,6 +1199,8 @@ class TelegramHandler:
             downloading_param['file'] = target_path
             if tg_file.file_type == MessageFileTypes.THUMBNAIL:
                 downloading_param['thumb'] = -1
+            if progress_callback:
+                downloading_param['progress_callback'] = progress_callback
             result = self._run(self.client.download_media(**downloading_param))
         return result
 

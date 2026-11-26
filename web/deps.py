@@ -19,7 +19,7 @@ from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs
 from profiles import profile_title
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
-from utils import avatar_color, avatar_initials, find_avatar, format_files_report, to_local
+from utils import avatar_color, avatar_initials, find_avatar, format_file_size, format_files_report, to_local
 
 # Project root: templates and static files are looked up relative to it, not to the current directory
 # Корень проекта: шаблоны и статические файлы ищем относительно него, а не текущей директории
@@ -104,6 +104,7 @@ def local_dt(value: datetime, fmt: str) -> str:
 
 
 templates.env.filters['local_dt'] = local_dt
+templates.env.filters['file_size'] = format_file_size
 # The summary line of the files of a message group is formed in the template (it is not stored in the database)
 # Строка-резюме файлов группы сообщений формируется в шаблоне (в базе данных она не хранится)
 templates.env.globals['format_files_report'] = format_files_report

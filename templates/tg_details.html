@@ -8,6 +8,28 @@ Variables:
   - tg_file_types: Telegram file types
 #}
 {% from 'avatar.html' import avatar %}
+{% from 'media_file.html' import media_file with context %}
+
+{# The button that downloads a file to the cache; for a file over the limit of the automatic download of the saving
+   it says so and asks to confirm (the download can take minutes and the application waits)
+   Кнопка, загружающая файл в кэш; для файла больше предела автоматической загрузки при сохранении об этом
+   сообщается и просится подтверждение (загрузка может идти минуты, приложение ждет) #}
+{% macro download_button(message_file) %}
+    {% set url = url_for('tg_download_file', dialog_id=tg_details.dialog_id, message_group_id=tg_details.message_group_id) ~ '?file_path=' ~ (message_file.file_path|urlencode) %}
+    {% if message_file.download_level == 'confirm' %}
+        <button type="button"
+                title="Download the {{ message_file.type_label }} {{ message_file.file_name }} to the cache. It is over {{ constants.button_download_size|file_size }}: it is not saved with the message unless you download it first"
+                onclick="if (confirm('Size {{ message_file.size|file_size }}. The download can take minutes and the application waits. Download anyway?')) callHandler('{{ url }}')">
+            Size {{ message_file.size|file_size }}{{ ' (' ~ message_file.type_label ~ ')' if message_file.file_type == tg_file_types.UNKNOWN }}. Download anyway
+        </button>
+    {% else %}
+        <button type="button"
+                title="Download the {{ message_file.type_label }} {{ message_file.file_name }} to the cache to view it before saving"
+                onclick="callHandler('{{ url }}')">
+            Download {{ message_file.type_label }} ({{ message_file.size|file_size }})
+        </button>
+    {% endif %}
+{% endmacro %}
 
 
 {% if tg_details %}
@@ -42,6 +64,18 @@ Variables:
         {{ tg_details.html|safe }}
     {% endif %}
 
+    {# The video that waits for the button stands above its own preview (the thumbnail picture, same message); the
+       files without a preview (a file of an unknown type, a video without a thumbnail) have their buttons above all
+       the files / Видео, ждущее кнопки, стоит над своей превьюшкой (миниатюра того же сообщения); файлы без
+       превьюшки стоят кнопками над всеми файлами #}
+    {% set thumbnail_ids = (tg_details.existing_files or [])
+                           |selectattr('file_type', 'equalto', tg_file_types.THUMBNAIL)|map(attribute='message_id')|list %}
+    {% for message_file in tg_details.pending_files or [] %}
+        {% if not (message_file.file_type == tg_file_types.VIDEO and message_file.message_id in thumbnail_ids) %}
+            <div class="media-file-name">{{ download_button(message_file) }}</div>
+        {% endif %}
+    {% endfor %}
+
     {# Displaying of graphics, video, and other files / Вывод графических, видео и других файлов #}
     {% if tg_details.existing_files %}
         <br>
@@ -52,24 +86,20 @@ Variables:
                 {% set in_media = message_file.is_exists() %}
                 {% set file_endpoint = 'media_dir' if in_media else 'cache_dir' %}
                 {% set file_name = message_file.file_path if in_media else message_file.preview_path %}
-                <div class="{% if tg_details.existing_files|length > 1 %} media-files-two-column
-                                {% else %} media-files-one-column {% endif %}">
-
-                    {# Displaying of graphics files / Вывод графических файлов #}
-                    {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
-                        <img src="{{ url_for(file_endpoint, filename=file_name) }}"
-                             alt="{{ message_file.alt_text }}" class="media-files-container">
+                {# Image, video, audio, or a link to a file of an unknown type / Изображение, видео, аудио или ссылка #}
+                {% call media_file(message_file.alt_text, url_for(file_endpoint, filename=file_name),
+                                   message_file.file_name, message_file.size, tg_details.existing_files|length > 1) %}
+                    {# The button of the video of this thumbnail / Кнопка видео этой миниатюры #}
+                    {% if message_file.file_type == tg_file_types.THUMBNAIL %}
+                        {% for pending_file in tg_details.pending_files or []
+                           if pending_file.file_type == tg_file_types.VIDEO
+                              and pending_file.message_id == message_file.message_id %}
+                            {{ download_button(pending_file) }}
+                        {% endfor %}
                     {% endif %}
-
-                    {# Displaying of video files / Вывод видео файлов #}
-                    {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video src="{{ url_for(file_endpoint, filename=file_name, _external=True) }}"
-                               controls preload="metadata" class="media-files-container">
-                            Video is not supported by your browser
-                        </video>
-                    {% endif %}
-                </div>
+                {% endcall %}
             {% endfor %}
         </div>
     {% endif %}
+
 {% endif %}

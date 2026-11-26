@@ -127,7 +127,7 @@ def test_get_details(client: TestClient, tg_handler: SimpleNamespace, dialog_id:
     assert set(data) == {'tg_details'}
     assert 'Hello<br>world' in data['tg_details']
     assert 'src="/media_storage/chat/photo%201.jpg"' in data['tg_details']
-    assert 'src="http://127.0.0.1:5000/media_storage/chat/clip.mp4"' in data['tg_details']
+    assert 'src="/media_storage/chat/clip.mp4"' in data['tg_details']
     tg_handler.get_message_detail.assert_called_once_with(dialog_id, group_id)
     assert tg_handler.current_state.message_details['message_group_id'] == group_id
 

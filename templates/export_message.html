@@ -10,6 +10,7 @@ Variables:
   - files: list of message files
 #}
 
+{% from 'media_file.html' import media_file with context %}
 <!DOCTYPE html>
 <html lang="en">
 <meta charset="utf-8">
@@ -44,6 +45,13 @@ Variables:
             width: 100%;
             height: 100%;
             object-fit: contain;
+        }
+        /* Audio player and a file of an unknown type / Аудиоплеер и файл неизвестного типа */
+        .media-files-inline {
+            width: 90%;
+        }
+        .media-files-audio {
+            width: 100%;
         }
         /* File name output / Вывод названия файла */
         .media-file-name {
@@ -122,27 +130,9 @@ Variables:
     <br>
     <div class="media-files-area">
         {% for message_file in files %}
-            <div class="{% if files|length>1 %} media-files-two-column {% else %} media-files-one-column {% endif %}">
-
-                {# Displaying of graphics files / Вывод графических файлов #}
-                {% if message_file.alt_text==tg_file_types.IMAGE.alt_text %}
-                    <img class="media-files-container"
-                         src="{{ message_file.file_name }}" alt="{{ message_file.alt_text }}">
-                {% endif %}
-
-                {# Displaying of video files / Вывод видео файлов #}
-                {% if message_file.alt_text==tg_file_types.VIDEO.alt_text %}
-                    <video class="media-files-container"
-                           src="{{ message_file.file_name }}" controls preload="metadata">
-                        Video is not supported by your browser
-                    </video>
-                {% endif %}
-
-                {# Displaying file name / Вывод имени файла #}
-                <div class="media-file-name">
-                    {{ message_file.file_name }}
-                </div>
-            </div>
+            {# Image, video, audio, or a link to a file of an unknown type, with the file name under it #}
+            {{ media_file(message_file.alt_text, message_file.file_name, message_file.file_name,
+                          message_file.size, files|length>1, True) }}
         {% endfor %}
     </div>
 {% endif %}

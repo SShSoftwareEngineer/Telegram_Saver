@@ -50,7 +50,7 @@ def test_new_operation_is_running():
     assert status.state == OPERATION_RUNNING
     html = status.messages['sb_operation']
     assert html.startswith('<strong>Operation: </strong><span class="sb-spinner"')
-    assert html.endswith('Loading &lt;b&gt;')
+    assert html.endswith('>Loading &lt;b&gt;</span>')
     assert '✅' not in html and '❌' not in html
 
 
@@ -62,7 +62,7 @@ def test_finish_marks_done_and_error():
     status.finish()
     assert status.state == OPERATION_DONE
     assert '✅' in status.messages['sb_operation'] and 'sb-spinner' not in status.messages['sb_operation']
-    assert status.messages['sb_operation'].endswith('Job')
+    assert status.messages['sb_operation'].endswith('>Job</span>')
     assert status.messages['sb_report'] == reports
     status.finish(error=True)
     assert status.state == OPERATION_ERROR
@@ -141,3 +141,22 @@ def test_exception_gets_cross_from_handler(error_client: TestClient):
     assert status_messages.state == OPERATION_ERROR
     html = error_client.get('/status_output').json()['sb_operation']
     assert '❌' in html and 'sb-spinner' not in html and '/_test_boom_status' in html
+
+
+def test_progress_is_shown_after_the_spinner_and_cleared_by_the_next_update_and_the_end():
+    """The progress (e.g. 37%) stands right after the spinner; a call without it, or the end, removes it"""
+    status = StatusMessages()
+    status.mess_update('Job', '', progress='37%')
+    html = status.messages['sb_operation']
+    assert html.index('sb-spinner') < html.index('37%') < html.index('Job')
+    status.mess_update('Job', 'step')
+    assert 'sb-progress' not in status.messages['sb_operation']
+    status.mess_update('Job', '', progress='80%')
+    status.finish()
+    assert 'sb-progress' not in status.messages['sb_operation'] and '✅' in status.messages['sb_operation']
+
+
+def test_file_size_is_shown_in_mb_kb_and_bytes():
+    from utils import format_file_size
+    assert format_file_size(3 * 2 ** 20) == '3.0 MB' and format_file_size(50 * 2 ** 20) == '50.0 MB'
+    assert format_file_size(2048) == '2.0 KB' and format_file_size(789) == '789 B' and format_file_size(None) == '0 B'

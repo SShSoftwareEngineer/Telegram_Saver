@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from database_handler import DbFile, get_db_handler
 from telegram_handler import get_tg_handler
-from utils import limit_list, status_messages
+from utils import format_file_size, limit_list, status_messages
 from web.deps import state_lock, templates
 from web.message_html import write_message_html
 
@@ -175,6 +175,7 @@ def db_database_maintenance(request: Request) -> JSONResponse:
         # медиа не должна подвешивать приложение на минуты; следующий запуск продолжит с остатка
         missing_files = []
         skipped_count = 0
+        too_big_count = 0
         for file_path in sorted(database_files - local_files):
             if Path(file_path).suffix == MessageFileTypes.CONTENT.default_ext:
                 continue
@@ -182,7 +183,11 @@ def db_database_maintenance(request: Request) -> JSONResponse:
                 skipped_count += 1
                 continue
             downloaded_file = db_handler.get_file_by_local_path(file_path)
-            if downloaded_file:
+            if downloaded_file and (downloaded_file['size'] or 0) > GlobalConst.button_download_size:
+                # A file over the limit is downloaded by the button "Download anyway", not by the maintenance
+                # Файл больше лимита загружается кнопкой «Download anyway», а не сервисным обслуживанием
+                too_big_count += 1
+            elif downloaded_file:
                 missing_files.append(downloaded_file)
         batch = missing_files[:GlobalConst.maintenance_max_downloads]
         if batch:
@@ -198,6 +203,9 @@ def db_database_maintenance(request: Request) -> JSONResponse:
             if len(missing_files) > len(batch):
                 status_messages.mess_update('', f'Limit of {GlobalConst.maintenance_max_downloads} files per run, '
                                                 f'run again to download the rest')
+        if too_big_count:
+            status_messages.mess_update('', f'Skipped {too_big_count} files over the limit of '
+                                            f'{format_file_size(GlobalConst.button_download_size)}')
         if skipped_count:
             status_messages.mess_update('', f'Skipped {skipped_count} files that could not be downloaded earlier '
                                             f'(retried after the restart)')
