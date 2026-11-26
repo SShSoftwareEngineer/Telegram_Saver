@@ -1,21 +1,19 @@
 """
 Tests of the text of the media without a person's text (`describe_media`: web page, poll, location, venue, contact),
-its way into a message group, the display of audio and files of an unknown type, and the note about the files over the
-download limit. Telethon objects are real types filled by hand, messages are fake objects.
+its way into a message group and the display of audio and files of an unknown type. Telethon objects are real types filled by hand, messages are fake objects.
 Тесты текста медиа без текста человека (`describe_media`: веб-страница, опрос, геопозиция, место, контакт), его
-попадания в группу сообщений, показа аудио и файлов неизвестного типа и пометки о файлах больше лимита.
+попадания в группу сообщений и показа аудио и файлов неизвестного типа.
 Объекты Telethon - настоящие типы, заполненные вручную, сообщения - заглушки.
 """
 
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 from telethon.tl.types import (GeoPoint, MessageMediaContact, MessageMediaGeo, MessageMediaGeoLive, MessageMediaPhoto,
                                MessageMediaPoll, MessageMediaVenue, MessageMediaWebPage, Poll, PollAnswer,
                                PollAnswerVoters, PollResults, TextWithEntities, WebPage)
 from config import GlobalConst, MessageFileTypes
 from media_text import describe_media
-from telegram_handler import TelegramHandler, TgFile, TgMessageGroup
+from telegram_handler import TgMessageGroup
 from web.deps import templates
 
 GEO = GeoPoint(lat=50.45, long=30.52, access_hash=0)
@@ -146,7 +144,7 @@ def test_audio_is_a_player_and_unknown_file_is_a_download_link():
     audio = render_media_file(MessageFileTypes.AUDIO.alt_text)
     assert '<audio src="/media/a b.dat" controls' in audio and 'media-files-inline' in audio
     unknown = render_media_file(MessageFileTypes.UNKNOWN.alt_text)
-    assert '<a href="/media/a b.dat" download="a b.dat">a b.dat</a>' in unknown and '2.0 kB' in unknown
+    assert '<a href="/media/a b.dat" download="a b.dat">a b.dat</a>' in unknown and '2.0 KB' in unknown
 
 
 def test_image_and_video_keep_their_columns_and_the_caption_is_optional():
@@ -158,29 +156,3 @@ def test_image_and_video_keep_their_columns_and_the_caption_is_optional():
 
 def test_other_kinds_show_nothing():
     assert render_media_file(MessageFileTypes.CONTENT.alt_text).strip() == ''
-
-
-# ----------------------------------------------------------------------------------------------------------------------
-# Files over the limit / Файлы больше лимита
-# ----------------------------------------------------------------------------------------------------------------------
-
-def make_tg_file(file_type: MessageFileTypes, size: int) -> TgFile:
-    return TgFile(dialog_id=1, message_grouped_id='g', message=MagicMock(), message_id=1, description='',
-                  file_name='f.bin', file_path='chat_1/2026-01-02/f.bin', alt_text=file_type.alt_text, size=size,
-                  file_type=file_type)
-
-
-def test_details_list_the_files_over_the_limit(work_dir):
-    """A big document is listed as not downloaded; a video (not downloaded on purpose) and a small file are not"""
-    big = make_tg_file(MessageFileTypes.UNKNOWN, GlobalConst.max_download_file_size + 1)
-    video = make_tg_file(MessageFileTypes.VIDEO, GlobalConst.max_download_file_size + 1)
-    small = make_tg_file(MessageFileTypes.UNKNOWN, 10)
-    group = SimpleNamespace(date=datetime(2026, 1, 2), html='', files=[big, video, small], files_report='',
-                            saved_to_db=False)
-    handler = SimpleNamespace(
-        current_state=SimpleNamespace(message_group_list=[group]),
-        get_message_group_by_id=lambda groups, group_id: groups[0],
-        get_dialog_by_id=lambda dialog_id: SimpleNamespace(title='Chat'),
-        download_message_file=MagicMock(return_value=None))
-    details = TelegramHandler.get_message_detail(handler, 1, 'g')  # type: ignore[arg-type]
-    assert details['too_large_files'] == [big]

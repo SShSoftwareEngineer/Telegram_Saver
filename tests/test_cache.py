@@ -83,7 +83,7 @@ def test_saving_without_preview_downloads_to_the_media_directory(work_dir: Path)
 
 def test_too_big_file_is_not_downloaded(work_dir: Path):
     handler = make_handler()
-    big = make_tg_file(GlobalConst.max_download_file_size + 1)
+    big = make_tg_file(GlobalConst.button_download_size + 1)
     assert TelegramHandler.download_message_file(handler, big, to_cache=True) is None
     handler.client.download_media.assert_not_called()
 

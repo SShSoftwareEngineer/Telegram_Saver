@@ -841,6 +841,13 @@ class DatabaseHandler:
                           db_file.file_type_id for db_file in current_message_group.files),
                       'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
+        # The files that are in the database but not on the disk (the HTML file of the message is restored by the
+        # maintenance and is not shown): the page tells about them instead of a silent skip
+        # Файлы, которые есть в базе данных, но нет на диске (HTML файл сообщения восстанавливает сервисное
+        # обслуживание, он не показывается): страница сообщает о них вместо молчаливого пропуска
+        db_details['missing_files'] = [db_file for db_file in (db_details.get('files') or [])
+                                       if not db_file.is_exists()
+                                       and db_file.file_type_id != MessageFileTypes.CONTENT.type_id]
         message_date = db_details.get('date')
         message_date_str = to_local(message_date).strftime(
             GlobalConst.message_datetime_format) if message_date is not None else ''

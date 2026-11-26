@@ -6,11 +6,11 @@ Every route is a regular `def` (Starlette runs it in a thread) and holds the glo
 """
 
 from pathlib import Path
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
-from utils import status_messages
-from telegram_handler import get_tg_handler, TgDialog, TgFile
+from utils import format_file_size, status_messages
+from telegram_handler import DOWNLOAD_CONFIRM, get_tg_handler, make_progress_reporter, TgDialog, TgFile
 from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 from web.deps import FormDep, form_list, form_str, render_fragment, state_lock
 from web.message_html import write_message_html
@@ -79,6 +79,27 @@ def tg_get_details(request: Request, dialog_id: int, message_group_id: str) -> J
         tg_handler = get_tg_handler()
         tg_handler.current_state.message_details = tg_handler.get_message_detail(dialog_id, message_group_id)
         # Updating message details / Обновление деталей сообщения
+        return JSONResponse({'tg_details': render_fragment(request, 'tg_details.html')})
+
+
+@router.post('/tg_download_file/{dialog_id}/{message_group_id}')
+def tg_download_file(request: Request, dialog_id: int, message_group_id: str, file_path: str) -> JSONResponse:
+    """
+    Downloading a file of the open message to the cache by the button (a video, a file of an unknown type)
+    Загрузка файла открытого сообщения в кэш по кнопке (видео, файл неизвестного типа)
+    Attributes:
+        dialog_id (int): ID of the dialog / ID диалога
+        message_group_id (str): ID of the message group / ID группы сообщений
+        file_path (str): path of the file (`TgFile.file_path`), it identifies the file / путь файла
+    """
+    with state_lock:
+        tg_handler = get_tg_handler()
+        try:
+            tg_handler.current_state.message_details = tg_handler.download_pending_file(
+                dialog_id, message_group_id, file_path)
+        except LookupError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        # Updating message details: now with the file / Обновление деталей сообщения: теперь с файлом
         return JSONResponse({'tg_details': render_fragment(request, 'tg_details.html')})
 
 
@@ -215,9 +236,18 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                     # the limit / Скачиваем файл, если его нет в заданной директории файловой системы и его размер
                     # меньше предельного
                     status_messages.mess_update('Downloading files', tg_file.file_path)
-                    downloading_result = tg_handler.download_message_file(tg_file)
-                    report_msg = f'{tg_file.file_path} downloaded successfully' \
-                        if downloading_result else f'Failed to download file {tg_file.file_path}'
+                    if (tg_file.download_level == DOWNLOAD_CONFIRM and not tg_file.is_exists()
+                            and not tg_file.is_cached()):
+                        # A big file is saved only if it was downloaded by the button "Download anyway" before
+                        # Большой файл сохраняется, только если до этого он был загружен кнопкой «Download anyway»
+                        report_msg = (f'{tg_file.file_path} skipped: {format_file_size(tg_file.size)} is over the '
+                                      f'limit of {format_file_size(GlobalConst.button_download_size)} '
+                                      f'(use "Download anyway" before saving)')
+                    else:
+                        downloading_result = tg_handler.download_message_file(
+                            tg_file, progress_callback=make_progress_reporter('Downloading files'))
+                        report_msg = f'{tg_file.file_path} downloaded successfully' \
+                            if downloading_result else f'Failed to download file {tg_file.file_path}'
                     status_messages.mess_update('Downloading files', report_msg)
                 # Not a commit: the group is not saved until the HTML file is written, the rollback is still possible
                 # Это не фиксация: группа не сохранена, пока не записан HTML файл, откат еще возможен

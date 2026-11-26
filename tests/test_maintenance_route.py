@@ -362,3 +362,34 @@ def test_backup_rotation_reports_files_it_cannot_delete(work_dir: Path, monkeypa
     deleted, failed = service.rotate_database_backups(backup_dir, stem, suffix, keep=2)
 
     assert deleted == 1 and failed == [locked]
+
+
+def test_maintenance_skips_the_files_over_the_limit(client: TestClient, db_handler: DatabaseHandler,
+                                                    download_mock: MagicMock):
+    """A file over the limit is not downloaded by the maintenance (it is for the button "Download anyway"); the report
+    says how many were skipped, not that they failed"""
+    group = add_message(db_handler, 1, 'chat', ('chat/2026-01-01/big.mp4', 'chat/2026-01-01/small.jpg'))
+    group.files[0].size = GlobalConst.button_download_size + 1
+    db_handler.session.commit()
+
+    assert client.post('/db_database_maintenance').status_code == 200
+
+    assert [f['file_path'] for f in download_mock.call_args.args[0]] == ['chat/2026-01-01/small.jpg']
+    assert any('Skipped 1 files over the limit' in line for line in report())
+
+
+def test_database_details_tell_about_the_files_not_on_the_disk(client: TestClient, db_handler: DatabaseHandler,
+                                                               work_dir: Path):
+    """A big file that was not downloaded is marked as such, a lost small file as not found; a file on the disk and the
+    HTML record are not marked"""
+    group = add_message(db_handler, 1, 'chat', ('chat/2026-01-01/big.mp4', 'chat/2026-01-01/lost.jpg',
+                                                'chat/2026-01-01/kept.jpg'), ('chat/2026-01-01/message.html',))
+    group.files[0].size = GlobalConst.button_download_size + 1
+    db_handler.session.commit()
+    make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
+
+    html = client.get(f'/db_details/{group.grouped_id}').json()['db_details']
+
+    assert 'big.mp4' in html and 'not downloaded, larger than the limit (25.0 MB)' in html
+    assert 'lost.jpg' in html and 'file not found on the disk' in html
+    assert 'message.html' not in html and html.count('class="media-file-name"') == 2

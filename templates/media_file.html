@@ -7,12 +7,14 @@ Imported with context (it uses `tg_file_types`).
   - size: file size in bytes (shown for a file of an unknown type)
   - many: the message has several files (two columns instead of one)
   - caption: show the file name under the file
+  - the content of a `call` block (if any) stands above an image or a video, inside its area
 Image and video fill the area; audio is a player of the usual height; a file of an unknown type is a line
 "name · size" with a link to download it. Макрос: один файл сообщения, одинаковый для деталей вкладок и экспорта.
 #}
 {% macro media_file(kind, src, name, size, many, caption=False) %}
     {% if kind in (tg_file_types.IMAGE.alt_text, tg_file_types.VIDEO.alt_text) %}
         <div class="{{ 'media-files-two-column' if many else 'media-files-one-column' }}">
+            {% if caller is defined %}{{ caller() }}{% endif %}
             {% if kind == tg_file_types.IMAGE.alt_text %}
                 <img src="{{ src }}" alt="{{ kind }}" class="media-files-container">
             {% else %}
@@ -31,7 +33,7 @@ Image and video fill the area; audio is a player of the usual height; a file of 
         </div>
     {% elif kind == tg_file_types.UNKNOWN.alt_text %}
         <div class="media-files-inline media-file-name">
-            <a href="{{ src }}" download="{{ name }}">{{ name }}</a> &middot; {{ size|filesizeformat }}
+            <a href="{{ src }}" download="{{ name }}">{{ name }}</a> &middot; {{ size|file_size }}
         </div>
     {% endif %}
 {% endmacro %}

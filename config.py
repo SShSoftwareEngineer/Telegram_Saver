@@ -109,7 +109,11 @@ class GlobalConst:
     Класс для хранения констант проекта.
     """
 
-    max_download_file_size = 50 * 2 ** 20  # 50 MB - Maximum file size for downloading from Telegram
+    # Download of the message files by size (see `telegram_handler.download_level`): up to `auto_preview_size` the file is
+    # downloaded to the cache when the details are opened; up to `button_download_size` - by the button, and
+    # automatically when the message is saved; a bigger one - only by the button "Download anyway"
+    auto_preview_size = 2 * 2 ** 20  # 3 MB (about 3 s at 1 MB/s)
+    button_download_size = 25 * 2 ** 20  # 25 MB (about 23 s at 1 MB/s)
     map_service = 'openstreetmap'  # Map of the links for locations: 'openstreetmap' or 'google' (see `media_text.MAP_URLS`)
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page

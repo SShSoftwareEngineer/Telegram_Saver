@@ -49,6 +49,7 @@ class StatusMessages:
     Attributes:
         operation (str): Current operation.
         state (str): State of the operation: running, done or error (empty before the first operation).
+        progress (str): Progress of the running operation (e.g. `37%`), shown right after the spinner.
         report_list (list[str] | None): Report messages.
         messages (dict): Messages for the web interface.
         version (int): Counter of updates; the page sends the last one it has seen, so unchanged messages are not
@@ -57,11 +58,13 @@ class StatusMessages:
 
     operation: str = ''
     state: str = ''
+    progress: str = ''
     report_list: list[str] | None = None
     messages: dict = field(default_factory=dict)
     version: int = 0
 
-    def mess_update(self, operation: str, report: str, new_list: bool = False, state: str = OPERATION_RUNNING):
+    def mess_update(self, operation: str, report: str, new_list: bool = False, state: str = OPERATION_RUNNING,
+                    progress: str = ''):
         """
         Sets the current status messages for the web interface. Every call marks the operation as running; the end
         of the operation is marked by `finish` (the request middleware calls it when the request is over).
@@ -73,12 +76,15 @@ class StatusMessages:
             new_list (bool): If True, starts a new report list
             state (str): State of the operation (`OPERATION_RUNNING` by default; the error handler passes
                 `OPERATION_ERROR`)
+            progress (str): Progress of the operation (e.g. `37%`); every call sets it, so a call without it
+                clears the progress
         """
 
         touched = request_status_touches.get()
         if touched is not None:
             touched.append(True)  # The current request has changed the status bar / Текущий запрос менял строку статуса
         self.state = state
+        self.progress = progress
         if operation:
             self.operation = operation
         current_time = datetime.now().strftime('%H:%M:%S.%f')[:-3]  # Current time with milliseconds
@@ -120,6 +126,7 @@ class StatusMessages:
         if not self.operation or self.state == new_state:
             return
         self.state = new_state
+        self.progress = ''
         self.messages = {**self.messages, 'sb_operation': self._operation_html()}
         self.version += 1
 
@@ -134,12 +141,28 @@ class StatusMessages:
         mark = {OPERATION_RUNNING: '<span class="sb-spinner" title="In progress"></span> ',
                 OPERATION_DONE: '<span class="sb-mark" title="Finished">✅</span> ',
                 OPERATION_ERROR: '<span class="sb-mark" title="Failed">❌</span> '}.get(self.state, '')
-        return f'<strong>Operation: </strong>{mark}{escape(self.operation)}'
+        progress = f'<span class="sb-progress">{escape(self.progress)}</span> ' if self.progress else ''
+        text = escape(self.operation)
+        return f'<strong>Operation: </strong>{mark}{progress}<span class="sb-operation-text" title="{text}">{text}</span>'
 
 
 # Global instance of StatusMessages
 # Глобальный экземпляр StatusMessages
 status_messages = StatusMessages()
+
+
+def format_file_size(size: int | None) -> str:
+    """
+    File size in the units the user knows: `12.3 MB`, `45.6 KB`, `789 B` (1 MB = 2**20 bytes, as the download limit)
+    Размер файла в понятных единицах: `12.3 MB`, `45.6 KB`, `789 B` (1 MB = 2**20 байт, как и предельный размер)
+    """
+
+    size = size or 0
+    if size >= 2 ** 20:
+        return f'{size / 2 ** 20:.1f} MB'
+    if size >= 2 ** 10:
+        return f'{size / 2 ** 10:.1f} KB'
+    return f'{size} B'
 
 
 def parse_date_string(date_str: str | None, end_of_day: bool = False) -> datetime | None:

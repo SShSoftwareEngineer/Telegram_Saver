@@ -260,7 +260,7 @@ button[data-needs-checked]:disabled {
 /* CSS Grid for status bar / CSS Grid для строки статуса */
 .status-bar-grid {
     display: grid;
-    grid-template-columns: 45fr 55fr;
+    grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);  /* minmax(0, ...): a long text does not widen the bar */
     background-color: #f0f0f0;
     border-top: 1px solid #ddd;
     color: #555555;
@@ -275,6 +275,21 @@ button[data-needs-checked]:disabled {
     display: flex;
     align-items: center;
     gap: 5px;
+    min-width: 0;
+}
+
+/* The operation text is one line, a long one is cut with "..." (the full text is in the tooltip)
+   Текст операции в одну строку, длинный обрезается многоточием (полный текст во всплывающей подсказке) */
+.sb-operation-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.status-section > strong, .sb-spinner, .sb-mark, .sb-progress {
+    flex: 0 0 auto;
 }
 
 .status-section:first-child {
@@ -293,6 +308,11 @@ button[data-needs-checked]:disabled {
     border-top-color: #2a7ae2;
     border-radius: 50%;
     animation: sb-spin 0.8s linear infinite;
+}
+
+/* Progress of the operation (e.g. 37%) right after the spinner / Прогресс операции (например 37%) сразу после крутилки */
+.sb-progress {
+    font-variant-numeric: tabular-nums;
 }
 
 @keyframes sb-spin {
@@ -543,18 +563,23 @@ blockquote {
 .media-files-one-column {
     width: 90%;
     height: 90vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Media files are arranged in two columns / Медиафайлы расположены в две колонки */
 .media-files-two-column {
     width: 45%;
     height: 45vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Media file container / Контейнер для медиафайлов */
 .media-files-container {
     width: 100%;
     height: 100%;
+    min-height: 0;
     object-fit: contain;
 }
 
