@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 import pytest
+import starlette.testclient
 from fastapi.testclient import TestClient
 import database_handler
 import telegram_handler
@@ -27,6 +28,23 @@ from web.main import app
 # The clients talk to the server address, otherwise the request guard rejects the default `testserver` host
 # Клиенты обращаются к адресу сервера, иначе защита запросов отклонит хост `testserver` по умолчанию
 BASE_URL = f'http://{HOST}:{PORT}'
+
+
+def _ui(self: starlette.testclient.httpx.Response) -> dict:
+    """
+    The updates of a successful response of the UI contract (`web/ui.py`) as one dict: element id -> new HTML, or the
+    new `checked` state of a checkbox. A response with another body (an error) gives an empty dict, use `json()` there.
+    Обновления успешного ответа контракта интерфейса (`web/ui.py`) одним словарем: id элемента -> новый HTML или новое
+    состояние `checked` чек-бокса. Ответ с другим телом (ошибка) дает пустой словарь, для него нужен `json()`.
+    """
+    body = self.json()
+    return {**body.get('html', {}), **body.get('checked', {})}
+
+
+# The test client answers with the response class of the HTTP library Starlette uses (`httpx2` here)
+# Тестовый клиент отвечает классом ответа HTTP-библиотеки, которую использует Starlette (здесь `httpx2`)
+# `response.ui()` in the tests of the routes that answer by the contract / `response.ui()` в тестах роутов с контрактом
+starlette.testclient.httpx.Response.ui = _ui  # type: ignore[attr-defined]
 
 
 @pytest.fixture(autouse=True)

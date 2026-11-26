@@ -187,4 +187,4 @@ def test_database_details_show_the_local_time(client: TestClient, db_handler: Da
     add_group(db_handler, '1_1', EVENING)
     response = client.get('/db_details/1_1')
     assert response.status_code == 200
-    assert EVENING.astimezone().strftime(GlobalConst.message_datetime_format) in response.json()['db_details']
+    assert EVENING.astimezone().strftime(GlobalConst.message_datetime_format) in response.ui()['db_details']

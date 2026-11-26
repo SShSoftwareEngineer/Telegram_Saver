@@ -170,4 +170,4 @@ def test_filter_route_uses_whole_local_days(client: TestClient, boundary_groups:
             FILTER_CFG['sorting_field']: '0', FILTER_CFG['sorting_order']: '0'}
     response = client.post('/db_message_apply_filters', data=form)
     assert response.status_code == 200
-    assert response.json()['db-messages-count'] == '(4)'
+    assert response.ui()['db-messages-count'] == '(4)'

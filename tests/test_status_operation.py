@@ -110,7 +110,7 @@ def test_startup_operation_is_finished(tg_handler, db_handler, monkeypatch: pyte
 def test_route_with_status_gets_check_mark(client: TestClient):
     """The middleware finishes the operation of a successful request / Успешный запрос завершает операцию"""
     assert client.get('/_test_ok').status_code == 200
-    html = client.get('/status_output').json()['sb_operation']
+    html = client.get('/status_output').ui()['sb_operation']
     assert '✅' in html and 'Test job' in html and 'sb-spinner' not in html
 
 
@@ -129,7 +129,7 @@ def test_route_without_status_leaves_it_alone(client: TestClient):
 def test_error_response_gets_cross(client: TestClient):
     """An error response (here 400) after an update gives a cross / Ответ с ошибкой дает крестик"""
     assert client.get('/_test_bad_request').status_code == 400
-    html = client.get('/status_output').json()['sb_operation']
+    html = client.get('/status_output').ui()['sb_operation']
     assert '❌' in html and 'Test job' in html
 
 
@@ -139,7 +139,7 @@ def test_exception_gets_cross_from_handler(error_client: TestClient):
     operation running again / После необработанного исключения крестик остается"""
     assert error_client.get('/_test_boom_status').status_code == 500
     assert status_messages.state == OPERATION_ERROR
-    html = error_client.get('/status_output').json()['sb_operation']
+    html = error_client.get('/status_output').ui()['sb_operation']
     assert '❌' in html and 'sb-spinner' not in html and '/_test_boom_status' in html
 
 

@@ -7,13 +7,13 @@ Every route is a regular `def` (Starlette runs it in a thread) and holds the glo
 
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
 from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from utils import format_file_size, status_messages
 from telegram_handler import DOWNLOAD_CONFIRM, get_tg_handler, make_progress_reporter, TgDialog, TgFile
 from database_handler import get_db_handler, DbDialog, DbMessageGroup, DbFile, DbDialogType, DbFileType
 from web.deps import FormDep, form_list, form_str, render_fragment, state_lock
 from web.message_html import write_message_html
+from web.ui import ui_update
 
 router = APIRouter()
 
@@ -29,8 +29,8 @@ def tg_get_dialogs(request: Request) -> JSONResponse:
         tg_handler.current_state.dialog_list = tg_handler.get_dialog_list()
         # Updating the list of dialogs and the dialog count counter
         # Обновление списка диалогов и счетчика количества диалогов
-        return JSONResponse({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
-                             'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})', })
+        return ui_update({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
+                          'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})', })
 
 
 @router.get('/tg_messages/{dialog_id}')
@@ -61,9 +61,9 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
         tg_handler.current_state.message_details = None
         # Refresh message list, message counter, and clear current message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей текущего сообщения
-        return JSONResponse({'tg_messages': render_fragment(request, 'tg_messages.html'),
-                             'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
-                             'tg_details': '', })
+        return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
+                          'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                          'tg_details': '', })
 
 
 @router.get('/tg_details/{dialog_id}/{message_group_id}')
@@ -79,7 +79,7 @@ def tg_get_details(request: Request, dialog_id: int, message_group_id: str) -> J
         tg_handler = get_tg_handler()
         tg_handler.current_state.message_details = tg_handler.get_message_detail(dialog_id, message_group_id)
         # Updating message details / Обновление деталей сообщения
-        return JSONResponse({'tg_details': render_fragment(request, 'tg_details.html')})
+        return ui_update({'tg_details': render_fragment(request, 'tg_details.html')})
 
 
 @router.post('/tg_download_file/{dialog_id}/{message_group_id}')
@@ -100,7 +100,7 @@ def tg_download_file(request: Request, dialog_id: int, message_group_id: str, fi
         except LookupError as error:
             raise HTTPException(status_code=404, detail=str(error)) from error
         # Updating message details: now with the file / Обновление деталей сообщения: теперь с файлом
-        return JSONResponse({'tg_details': render_fragment(request, 'tg_details.html')})
+        return ui_update({'tg_details': render_fragment(request, 'tg_details.html')})
 
 
 @router.post('/tg_dialog_apply_filters')
@@ -128,9 +128,9 @@ def tg_dialog_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         # Update list of dialogs and the dialog counter, clear list of messages, message details, and message counter
         # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения
         # и счетчика сообщений
-        return JSONResponse({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
-                             'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
-                             'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })
+        return ui_update({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
+                          'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
+                          'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })
 
 
 @router.post('/tg_message_apply_filters')
@@ -156,9 +156,9 @@ def tg_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         tg_handler.current_state.message_details = None
         # Updating the message list, message counter, and clearing the message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения
-        return JSONResponse({'tg_messages': render_fragment(request, 'tg_messages.html'),
-                             'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
-                             'tg_details': '', })
+        return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
+                          'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                          'tg_details': '', })
 
 
 @router.post('/tg_save_selected_message_to_db')
@@ -180,7 +180,7 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
             # Flask failed here with a TypeError (500).
             # Диалог еще не открывался, сохранять нечего: пустой JSON ничего не меняет на странице.
             # Во Flask здесь возникала ошибка TypeError (500).
-            return JSONResponse({})
+            return ui_update()
         # Processing the list of message groups in the current state of the client
         # Обработка списка групп сообщений в текущего состояния клиента
         for tg_message_group in message_groups:
@@ -300,7 +300,7 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
         # Update the message list, message counter, and dialogue list in the database dialogue filter
         # Обновление списка сообщений, счетчика сообщений и списка диалогов в фильтре диалогов базы данных
         dialog_select_id = FormCfg.db_message_filter['dialog_select']
-        return JSONResponse({'tg_messages': render_fragment(request, 'tg_messages.html'),
-                             'tg-messages-count': f'({len(message_groups)})',
-                             dialog_select_id: db_handler.get_select_content_string(
-                                 db_handler.current_state.dialog_list, 'dialog_id', 'title')})
+        return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
+                          'tg-messages-count': f'({len(message_groups)})',
+                          dialog_select_id: db_handler.get_select_content_string(
+                              db_handler.current_state.dialog_list, 'dialog_id', 'title')})

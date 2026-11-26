@@ -170,7 +170,7 @@ def test_route_downloads_and_returns_the_details(client: TestClient, tg_handler:
     tg_handler.download_pending_file = MagicMock(return_value=make_details())
     group_id = f'{CHANNEL_ID}_1'
     response = client.post(f'/tg_download_file/{CHANNEL_ID}/{group_id}', params={'file_path': 'chat/a b.mp4'})
-    assert response.status_code == 200 and set(response.json()) == {'tg_details'}
+    assert response.status_code == 200 and set(response.ui()) == {'tg_details'}
     tg_handler.download_pending_file.assert_called_once_with(CHANNEL_ID, group_id, 'chat/a b.mp4')
     assert tg_handler.current_state.message_details['message_group_id'] == group_id
 
@@ -188,7 +188,7 @@ def test_details_show_the_buttons(client: TestClient, tg_handler: SimpleNamespac
     details['pending_files'] = [make_tg_file(MessageFileTypes.VIDEO, 3 * MB + 1024, 'clip 1.mp4'),
                                 make_tg_file(MessageFileTypes.UNKNOWN, 150 * MB, 'big.zip')]
     tg_handler.get_message_detail.return_value = details
-    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').json()['tg_details']
+    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').ui()['tg_details']
     assert f'/tg_download_file/{CHANNEL_ID}/{CHANNEL_ID}_1?file_path=chat_1/2026-01-02/clip%201.mp4' in html
     assert 'Download video (3.0 MB)' in html
     assert 'Size 150.0 MB (ZIP). Download anyway' in html and "confirm('Size 150.0 MB." in html
@@ -211,7 +211,7 @@ def test_video_button_stands_above_its_own_thumbnail(client: TestClient, tg_hand
                                 make_file(MessageFileTypes.VIDEO, 2, 'two.mp4'),
                                 make_file(MessageFileTypes.UNKNOWN, 3, 'doc.pdf')]
     tg_handler.get_message_detail.return_value = details
-    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').json()['tg_details']
+    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').ui()['tg_details']
     area = html.index('class="media-files-area"')
     button = {name: html.index(f'file_path=chat_1/2026-01-02/{name}') for name in ('one.mp4', 'two.mp4', 'doc.pdf')}
     assert html.count('/tg_download_file/') == 3  # Each button once / Каждая кнопка один раз

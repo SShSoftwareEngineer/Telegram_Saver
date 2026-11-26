@@ -56,8 +56,8 @@ def checked(*grouped_ids: str, **form) -> dict:
 
 
 def nothing_done(data: dict) -> bool:
-    """Both tag lists are null: the page script skips them / Оба списка равны null: скрипт страницы их пропускает"""
-    return data == {CURR_TAGS: None, ALL_TAGS: None}
+    """The response has no tag lists (an empty update) / В ответе нет списков тегов (пустое обновление)"""
+    return data == {}
 
 
 def reported(text: str) -> bool:
@@ -77,7 +77,7 @@ def test_tag_add_to_the_checked_messages(client: TestClient, db_handler: Databas
     third = add_group(db_handler, 3)
     response = client.post('/db_tag_add', data=checked(selected, second, edit_name='new'))
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {CURR_TAGS, ALL_TAGS, box(selected), box(second)}
     assert data[box(selected)] is False and data[box(second)] is False
     assert option('new') in data[CURR_TAGS] and option('old') in data[CURR_TAGS]
@@ -93,8 +93,8 @@ def test_open_message_is_not_the_target(client: TestClient, db_handler: Database
     """The message open in the details is not checked: it gets no tag, and its tag field is not touched"""
     second = add_group(db_handler, 2)
     response = client.post('/db_tag_add', data=checked(second, edit_name='new'))
-    data = response.json()
-    assert data[CURR_TAGS] is None and option('new') in data[ALL_TAGS]
+    data = response.ui()
+    assert CURR_TAGS not in data and option('new') in data[ALL_TAGS]
     assert group_tags(db_handler, selected) == ['old']
     assert group_tags(db_handler, second) == ['new']
 
@@ -103,8 +103,8 @@ def test_tags_work_with_closed_details(client: TestClient, db_handler: DatabaseH
     """Closed details (no open message) do not matter: the checked messages get the tag, no tag field is returned"""
     first, second = add_group(db_handler, 1), add_group(db_handler, 2)
     assert db_handler.current_state.selected_message_group_id == ''
-    data = client.post('/db_tag_add', data=checked(first, second, edit_name='new')).json()
-    assert data[CURR_TAGS] is None and option('new') in data[ALL_TAGS]
+    data = client.post('/db_tag_add', data=checked(first, second, edit_name='new')).ui()
+    assert CURR_TAGS not in data and option('new') in data[ALL_TAGS]
     assert group_tags(db_handler, first) == group_tags(db_handler, second) == ['new']
 
 
@@ -120,7 +120,7 @@ def test_closed_details_after_filters_do_not_matter(client: TestClient, db_handl
 def test_tag_add_without_name(client: TestClient, db_handler: DatabaseHandler, selected: str, form: dict):
     """No tag name: nothing changes, both lists are null"""
     response = client.post('/db_tag_add', data=checked(selected, **form))
-    assert response.status_code == 200 and nothing_done(response.json())
+    assert response.status_code == 200 and nothing_done(response.ui())
     assert group_tags(db_handler, selected) == ['old']
 
 
@@ -130,7 +130,7 @@ def test_tag_remove_from_the_checked_messages(client: TestClient, db_handler: Da
     third = add_group(db_handler, 3, ('old',))
     response = client.post('/db_tag_remove', data=checked(selected, second, edit_name='old'))
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert data[CURR_TAGS] == '' and option('old') in data[ALL_TAGS]  # the third message still has it
     assert data[box(selected)] is False and data[box(second)] is False and box(third) not in data
     assert group_tags(db_handler, selected) == group_tags(db_handler, second) == []
@@ -138,14 +138,14 @@ def test_tag_remove_from_the_checked_messages(client: TestClient, db_handler: Da
     assert all_tags(db_handler) == {'old': 1}
     assert reported('Tag "old" removed from 2 of 2 checked messages')
     response = client.post('/db_tag_remove', data=checked(third, edit_name='old'))
-    assert option('old') not in response.json()[ALL_TAGS]
+    assert option('old') not in response.ui()[ALL_TAGS]
     assert all_tags(db_handler) == {}
 
 
 def test_tag_remove_without_name(client: TestClient, selected: str):
     """No tag name: nothing is done"""
     response = client.post('/db_tag_remove', data=checked(selected))
-    assert nothing_done(response.json())
+    assert nothing_done(response.ui())
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ def test_tag_update_in_the_checked_messages(client: TestClient, db_handler: Data
     without = add_group(db_handler, 3, ('food',))
     response = client.post('/db_tag_update', data=checked(selected, without, old_name='old', edit_name='new'))
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert option('new') in data[CURR_TAGS] and option('old') not in data[CURR_TAGS]
     assert option('new') in data[ALL_TAGS] and option('old') in data[ALL_TAGS]
     assert group_tags(db_handler, selected) == ['new']
@@ -175,7 +175,7 @@ def test_tag_update_in_the_checked_messages(client: TestClient, db_handler: Data
 def test_tag_update_incomplete_form(client: TestClient, db_handler: DatabaseHandler, selected: str, form: dict):
     """A missing or empty name, or the same name twice: nothing is done"""
     response = client.post('/db_tag_update', data=checked(selected, **form))
-    assert response.status_code == 200 and nothing_done(response.json())
+    assert response.status_code == 200 and nothing_done(response.ui())
     assert group_tags(db_handler, selected) == ['old']
 
 
@@ -184,7 +184,7 @@ def test_tag_update_everywhere(client: TestClient, db_handler: DatabaseHandler, 
     other = add_group(db_handler, 2, ('old', 'food'))
     response = client.post('/db_tag_update_everywhere', data=checked(old_name='old', edit_name='new'))
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert option('new') in data[CURR_TAGS]
     assert option('new') in data[ALL_TAGS] and option('old') not in data[ALL_TAGS]
     assert group_tags(db_handler, selected) == ['new']
@@ -197,8 +197,8 @@ def test_tag_update_everywhere_needs_nothing_checked_and_no_open_message(client:
     """Renaming everywhere works with nothing checked and the details closed; no error, no tag field returned"""
     first, second = add_group(db_handler, 1, ('old',)), add_group(db_handler, 2, ('old',))
     assert db_handler.current_state.selected_message_group_id == ''
-    data = client.post('/db_tag_update_everywhere', data={OLD_NAME: 'old', EDIT_NAME: 'new'}).json()
-    assert data[CURR_TAGS] is None and option('new') in data[ALL_TAGS]
+    data = client.post('/db_tag_update_everywhere', data={OLD_NAME: 'old', EDIT_NAME: 'new'}).ui()
+    assert CURR_TAGS not in data and option('new') in data[ALL_TAGS]
     assert group_tags(db_handler, first) == group_tags(db_handler, second) == ['new']
 
 
@@ -206,7 +206,7 @@ def test_tag_update_everywhere_leaves_the_checks(client: TestClient, db_handler:
     """Renaming everywhere does not work on the checked messages, so their checkboxes are not touched"""
     second = add_group(db_handler, 2)
     form = checked(selected, second, old_name='old', edit_name='new')
-    data = client.post('/db_tag_update_everywhere', data=form).json()
+    data = client.post('/db_tag_update_everywhere', data=form).ui()
     assert set(data) == {CURR_TAGS, ALL_TAGS}
 
 
@@ -216,13 +216,13 @@ def test_checks_stay_when_nothing_was_done(client: TestClient, db_handler: Datab
         ('/db_tag_add', {}), ('/db_tag_remove', {'edit_name': ''}), ('/db_tag_update', {'edit_name': 'x'}))
     for url, form in cases:
         response = client.post(url, data=checked(selected, **form))
-        assert nothing_done(response.json())
+        assert nothing_done(response.ui())
 
 
 def test_tag_update_everywhere_incomplete_form(client: TestClient, selected: str):
     """The same name twice: nothing is done"""
     response = client.post('/db_tag_update_everywhere', data=checked(old_name='old', edit_name='old'))
-    assert nothing_done(response.json())
+    assert nothing_done(response.ui())
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ def test_no_checked_messages(client: TestClient, db_handler: DatabaseHandler, ur
     if open_message:
         db_handler.current_state.selected_message_group_id = group_id
     response = client.post(url, data=checked(**form))
-    assert response.status_code == 200 and nothing_done(response.json())
+    assert response.status_code == 200 and nothing_done(response.ui())
     assert group_tags(db_handler, group_id) == ['old']
     assert reported(NO_MESSAGES)
 
@@ -313,7 +313,7 @@ def test_tag_sorting(client: TestClient, db_handler: DatabaseHandler, value: str
     add_group(db_handler, 2, ('banana', 'cherry'))
     response = client.post('/db_tag_all_sorting', data={} if value is None else {SORTING: value})
     assert response.status_code == 200
-    html = response.json()[ALL_TAGS]
+    html = response.ui()[ALL_TAGS]
     assert sorted(expected, key=html.index) == expected
     assert [tag.name for tag in db_handler.all_tags_list or []] == expected
 
@@ -324,5 +324,5 @@ def test_tag_sorting_by_last_update(client: TestClient, db_handler: DatabaseHand
     add_group(db_handler, 2, ('second',))
     response = client.post('/db_tag_all_sorting', data={SORTING: '2'})
     assert response.status_code == 200
-    assert option('first') in response.json()[ALL_TAGS] and option('second') in response.json()[ALL_TAGS]
+    assert option('first') in response.ui()[ALL_TAGS] and option('second') in response.ui()[ALL_TAGS]
     assert db_handler.current_state.all_tags_list_sorting['field'] == 'created_at'

@@ -9,13 +9,13 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from config import FormCfg, GlobalConst, MessageFileTypes, ProjectDirs
 from utils import clean_file_path, delete_media_files, limit_list, status_messages
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler, DbMessageGroup
 from web.deps import FormDep, form_list, form_str, render_fragment, state_lock
+from web.ui import ui_update
 
 router = APIRouter()
 
@@ -49,10 +49,10 @@ def db_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         db_handler.current_state.selected_message_group_id = ''
         # Updating the message list, message counter, and clearing the message details and its tags
         # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения и его тегов
-        return JSONResponse({'db_messages': render_fragment(request, 'db_messages.html'),
-                             'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
-                             'db_details': '',
-                             FormCfg.db_detail_tags['curr_message_tags']: '', })
+        return ui_update({'db_messages': render_fragment(request, 'db_messages.html'),
+                          'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
+                          'db_details': '',
+                          FormCfg.db_detail_tags['curr_message_tags']: '', })
 
 
 @router.get('/db_details/{message_group_id}')
@@ -70,9 +70,9 @@ def db_get_details(request: Request, message_group_id: str) -> JSONResponse:
         db_handler.current_state.selected_message_group_id = message_group_id
         # Creating a data structure for updating the tag list
         # Формирование структуры данных для обновления списка тегов
-        return JSONResponse({'db_details': render_fragment(request, 'db_details.html'),
-                             FormCfg.db_detail_tags['curr_message_tags']: db_handler.get_select_content_string(
-                                 details.get('tags', []), 'id', 'name')})
+        return ui_update({'db_details': render_fragment(request, 'db_details.html'),
+                          FormCfg.db_detail_tags['curr_message_tags']: db_handler.get_select_content_string(
+                              details.get('tags', []), 'id', 'name')})
 
 
 @router.post('/db_export_selected_message_to_html')
@@ -86,9 +86,8 @@ def db_export_selected_message_to_html(  # pylint: disable=too-many-locals
     # Получение из формы списка ID групп сообщений, отмеченных для экспорта
     selected_messages_id = form_list(form, FormCfg.db_checkbox_list['db_checkbox_list'])
     export_messages_id = [x.replace(GlobalConst.select_in_database, '').strip() for x in selected_messages_id]
-    data_structure: dict[str, bool] = {}
     if not export_messages_id:
-        return JSONResponse(data_structure)
+        return ui_update()
     with state_lock:
         db_handler = get_db_handler()
         # Status bar update / Обновление строки статуса
@@ -135,8 +134,7 @@ def db_export_selected_message_to_html(  # pylint: disable=too-many-locals
         status_messages.mess_update('', f'{len(export_messages_id)} messages exported to HTML file')
         # Updating the form to uncheck the exported messages
         # Обновление формы для снятия выделения с экспортированных сообщений
-        data_structure = {x: False for x in selected_messages_id}
-        return JSONResponse(data_structure)
+        return ui_update(checked={x: False for x in selected_messages_id})
 
 
 @router.post('/db_delete_selected_from_database')
@@ -185,13 +183,13 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
                                         f'Files deleted from local storage: {deleted_count}', True)
             for error in limit_list(file_errors, GlobalConst.status_list_max_items):
                 status_messages.mess_update('', f'File was not deleted: {error}')
-        response = {'db_messages': render_fragment(request, 'db_messages.html'),
-                    'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
-                    'db_details': '',
-                    FormCfg.db_detail_tags['curr_message_tags']: '',
-                    FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select(),
-                    FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
-                        db_handler.current_state.dialog_list, 'dialog_id', 'title')}
+        html = {'db_messages': render_fragment(request, 'db_messages.html'),
+                'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
+                'db_details': '',
+                FormCfg.db_detail_tags['curr_message_tags']: '',
+                FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select(),
+                FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
+                    db_handler.current_state.dialog_list, 'dialog_id', 'title')}
         # Deleted messages are no longer saved: recalculate the save flags of the opened Telegram dialog and redraw
         # its list (nothing to redraw until a dialog is opened)
         # Удаленные сообщения больше не сохранены: пересчитываем признаки сохранения открытого диалога Telegram и
@@ -200,8 +198,8 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
         if tg_message_groups is not None:
             for tg_message_group in tg_message_groups:
                 tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
-            response['tg_messages'] = render_fragment(request, 'tg_messages.html')
+            html['tg_messages'] = render_fragment(request, 'tg_messages.html')
         # Update the list of messages, message counter, message details, tags of the closed message, the dialog filter,
         # the list of all tags and the Telegram message list / Обновление списка сообщений, счетчика сообщений, деталей
         # сообщения, тегов закрытого сообщения, фильтра диалогов, списка всех тегов и списка сообщений Telegram
-        return JSONResponse(response)
+        return ui_update(html)

@@ -11,12 +11,12 @@ in a thread) and holds the global state lock for the whole request.
 
 from collections.abc import Callable
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 from starlette.datastructures import FormData
 from config import FormCfg, GlobalConst, TagsSorting
 from utils import status_messages
 from database_handler import DatabaseHandler, TagChange, get_db_handler, is_no_tags_name
 from web.deps import FormDep, form_list, form_str, state_lock
+from web.ui import ui_update
 
 router = APIRouter()
 
@@ -42,13 +42,13 @@ def run_tag_action(form: FormData, method: TagMethod, *, rename: bool, report: s
     The common part of the four tag routes: reads the tag names and the checked messages from the form, calls the
     handler method, writes the result to the status bar and builds the response with the tag lists to update. When the
     operation on the checked messages is done, their checkboxes are unchecked (the response sets them to `False`, like
-    after the export). If there is nothing to do (no tag name, or no checked messages), both lists are `null` (the
-    page script skips them) and the checkboxes stay as they are.
+    after the export). If there is nothing to do (no tag name, or no checked messages), the response has no tag lists
+    (an empty one, see `web/ui.py`) and the checkboxes stay as they are.
     Общая часть четырех роутов тегов: читает имена тегов и отмеченные сообщения из формы, вызывает метод обработчика,
     пишет результат в строку статуса и формирует ответ со списками тегов для обновления. Когда операция над
     отмеченными сообщениями выполнена, с их чек-боксов снимаются галочки (ответ задает им `False`, как после
-    экспорта). Если делать нечего (нет имени тега или нет отмеченных сообщений), оба списка равны `null` (скрипт
-    страницы их пропускает), а галочки остаются как есть.
+    экспорта). Если делать нечего (нет имени тега или нет отмеченных сообщений), в ответе нет списков тегов (он
+    пустой, см. `web/ui.py`), а галочки остаются как есть.
     Attributes:
         form (FormData): submitted form / отправленная форма
         method (TagMethod): unbound `DatabaseHandler` method / несвязанный метод `DatabaseHandler`
@@ -95,8 +95,8 @@ def run_tag_action(form: FormData, method: TagMethod, *, rename: bool, report: s
                 unchecked = {value: False for value in checked_values}
         # Update the list of tags for the open message and all tags in the database form, uncheck the messages
         # Обновление списка тегов открытого сообщения и всех тегов в форме базы данных, снятие галочек с сообщений
-        return JSONResponse({form_cfg['curr_message_tags']: current_tags_select,
-                             form_cfg['all_detail_tags']: all_tags_select, **unchecked})
+        return ui_update({form_cfg['curr_message_tags']: current_tags_select,
+                          form_cfg['all_detail_tags']: all_tags_select}, unchecked)
 
 
 @router.post('/db_tag_add')
@@ -162,4 +162,4 @@ def db_tag_all_sorting(form: FormDep) -> JSONResponse:
         db_handler.all_tags_list = db_handler.get_all_tag_list()
         # Update the list of all tags in the database form
         # Обновление списка всех тегов в форме базы данных
-        return JSONResponse({form_cfg['all_detail_tags']: db_handler.get_all_tags_select()})
+        return ui_update({form_cfg['all_detail_tags']: db_handler.get_all_tags_select()})
