@@ -57,7 +57,7 @@ def test_filter_button_waits_for_a_selected_tag(client: TestClient):
 def test_script_updates_the_buttons_when_the_selection_changes():
     """The script refreshes the buttons that need a selected row on a selection change, a clear and a response"""
     script = SCRIPT.read_text(encoding='utf-8')
-    assert "querySelectorAll('[data-needs-selected]')" in script
+    assert "querySelectorAll('[data-needs-selected]:not(.is-busy)')" in script
     for function in ('selectTagForEdit', 'clearFormFields', 'updateElementsFromResponse'):
         body = script[script.index(f'function {function}('):]
         body = body[:body.index('\n}\n')]

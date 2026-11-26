@@ -205,7 +205,7 @@ def test_telegram_details_show_the_avatar_before_the_chat_title(client: TestClie
     avatar_path(CHANNEL_ID, 7).parent.mkdir(parents=True)
     avatar_path(CHANNEL_ID, 7).write_bytes(b'jpg')
     tg_handler.get_message_detail.return_value = make_details()
-    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').json()['tg_details']
+    html = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1').ui()['tg_details']
     assert f'class="avatar avatar-small" src="/cache/_avatars/{CHANNEL_ID}/7.jpg"' in html
 
 

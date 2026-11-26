@@ -38,7 +38,9 @@
   `ProjectDirs` абсолютные (в тестах подменяются на временные в `conftest.py`).
 - Файлы: `telegram_handler.py`, `database_handler.py`, `utils.py` (`status_messages`, `format_files_report`),
   `web/` (роуты и `deps.py` с глобалами Jinja), `templates/`, `static/js/my_scripts.js`.
-- Интерфейс: роуты отдают JSON, ключи = `id` элементов (`updateElementsFromResponse`). Кнопки, которым нужен выбор:
+- Интерфейс: роуты отвечают через `web/ui.py` (`ui_update`): секции `html` ({`id` элемента: HTML}) и `checked`
+  ({`id` чек-бокса: состояние}), ошибка - `{"error": ...}` с кодом не 2xx; скрипт - `updateElementsFromResponse` и
+  `requestJSON` (ошибки в строку статуса, нажатая кнопка занята `is-busy`). Кнопки, которым нужен выбор:
   `data-needs-checked` (отмеченные чек-боксы) и `data-needs-selected` (строка списка) + `updateCheckedDependentButtons`.
   Новый список (диалог, фильтры) прокручивается в начало (`resetScroll`), сохранение и удаление положение не трогают.
 - Строка вложений в списках не хранится: считается при показе по типам файлов (`format_files_report`); столбца в БД нет.

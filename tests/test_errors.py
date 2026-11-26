@@ -63,7 +63,7 @@ def test_unhandled_error_returns_json_and_updates_status(error_client: TestClien
     response = error_client.get('/_test_boom')
     assert response.status_code == 500
     assert response.json() == {'error': 'RuntimeError: <b>boom</b>'}
-    status = error_client.get('/status_output').json()
+    status = error_client.get('/status_output').ui()
     assert '/_test_boom' in status['sb_operation']
     assert 'RuntimeError: &lt;b&gt;boom&lt;/b&gt;' in status['sb_report']
     assert '<b>boom</b>' not in status['sb_report']

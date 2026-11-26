@@ -75,7 +75,7 @@ def test_maintenance_response_keys_and_list_refresh(client: TestClient, db_handl
     response = client.post('/db_database_maintenance')
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {DIALOG_SELECT, ALL_TAGS}
     assert '>Used chat</option>' in data[DIALOG_SELECT] and 'Unused chat' not in data[DIALOG_SELECT]
     assert 'stale' not in data[ALL_TAGS]
@@ -388,7 +388,7 @@ def test_database_details_tell_about_the_files_not_on_the_disk(client: TestClien
     db_handler.session.commit()
     make_media_file(work_dir, 'chat/2026-01-01/kept.jpg')
 
-    html = client.get(f'/db_details/{group.grouped_id}').json()['db_details']
+    html = client.get(f'/db_details/{group.grouped_id}').ui()['db_details']
 
     assert 'big.mp4' in html and 'not downloaded, larger than the limit (25.0 MB)' in html
     assert 'lost.jpg' in html and 'file not found on the disk' in html

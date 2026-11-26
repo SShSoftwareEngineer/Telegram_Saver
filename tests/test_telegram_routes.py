@@ -43,7 +43,7 @@ def test_get_dialogs(client: TestClient, tg_handler: SimpleNamespace):
     tg_handler.get_dialog_list.return_value = [make_dialog(), make_dialog(42, 'Friend')]
     response = client.get('/tg_dialogs')
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_dialogs', 'tg-chats-count'}
     assert data['tg-chats-count'] == '(2)'
     assert 'Test chat' in data['tg_dialogs'] and 'Friend' in data['tg_dialogs']
@@ -67,7 +67,7 @@ def test_get_messages(client: TestClient, tg_handler: SimpleNamespace, dialog_id
                                                       make_message_group(dialog_id, 2)]
     response = client.get(f'/tg_messages/{dialog_id}')
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details'}
     assert data['tg-messages-count'] == '(2)'
     assert data['tg_details'] == ''
@@ -85,7 +85,7 @@ def test_get_messages_highlights_own_messages(client: TestClient, tg_handler: Si
         make_message_group(number=3, sender_id=-1001234567891), make_message_group(number=4, sender_id=None)]
     response = client.get(f'/tg_messages/{CHANNEL_ID}')
     assert response.status_code == 200
-    assert response.json()['tg_messages'].count('my-message-in-list') == 1
+    assert response.ui()['tg_messages'].count('my-message-in-list') == 1
 
 
 def test_get_messages_files_report_on_its_own_line(client: TestClient, tg_handler: SimpleNamespace):
@@ -95,7 +95,7 @@ def test_get_messages_files_report_on_its_own_line(client: TestClient, tg_handle
     group.plain_text = ''
     tg_handler.get_message_group_list.return_value = [group]
     response = client.get(f'/tg_messages/{CHANNEL_ID}')
-    assert '<div><b>1 photo</b></div>' in response.json()['tg_messages']
+    assert '<div><b>1 photo</b></div>' in response.ui()['tg_messages']
 
 
 def test_get_messages_marks_saved(client: TestClient, tg_handler: SimpleNamespace, monkeypatch: pytest.MonkeyPatch):
@@ -123,7 +123,7 @@ def test_get_details(client: TestClient, tg_handler: SimpleNamespace, dialog_id:
     tg_handler.get_message_detail.return_value = make_details(group_id)
     response = client.get(f'/tg_details/{dialog_id}/{group_id}')
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_details'}
     assert 'Hello<br>world' in data['tg_details']
     assert 'src="/media_storage/chat/photo%201.jpg"' in data['tg_details']
@@ -138,8 +138,8 @@ def test_get_details_of_unsaved_message_uses_the_cache(client: TestClient, tg_ha
     details['existing_files'] = [make_file('Image', 'chat/photo 1.jpg', in_media=False)]
     tg_handler.get_message_detail.return_value = details
     response = client.get(f'/tg_details/{CHANNEL_ID}/{CHANNEL_ID}_1')
-    assert 'src="/cache/previews/chat/photo%201.jpg"' in response.json()['tg_details']
-    assert '/media_storage/' not in response.json()['tg_details']
+    assert 'src="/cache/previews/chat/photo%201.jpg"' in response.ui()['tg_details']
+    assert '/media_storage/' not in response.ui()['tg_details']
 
 
 def test_get_details_not_a_number(client: TestClient, tg_handler: SimpleNamespace):
@@ -159,7 +159,7 @@ def test_dialog_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
         cfg['sorting_field']: '0', cfg['sorting_order']: '1', cfg['dialog_type']: '2',
         cfg['dialog_title_query']: 'chat'})
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_dialogs', 'tg-chats-count', 'tg-messages-count', 'tg_messages', 'tg_details'}
     assert data['tg-chats-count'] == '(1)'
     assert data['tg-messages-count'] == data['tg_messages'] == data['tg_details'] == ''
@@ -190,7 +190,7 @@ def test_message_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
         cfg['sorting_order']: '1', cfg['date_from']: '2026-01-01', cfg['date_to']: '2026-02-01',
         cfg['message_query']: 'hello'})
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details'}
     assert data['tg-messages-count'] == '(1)'
     assert data['tg_details'] == ''

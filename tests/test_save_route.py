@@ -58,7 +58,7 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
     response = client.post('/tg_save_selected_message_to_db', data=checkbox(groups[0], groups[2]))
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT}
     assert data['tg-messages-count'] == '(3)'
     assert f'<option value="{DIALOG_ID}" >Test chat</option>' in data[DIALOG_SELECT]
@@ -97,7 +97,7 @@ def test_save_nothing_selected(client: TestClient, tg_handler: SimpleNamespace, 
     monkeypatch.setattr(db_handler, 'get_dialog_list', get_dialog_list)
     response = client.post('/tg_save_selected_message_to_db')
     assert response.status_code == 200
-    assert set(response.json()) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT}
+    assert set(response.ui()) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT}
     assert db_handler.session.query(DbMessageGroup).count() == 0
     tg_handler.download_message_file.assert_not_called()
     get_dialog_list.assert_not_called()
@@ -110,7 +110,7 @@ def test_save_before_any_dialog_is_opened(client: TestClient, tg_handler: Simple
     assert tg_handler.current_state.message_group_list is None
     response = client.post('/tg_save_selected_message_to_db')
     assert response.status_code == 200
-    assert response.json() == {}
+    assert response.ui() == {}
     assert db_handler.session.query(DbMessageGroup).count() == 0
 
 

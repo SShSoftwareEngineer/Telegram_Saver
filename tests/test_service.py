@@ -36,7 +36,7 @@ def test_status_output(client: TestClient):
     status_messages.mess_update('Test operation', 'Test report', new_list=True)
     response = client.get('/status_output')
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'sb_operation', 'sb_report'}
     assert 'Test operation' in data['sb_operation']
     assert 'Test report' in data['sb_report']
@@ -75,11 +75,11 @@ def test_status_output_unchanged_is_empty(client: TestClient):
     status_messages.mess_update('Test operation', 'Test report', new_list=True)
     version = status_messages.version
     response = client.get(f'/status_output?since={version}')
-    assert response.json() == {}
+    assert response.ui() == {}
     assert response.headers['X-Status-Version'] == str(version)
     status_messages.mess_update('', 'Another report')
     response = client.get(f'/status_output?since={version}')
-    assert 'Another report' in response.json()['sb_report']
+    assert 'Another report' in response.ui()['sb_report']
     assert response.headers['X-Status-Version'] == str(version + 1)
 
 
@@ -88,7 +88,7 @@ def test_status_output_old_version_gets_messages(client: TestClient):
     messages / Версия от запуска до перезапуска сервера (больше текущей) не считается неизменной"""
     status_messages.mess_update('Test operation', 'Test report', new_list=True)
     response = client.get(f'/status_output?since={status_messages.version + 100}')
-    assert 'Test report' in response.json()['sb_report']
+    assert 'Test report' in response.ui()['sb_report']
 
 
 def test_media_file(client: TestClient, work_dir: Path):

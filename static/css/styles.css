@@ -598,3 +598,19 @@ blockquote {
     text-align: center;
     margin-top: 5px;
 }
+
+
+/* A button busy with its request: disabled, with a spinner after the caption (see `setButtonBusy` in the script)
+   Кнопка, занятая своим запросом: отключена, после надписи крутилка (см. `setButtonBusy` в скрипте) */
+button.is-busy::after {
+    content: '';
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    margin-left: 0.5em;
+    vertical-align: -0.1em;
+    border: 2px solid #bbb;
+    border-top-color: #2a7ae2;
+    border-radius: 50%;
+    animation: sb-spin 0.8s linear infinite;
+}

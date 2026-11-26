@@ -116,7 +116,7 @@ def test_filter_route_ignores_the_empty_part(client: TestClient, tagged: Databas
     form = {FILTER_CFG['tag_query']: 'alpha; ', FILTER_CFG['sorting_field']: '0', FILTER_CFG['sorting_order']: '0'}
     response = client.post('/db_message_apply_filters', data=form)
     assert response.status_code == 200
-    assert response.json()['db-messages-count'] == '(1)'
+    assert response.ui()['db-messages-count'] == '(1)'
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ def test_filter_route_passes_the_mode(client: TestClient, tagged: DatabaseHandle
             data[FILTER_CFG['tag_mode']] = mode
         response = client.post('/db_message_apply_filters', data=data)
         assert response.status_code == 200
-        counts[mode] = response.json()['db-messages-count']
+        counts[mode] = response.ui()['db-messages-count']
     assert counts == {'1': '(1)', '0': '(2)', None: '(2)'}
 
 

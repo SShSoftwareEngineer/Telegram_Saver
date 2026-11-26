@@ -263,7 +263,7 @@ def test_database_pages_escape_titles_and_previews_but_output_stored_html(client
     assert '<script>' not in message_list and '&lt;script&gt;' in message_list
     assert '<img src=x' not in message_list and '&lt;img src=x onerror=alert(&#34;text&#34;)&gt;' in message_list
 
-    details = client.get('/db_details/1_1').json()['db_details']
+    details = client.get('/db_details/1_1').ui()['db_details']
     assert '<script>' not in details and '&lt;script&gt;' in details
     assert '<strong>ok</strong> &lt;img&gt;' in details
 

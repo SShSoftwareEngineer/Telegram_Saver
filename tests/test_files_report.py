@@ -115,7 +115,7 @@ def add_group(handler: DatabaseHandler, number: int, file_types: tuple[MessageFi
 
 def list_html(client: TestClient) -> str:
     """The list of the database messages as the filter route returns it / Список сообщений БД, как его отдает роут"""
-    return client.post('/db_message_apply_filters', data={}).json()['db_messages']
+    return client.post('/db_message_apply_filters', data={}).ui()['db_messages']
 
 
 def test_database_list_forms_the_line_from_the_files(client: TestClient, db_handler: DatabaseHandler):

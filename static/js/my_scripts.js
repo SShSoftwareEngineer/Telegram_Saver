@@ -102,7 +102,7 @@ function appendIfExists(formData, name, value) {
 
 // Universal function for collecting form data and sending it to the server
 // Универсальная функция сбора данных формы и отправки их на сервер
-function submitFormData(config, url) {
+function submitFormData(config, url, button = null) {
     const formData = new FormData();
     // Radio button processing / Обработка радиокнопок
     (config.radio || []).forEach(field =>
@@ -133,52 +133,145 @@ function submitFormData(config, url) {
         });
     });
 
-    // Sending a request and returning a Promise / Отправка запроса и возврат Promise
-    return fetch(url, {method: 'POST', body: formData})
-        .then(r => r.json())
-        .catch(err => {
-            console.error('Error:', err);
-            console.log('Form data:', formData);
-            throw err;
-        });
+    // Sending a request and returning a Promise with the response data (null if the request failed: the error is
+    // already shown in the status bar) / Отправка запроса и возврат Promise с данными ответа (null, если запрос не
+    // удался: ошибка уже показана в строке статуса)
+    return requestJSON(url, {method: 'POST', body: formData}, button);
 }
 
-// Universal function for updating elements by id = keys from the response
-// Универсальная функция обновления элементов по id = ключам из ответа
+// The contract of the server responses (see `web/ui.py`): a successful response is an object with the optional
+// sections `html` ({element id: new inner HTML}) and `checked` ({checkbox id: state}); a failed one (status is not 2xx)
+// is `{"error": "<text>"}`
+// Контракт ответов сервера (см. `web/ui.py`): успешный ответ - объект с необязательными секциями `html`
+// ({id элемента: новый HTML}) и `checked` ({id чек-бокса: состояние}); неудачный (статус не 2xx) -
+// `{"error": "<текст>"}`
+
+// The button that is being clicked right now: the inline `onclick` handlers run during the click, so the event is still
+// current; null when the call did not come from a button
+// Кнопка, которую нажимают прямо сейчас: inline-обработчики `onclick` выполняются во время клика, поэтому событие еще
+// текущее; null, если вызов пришел не от кнопки
+function clickedButton() {
+    const target = window.event ? window.event.currentTarget : null;
+    return target instanceof HTMLButtonElement ? target : null;
+}
+
+// Marks the button as busy while its request runs: it is disabled (no double click) and shows a spinner
+// Помечает кнопку занятой на время ее запроса: она отключена (нет двойного нажатия) и показывает крутилку
+function setButtonBusy(button, busy) {
+    button.classList.toggle('is-busy', busy);
+    button.disabled = busy;
+    if (!busy) {
+        // The button may depend on the checked items: restore its state from them, not from the state before the request
+        // Кнопка может зависеть от отмеченных: восстанавливаем ее состояние по ним, а не по состоянию до запроса
+        updateCheckedDependentButtons();
+    }
+}
+
+// Shows a failed request in the status bar (the same place where the server writes the errors of the operations):
+// a cross, the text and a line in the report. The text goes in as text, not as HTML.
+// Показывает неудачный запрос в строке статуса (там же, где сервер пишет ошибки операций): крестик, текст и строка
+// отчета. Текст вставляется как текст, а не как HTML.
+function showRequestError(error) {
+    console.error('Request failed:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    const operation = document.getElementById('sb_operation');
+    if (operation) {
+        const label = document.createElement('strong');
+        label.textContent = 'Operation: ';
+        const mark = document.createElement('span');
+        mark.className = 'sb-mark';
+        mark.title = 'Failed';
+        mark.textContent = '❌';
+        const text = document.createElement('span');
+        text.className = 'sb-operation-text';
+        text.title = message;
+        text.textContent = message;
+        operation.replaceChildren(label, mark, ' ', text);
+    }
+    const report = document.getElementById('sb_report');
+    if (report) {
+        const option = document.createElement('option');
+        option.textContent = `${new Date().toLocaleTimeString('en-GB')} - ${message}`;
+        report.appendChild(option);
+        report.selectedIndex = report.options.length - 1;
+    }
+}
+
+// Sends a request and returns the parsed JSON of the response, or null if the request failed (a network error or a
+// non-2xx status: the error text is shown in the status bar). With a `button`, the button is busy until the end.
+// Отправляет запрос и возвращает разобранный JSON ответа, либо null, если запрос не удался (ошибка сети или статус
+// не 2xx: текст ошибки показан в строке статуса). С `button` кнопка занята до конца запроса.
+async function requestJSON(url, options = {}, button = null) {
+    if (button) {
+        setButtonBusy(button, true);
+    }
+    try {
+        const response = await fetch(url, options);
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            // The body is not JSON (e.g. a proxy error page): the status line is the only thing to show
+            // Тело не JSON (например, страница ошибки прокси): показать можно только строку статуса
+            if (response.ok) {
+                throw new Error('The server answer is not JSON');
+            }
+        }
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status} ${response.statusText}`);
+        }
+        return data;
+    } catch (error) {
+        showRequestError(error);
+        return null;
+    } finally {
+        if (button) {
+            setButtonBusy(button, false);
+        }
+    }
+}
+
+// Universal function for updating elements by the sections of the response (the contract is described above)
+// Универсальная функция обновления элементов по секциям ответа (контракт описан выше)
 // `resetScroll`: the response loads a new list or new details, so the scroll areas it fills start from the top (after a
 // save or a delete the list is the same, so its scroll position is kept)
 // `resetScroll`: ответ загружает новый список или новые детали, поэтому заполняемые им области прокрутки начинаются с
 // начала (после сохранения или удаления список тот же, поэтому его положение прокрутки сохраняется)
 function updateElementsFromResponse(data, resetScroll = false) {
-    Object.keys(data).forEach(key => {
+    Object.keys(data).forEach(section => {
+        if (section !== 'html' && section !== 'checked') {
+            console.warn(`Unknown section '${section}' in the server response`);
+        }
+    });
+    // `html`: the new inner HTML of the elements / `html`: новое содержимое (innerHTML) элементов
+    Object.entries(data.html || {}).forEach(([id, markup]) => {
         /** @type {HTMLElement} */
-        const element = document.getElementById(key);
+        const element = document.getElementById(id);
         if (!element) {
-            console.warn(`❌ Элемент с ID '${key}' НЕ НАЙДЕН на странице!`);
+            console.warn(`Element with ID '${id}' not found on the page`);
             return;
         }
-        // For checkboxes and radio buttons, update checked / Для checkbox и radio - обновляем checked
-        if (element instanceof HTMLInputElement && (element.type === 'checkbox' || element.type === 'radio')) {
-            // Setting `checked` from code does not fire `change`; fire it for a checkbox that really changed, so its
-            // handler (the counter of the checked items) runs, as if the user had clicked it
-            // Смена `checked` из кода не вызывает `change`; вызываем его для чек-бокса, который реально изменился,
-            // чтобы сработал его обработчик (счетчик отмеченных), как при клике пользователя
-            const changed = element.checked !== data[key];
-            element.checked = data[key];
-            if (changed && element.type === 'checkbox') {
-                element.dispatchEvent(new Event('change', {bubbles: true}));
-            }
+        element.innerHTML = markup;
+        if (resetScroll && element.classList.contains('scroll')) {
+            element.scrollTop = 0;
         }
-        // For input and textarea - update value / Для input and textarea - обновляем value
-        else if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-            element.value = data[key];
+    });
+    // `checked`: the state of the checkboxes / `checked`: состояние чек-боксов
+    Object.entries(data.checked || {}).forEach(([id, state]) => {
+        /** @type {HTMLInputElement} */
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`Checkbox with ID '${id}' not found on the page`);
+            return;
         }
-        // For the other elements, update innerHTML / Для остальных элементов - обновляем innerHTML
-        else if (typeof data[key] === 'string') {
-            element.innerHTML = data[key];
-            if (resetScroll && element.classList.contains('scroll')) {
-                element.scrollTop = 0;
-            }
+        // Setting `checked` from code does not fire `change`; fire it for a checkbox that really changed, so its
+        // handler (the counter of the checked items) runs, as if the user had clicked it
+        // Смена `checked` из кода не вызывает `change`; вызываем его для чек-бокса, который реально изменился,
+        // чтобы сработал его обработчик (счетчик отмеченных), как при клике пользователя
+        const changed = element.checked !== state;
+        element.checked = state;
+        if (changed) {
+            element.dispatchEvent(new Event('change', {bubbles: true}));
         }
     });
     // A re-rendered list has new (unchecked) checkboxes that fire no `change`: refresh the buttons that need a checked item
@@ -192,11 +285,13 @@ function updateElementsFromResponse(data, resetScroll = false) {
 // Включает каждую кнопку с `data-needs-checked="<селектор чек-боксов>"`, только пока отмечен хотя бы один такой
 // чек-бокс, иначе отключает ее. То же для `data-needs-selected="<ID списка select>"`: кнопка работает, только пока
 // в этом списке выбрана хотя бы одна строка
+// A button that is busy with its request (`is-busy`) is skipped: it stays disabled until the request ends
+// Кнопка, занятая своим запросом (`is-busy`), пропускается: она остается отключенной до конца запроса
 function updateCheckedDependentButtons() {
-    document.querySelectorAll('[data-needs-checked]').forEach(button => {
+    document.querySelectorAll('[data-needs-checked]:not(.is-busy)').forEach(button => {
         button.disabled = document.querySelector(`${button.dataset.needsChecked}:checked`) === null;
     });
-    document.querySelectorAll('[data-needs-selected]').forEach(button => {
+    document.querySelectorAll('[data-needs-selected]:not(.is-busy)').forEach(button => {
         const select = document.getElementById(button.dataset.needsSelected);
         button.disabled = !select || select.selectedOptions.length === 0;
     });
@@ -210,55 +305,38 @@ document.addEventListener('DOMContentLoaded', updateCheckedDependentButtons);
 // Функция, реализующая нажатие кнопки, с конфигурацией элементов формы и URL обработчика
 // `resetScroll` is true for the buttons that load a new list (the filters), see `updateElementsFromResponse`
 // `resetScroll` равен true у кнопок, загружающих новый список (фильтры), см. `updateElementsFromResponse`
+// The button that was pressed is busy until the answer (a spinner, no second press), a failure goes to the status bar
+// Нажатая кнопка занята до ответа (крутилка, второе нажатие невозможно), ошибка выводится в строку статуса
 function pressFormButton(config, url, resetScroll = false) {
-    submitFormData(config, url)
-        .then(data => updateElementsFromResponse(data, resetScroll))
-        .catch(err => {
-            console.error('Error sending form:', err);
-            alert('Error: ' + err.message);
-        });
+    submitFormData(config, url, clickedButton()).then(data => {
+        if (data) {
+            updateElementsFromResponse(data, resetScroll);
+        }
+    });
 }
 
 // Function that generates a GET request to download data from the server at a specified URL and to update elements
 // Функция, формирующая GET-запрос для загрузки данных с сервера с заданного URL и для обновления элементов
 function loadURL(url) {
-    fetch(url, {
-        method: 'GET',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest' // Указываем, что это AJAX
-        }
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Message data received:', data);
+    requestJSON(url, {method: 'GET', headers: {'X-Requested-With': 'XMLHttpRequest'}}).then(data => {
+        if (data) {
             // A new chat or new message details: the filled areas start from the top
             // Новый диалог или детали другого сообщения: заполняемые области начинаются с начала
             updateElementsFromResponse(data, true);
-        })
-        .catch(err => {
-            console.error('Error loading messages:', err);
-            alert('Error loading messages: ' + err.message);
-        });
+        }
+    });
 }
 
-// Function that calls the handler and updates elements by ID according to the handler's response
-// Функция, вызывающая обработчик и обновляющая элементы по ID в соответствии с ответом обработчика
+// Function that calls the handler and updates elements according to the handler's response; the button that was
+// pressed is busy until the answer
+// Функция, вызывающая обработчик и обновляющая элементы в соответствии с ответом обработчика; нажатая кнопка занята
+// до ответа
 function callHandler(url) {
-    fetch(url, {
-        method: 'POST'
-    })
-        .then(r => r.json())
-        .then(data => {
+    requestJSON(url, {method: 'POST'}, clickedButton()).then(data => {
+        if (data) {
             updateElementsFromResponse(data);
-        })
-        .catch(err => {
-            console.error('Error:', err);
-        });
+        }
+    });
 }
 
 
@@ -374,6 +452,11 @@ setInterval(() => {
     const url = statusVersion === null ? '/status_output' : `/status_output?since=${statusVersion}`;
     fetch(url)
         .then(response => {
+            if (!response.ok) {
+                // Not an answer with the messages (e.g. the server is restarting): keep the version, try again
+                // Это не ответ с сообщениями (например, сервер перезапускается): версию не трогаем, пробуем снова
+                throw new Error(`HTTP ${response.status}`);
+            }
             statusVersion = response.headers.get('X-Status-Version');
             return response.json();
         })

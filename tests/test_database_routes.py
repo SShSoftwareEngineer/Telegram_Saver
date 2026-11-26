@@ -81,7 +81,7 @@ def test_apply_filters(client: TestClient, db_handler: DatabaseHandler):
     response = client.post('/db_message_apply_filters', data=form)
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS}
     assert data['db-messages-count'] == '(1)'
     assert data['db_details'] == '' and data[CURR_TAGS] == ''
@@ -101,7 +101,7 @@ def test_apply_filters_empty_form_shows_all(client: TestClient, db_handler: Data
     assert len(db_handler.current_state.message_group_list) == 1
     response = client.post('/db_message_apply_filters')
     assert response.status_code == 200
-    assert response.json()['db-messages-count'] == '(2)'
+    assert response.ui()['db-messages-count'] == '(2)'
 
 
 def test_apply_filters_by_tag(client: TestClient, db_handler: DatabaseHandler):
@@ -111,8 +111,8 @@ def test_apply_filters_by_tag(client: TestClient, db_handler: DatabaseHandler):
     add_group(session, 1, 1, 'tagged', tags=('travel',))
     add_group(session, 2, 1, 'plain')
     response = client.post('/db_message_apply_filters', data={FormCfg.db_message_filter['tag_query']: 'trav'})
-    assert response.json()['db-messages-count'] == '(1)'
-    assert 'tagged' in response.json()['db_messages']
+    assert response.ui()['db-messages-count'] == '(1)'
+    assert 'tagged' in response.ui()['db_messages']
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ def test_details_with_tags(client: TestClient, db_handler: DatabaseHandler):
     response = client.get(f'/db_details/{grouped_id}')
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'db_details', CURR_TAGS}
     assert 'Detailed text' in data['db_details']
     assert '>travel</option>' in data[CURR_TAGS] and '>food</option>' in data[CURR_TAGS]
@@ -142,7 +142,7 @@ def test_details_without_tags(client: TestClient, db_handler: DatabaseHandler):
     grouped_id = add_group(session, 1, 1, 'No tags here')
     response = client.get(f'/db_details/{grouped_id}')
     assert response.status_code == 200
-    assert response.json()[CURR_TAGS] == ''
+    assert response.ui()[CURR_TAGS] == ''
     assert db_handler.current_state.message_details['tags'] == []
 
 
@@ -172,7 +172,7 @@ def test_export_selected_messages(client: TestClient, db_handler: DatabaseHandle
     response = client.post('/db_export_selected_message_to_html', data=checkbox(first, second))
 
     assert response.status_code == 200
-    assert response.json() == {f'{GlobalConst.select_in_database} {first}': False,
+    assert response.ui() == {f'{GlobalConst.select_in_database} {first}': False,
                                f'{GlobalConst.select_in_database} {second}': False}
     export_dir = work_dir / ProjectDirs.export_dir
     html_files = list(export_dir.glob('* - 2 messages.html'))
@@ -200,7 +200,7 @@ def test_export_nothing_selected(client: TestClient, work_dir: Path):
     """Without marked messages: an empty JSON and no files"""
     response = client.post('/db_export_selected_message_to_html')
     assert response.status_code == 200
-    assert response.json() == {}
+    assert response.ui() == {}
     assert not (work_dir / ProjectDirs.export_dir).exists()
 
 
@@ -231,7 +231,7 @@ def test_delete_selected_group_with_tags(client: TestClient, db_handler: Databas
     response = client.post('/db_delete_selected_from_database', data=checkbox(first))
 
     assert response.status_code == 200
-    data = response.json()
+    data = response.ui()
     assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS, ALL_TAGS, DIALOG_SELECT}
     assert data['db-messages-count'] == '(1)'
     assert data['db_details'] == '' and data[CURR_TAGS] == ''
@@ -255,7 +255,7 @@ def test_delete_nothing_selected(client: TestClient, db_handler: DatabaseHandler
     """Without marked messages nothing is deleted"""
     response = client.post('/db_delete_selected_from_database')
     assert response.status_code == 200
-    assert response.json()['db-messages-count'] == '(2)'
+    assert response.ui()['db-messages-count'] == '(2)'
     assert db_handler.session.query(DbMessageGroup).count() == 2
     assert db_handler.session.query(DbTag).count() == 2
 
@@ -380,7 +380,7 @@ def test_delete_updates_saved_flags_of_the_telegram_list(client: TestClient, tg_
 
     response = client.post('/db_delete_selected_from_database', data=checkbox(first, third))
 
-    assert response.json()['tg_messages'] == 'TG LIST'
+    assert response.ui()['tg_messages'] == 'TG LIST'
     assert [group.saved_to_db for group in tg_groups] == [False, True, False]
 
 
@@ -389,4 +389,4 @@ def test_delete_without_opened_telegram_dialog_has_no_telegram_list(client: Test
     """No Telegram dialog was opened (the list is None): the response has no Telegram list key, no error"""
     response = client.post('/db_delete_selected_from_database', data=checkbox(three_groups_with_files[0]))
     assert response.status_code == 200
-    assert 'tg_messages' not in response.json()
+    assert 'tg_messages' not in response.ui()

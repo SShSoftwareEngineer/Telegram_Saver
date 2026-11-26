@@ -89,7 +89,7 @@ def test_filter_route(client: TestClient, db_handler: DatabaseHandler, groups: d
     form = {FormCfg.db_message_filter['tag_query']: NO_TAGS, FormCfg.db_message_filter['sorting_field']: '0',
             FormCfg.db_message_filter['sorting_order']: '0'}
     response = client.post('/db_message_apply_filters', data=form)
-    assert response.status_code == 200 and response.json()['db-messages-count'] == '(2)'
+    assert response.status_code == 200 and response.ui()['db-messages-count'] == '(2)'
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ def test_item_stays_first_whatever_the_sorting(client: TestClient, db_handler: D
     """The sorting route returns the item as the first option for every sorting"""
     response = client.post('/db_tag_all_sorting', data={SORTING: sorting})
     assert response.status_code == 200
-    assert response.json()[ALL_TAGS].startswith(f'<option value="{GlobalConst.no_tags_id}"')
+    assert response.ui()[ALL_TAGS].startswith(f'<option value="{GlobalConst.no_tags_id}"')
 
 
 def test_page_has_the_item(client: TestClient, groups: dict[str, str]):
@@ -147,7 +147,7 @@ def test_cannot_add_or_remove_it(client: TestClient, db_handler: DatabaseHandler
     status_messages.report_list = []
     response = client.post(route, data={CHECKBOX: [box(groups['none1'])], EDIT_NAME: NO_TAGS})
     assert response.status_code == 200
-    assert response.json() == {FormCfg.db_detail_tags['curr_message_tags']: None, ALL_TAGS: None}
+    assert response.ui() == {}
     assert group_tags(db_handler, groups['none1']) == [] and set(all_tags(db_handler)) == {'alpha', 'beta'}
     assert any('reserved' in report for report in status_messages.report_list or [])
 

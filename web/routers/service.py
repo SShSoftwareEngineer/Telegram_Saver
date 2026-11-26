@@ -15,6 +15,7 @@ from database_handler import DbFile, get_db_handler
 from telegram_handler import get_tg_handler
 from utils import format_file_size, limit_list, status_messages
 from web.deps import state_lock, templates
+from web.ui import ui_update
 from web.message_html import write_message_html
 
 router = APIRouter()
@@ -69,8 +70,8 @@ def status_output(since: int | None = None) -> JSONResponse:
     перезапуска сервера) получает сообщения.
     """
     version = status_messages.version
-    content = {} if since == version else status_messages.messages
-    return JSONResponse(content, headers={'X-Status-Version': str(version)})
+    return ui_update(None if since == version else status_messages.messages,
+                     headers={'X-Status-Version': str(version)})
 
 
 @router.get('/', response_class=HTMLResponse)
@@ -242,7 +243,7 @@ def db_database_maintenance(request: Request) -> JSONResponse:
         db_handler.all_tags_list = db_handler.get_all_tag_list()
         # Updating dialogue lists and tags in the database form
         # Обновление списков диалогов и тегов в форме базы данных
-        return JSONResponse({
+        return ui_update({
             FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
                 db_handler.current_state.dialog_list, 'dialog_id', 'title'),
             FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select()})
