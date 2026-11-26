@@ -8,6 +8,7 @@ Variables:
   - db_file_types: Telegram file types
 #}
 {% from 'avatar.html' import avatar %}
+{% from 'media_file.html' import media_file with context %}
 
 
 {% if db_details %}
@@ -39,24 +40,10 @@ Variables:
         <br>
         <div class="media-files-area">
             {% for message_file in db_details.existing_files %}
-                {{ message_file.alt_text }}
-                <div class="{% if db_details.existing_files|length > 1 %} media-files-two-column
-                                {% else %} media-files-one-column {% endif %}">
-
-                    {# Displaying of graphics files / Вывод графических файлов #}
-                    {% if message_file.file_type.alt_text==tg_file_types.IMAGE.alt_text %}
-                        <img src="{{ url_for('media_dir', filename=message_file.file_path) }}"
-                             alt="{{ message_file.alt_text }}" class="media-files-container">
-                    {% endif %}
-
-                    {# Displaying of video files / Вывод видео файлов #}
-                    {% if message_file.file_type.alt_text==tg_file_types.VIDEO.alt_text %}
-                        <video src="{{ url_for('media_dir', filename=message_file.file_path, _external=True) }}"
-                               controls preload="metadata" class="media-files-container">
-                            Video is not supported by your browser
-                        </video>
-                    {% endif %}
-                </div>
+                {# Image, video, audio, or a link to a file of an unknown type / Изображение, видео, аудио или ссылка #}
+                {{ media_file(message_file.file_type.alt_text, url_for('media_dir', filename=message_file.file_path),
+                              message_file.file_path.rsplit('/', 1)[-1], message_file.size,
+                              db_details.existing_files|length > 1) }}
             {% endfor %}
         </div>
     {% endif %}

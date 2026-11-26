@@ -558,6 +558,16 @@ blockquote {
     object-fit: contain;
 }
 
+/* Audio player and a file of an unknown type take the height of their content
+   Аудиоплеер и файл неизвестного типа занимают высоту своего содержимого */
+.media-files-inline {
+    width: 90%;
+}
+
+.media-files-audio {
+    width: 100%;
+}
+
 /* Output the file name in the export template / Вывод названия файла в шаблоне для экспорта */
 .media-file-name {
     text-align: center;

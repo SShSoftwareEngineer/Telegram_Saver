@@ -147,7 +147,7 @@ The detailed plan (in Russian, with the order of work) is in [`ROADMAP.md`](ROAD
 
 - [ ] Backup rotation, filter of archived messages without tags, one style of the controls
 - [x] Data per profile, preview cache, chat avatars
-- [ ] Download a video before saving, attachments of the `Unknown` type
+- [ ] Download a video before saving (audio, other files, polls, locations and contacts are shown already)
 - [ ] Frontend optimization (an explicit contract between the routes and the page)
 - [ ] Alembic migrations (`BigInteger` ID columns), source chats of "Saved Messages" (list of chats and a filter),
   deleting messages from "Saved Messages" in Telegram itself

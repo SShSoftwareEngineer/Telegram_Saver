@@ -170,6 +170,7 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
                        'sender_id': self.sender_id,
                        'files': [{'file_path': db_file.file_path,
                                   'alt_text': db_file.file_type.alt_text,
+                                  'size': db_file.size or 0,
                                   'type_name': db_file.file_type.name if db_file.file_type else ''}
                                  for db_file in self.files] if self.files else [],
                        'tags': [db_tag.name for db_tag in self.tags] if self.tags else []

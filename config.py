@@ -110,6 +110,7 @@ class GlobalConst:
     """
 
     max_download_file_size = 50 * 2 ** 20  # 50 MB - Maximum file size for downloading from Telegram
+    map_service = 'openstreetmap'  # Map of the links for locations: 'openstreetmap' or 'google' (see `media_text.MAP_URLS`)
     truncated_text_length = 175  # Maximum length of text to display in the web page
     truncated_title_length = 25  # Maximum length of dialog title to display in the web page
     tg_last_days_by_default = 30  # Default number of last days for the messages filter of the Telegram tab

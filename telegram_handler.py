@@ -35,7 +35,8 @@ from config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, ensu
 from profiles import read_profile_info, write_profile_info
 from utils import (parse_date_string, clean_file_path, format_files_report, local_day_start, remove_empty_dirs,
                    status_messages, to_local)
-from message_renderer import render_message_html, plain_text_to_html, render_link_html
+from message_renderer import render_message_html
+from media_text import describe_media
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +366,13 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         # `raw_text` без знаков форматирования; форматирование лежит в `entities` и обрабатывается `render_message_html`
         if message.raw_text:
             self._append_text(message.raw_text, render_message_html(message.raw_text, message.entities))
+        # The text of the media without a file (poll, location, contact, a web page without a picture); the text of
+        # the media with a file goes with the file (`add_message_file`)
+        # Текст медиа без файла (опрос, геопозиция, контакт, веб-страница без картинки); текст медиа с файлом
+        # добавляется вместе с файлом (`add_message_file`)
+        media_text = None if getattr(message, 'file', None) else describe_media(getattr(message, 'media', None))
+        if media_text:
+            self._append_text(*media_text)
 
     def _append_text(self, plain_text: str, html: str) -> None:
         """
@@ -945,6 +953,12 @@ class TelegramHandler:
                     self.download_message_file(tg_file, to_cache=True)
         tg_details['existing_files'] = [tg_file for tg_file in tg_details_files
                                         if tg_file.is_exists() or tg_file.is_cached()]
+        # The files that are over the limit are not downloaded: the page says so instead of a silent skip
+        # Файлы больше лимита не загружаются: страница сообщает об этом вместо молчаливого пропуска
+        tg_details['too_large_files'] = [
+            tg_file for tg_file in tg_details_files
+            if tg_file.file_type != MessageFileTypes.VIDEO and not (tg_file.is_exists() or tg_file.is_cached())
+            and tg_file.size > GlobalConst.max_download_file_size]
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
@@ -1026,18 +1040,9 @@ class TelegramHandler:
         # Get the file description / Получаем описание файла
         # The description is kept as plain text and as safe HTML (escaped text, a link with a checked address)
         # Описание хранится как обычный текст и как безопасный HTML (экранированный текст, ссылка с проверенным адресом)
-        description = ''
-        description_html = ''
-        if file_type == MessageFileTypes.WEBPAGE:
-            if hasattr(message.media.webpage, 'url') and message.media.webpage.url:
-                description = message.media.webpage.url
-                description_html = render_link_html(description, description)
-            if hasattr(message.media.webpage, 'description') and message.media.webpage.description:
-                page_description = shorten(message.media.webpage.description,
-                                           width=GlobalConst.truncated_text_length, placeholder='...')
-                description = '\n\n'.join(filter(None, [description, page_description]))
-                description_html = '<br><br>'.join(filter(None, [description_html,
-                                                                 plain_text_to_html(page_description)]))
+        # The same builder as for the media without a file (`TgMessageGroup.add_message`)
+        # Тот же построитель, что и для медиа без файла (`TgMessageGroup.add_message`)
+        description, description_html = describe_media(message.media) or ('', '')
         # Creating TgFile object / Создаем объект TgFile
         tg_file = TgFile(dialog_id=dialog_id, message_grouped_id=message_group.grouped_id,
                          message=message, message_id=message.id,
