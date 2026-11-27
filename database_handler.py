@@ -29,12 +29,13 @@ from html import escape
 from pathlib import Path
 from threading import Lock
 from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
+from sqlalchemy import create_engine, BigInteger, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
     Boolean, update, delete, event, func, Select, DateTime
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, Session
 from sqlalchemy.types import TypeDecorator
 from config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
+from schema_migrations import migrate_database
 from utils import format_files_report, local_day_start, parse_date_string, status_messages, to_local, to_utc
 
 
@@ -146,10 +147,12 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     html: Mapped[str] = mapped_column(Text, nullable=True)
     plain_text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
-    sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    # Telegram IDs do not fit into int32 (for example 8837960131 or -100... of channels): BigInteger
+    # ID Telegram не помещаются в int32 (например, 8837960131 или -100... у каналов): BigInteger
+    sender_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
-    dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
+    dialog_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
     # Relationships to 'DbFile' table
     files: Mapped[List['DbFile']] = relationship(back_populates='message_group', cascade="all, delete-orphan")
@@ -201,7 +204,7 @@ class DbDialog(Base):  # pylint: disable=too-few-public-methods
     """
 
     __tablename__ = TableNames.dialogs  # Table name in the database / Имя таблицы в базе данных
-    dialog_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, index=True, nullable=False)
+    dialog_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(Text)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped['DbMessageGroup'] = relationship(back_populates='dialog')
@@ -232,9 +235,14 @@ class DbFile(Base):  # pylint: disable=too-few-public-methods
 
     __tablename__ = TableNames.files  # Table name in the database / Имя таблицы в базе данных
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    message_id: Mapped[int] = mapped_column(Integer)
+    message_id: Mapped[int] = mapped_column(BigInteger)
     file_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
+    # Why the file is not available (`UnavailableReason`), None - it is available or the reason is not known. Shown on the
+    # database tab; written later (the report journal of maintenance)
+    # Почему файл недоступен (`UnavailableReason`), None - он доступен или причина неизвестна. Показывается на вкладке БД;
+    # запись - позже (журнал отчетов обслуживания)
+    unavailable_reason: Mapped[str] = mapped_column(String, nullable=True)
     # Relationships to 'DbMessageGroup' table
     grouped_id: Mapped[str] = mapped_column(String,
                                             ForeignKey(f'{TableNames.message_groups}.grouped_id', ondelete='CASCADE'))
@@ -613,13 +621,13 @@ class DatabaseHandler:
         # access is serialized by a shared lock outside this class.
         # check_same_thread=False: сессия создается в одном потоке, а используется из пула потоков веб-сервера;
         # доступ сериализуется общим замком вне этого класса.
+        # The schema first: a new database gets its tables, an old one gets the pending migrations (with a backup copy)
+        # Сначала схема: новая база получает таблицы, старая - недостающие миграции (с резервной копией)
+        migrate_database(Base.metadata)
         self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}',
                                     connect_args={'check_same_thread': False})
         self.setup_database_connection()
         self.session = Session(self.engine)
-        # Creating tables in the database if they do not exist
-        # Создаем таблицы в базе данных, если они отсутствуют
-        Base.metadata.create_all(self.engine)
         # Checking the availability of data in the static table with dialogue types and adding them if necessary.
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in DialogTypes:

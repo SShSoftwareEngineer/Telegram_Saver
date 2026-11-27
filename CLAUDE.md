@@ -43,6 +43,9 @@
   `requestJSON` (ошибки в строку статуса, нажатая кнопка занята `is-busy`). Кнопки, которым нужен выбор:
   `data-needs-checked` (отмеченные чек-боксы) и `data-needs-selected` (строка списка) + `updateCheckedDependentButtons`.
   Новый список (диалог, фильтры) прокручивается в начало (`resetScroll`), сохранение и удаление положение не трогают.
+- Схема БД меняется только миграцией Alembic (`migrations/versions/`, `alembic revision --autogenerate`): приложение
+  применяет их при старте (`schema_migrations.py`, перед этим копия БД в `database/backup/`). Тест
+  `test_migrations_agree_with_the_models` ловит модель без миграции.
 - Строка вложений в списках не хранится: считается при показе по типам файлов (`format_files_report`); столбца в БД нет.
 - Python >= 3.14, менеджер зависимостей Poetry. Тесты: pytest, Telethon мокается; тестов JS нет, скрипты проверять
   в браузере на тестовой странице без Telegram. После правок: статика - `Ctrl+F5`, шаблоны - `F5`, Python - перезапуск.

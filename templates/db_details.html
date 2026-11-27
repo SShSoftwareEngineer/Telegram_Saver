@@ -53,7 +53,13 @@ Variables:
     {% for message_file in db_details.missing_files or [] %}
         <div class="media-file-name">
             {{ message_file.file_path.rsplit('/', 1)[-1] }} &middot; {{ message_file.size|file_size }}:
-            {% if (message_file.size or 0) > constants.button_download_size %}
+            {# The stored reason wins; without it the reason is guessed by the size (the old records) /
+               Сохраненная причина главнее; без нее причина определяется по размеру (старые записи) #}
+            {% if message_file.unavailable_reason == unavailable_reasons.DELETED %}
+                deleted in Telegram, it cannot be downloaded again
+            {% elif message_file.unavailable_reason == unavailable_reasons.TOO_LARGE
+                    or (not message_file.unavailable_reason
+                        and (message_file.size or 0) > constants.button_download_size) %}
                 not downloaded, larger than the limit ({{ constants.button_download_size|file_size }})
             {% else %}
                 file not found on the disk (the database maintenance can download it again)

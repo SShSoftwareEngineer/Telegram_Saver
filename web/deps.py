@@ -15,7 +15,7 @@ from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
 import config
-from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs
+from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs, UnavailableReason
 from profiles import profile_title
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
@@ -48,6 +48,7 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
     return {
         'constants': GlobalConst,
         'tg_file_types': MessageFileTypes,
+        'unavailable_reasons': UnavailableReason,
         'form_ctrl_cfg': FormCfg,
         'tg_me': tg_handler.me,
         'profile_title': profile_title(config.PROFILE) if config.PROFILE else '',

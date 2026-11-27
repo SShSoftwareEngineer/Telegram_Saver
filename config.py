@@ -9,6 +9,7 @@ HOST, PORT: the address of the local web server
 class ProjectDirs: directories and files of the profile (settings, session, database, media, export, cache)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
 class DialogTypes(Enum): IDs and names of the dialog types in Telegram
+class UnavailableReason(StrEnum): why a file of a saved message is not available (stored in the database)
 class MessageFileTypes(Enum): names, types, extensions and signatures of message files
 class TableNames: names of the database tables
 class FormCfg: configurations of the web interface form controls
@@ -19,7 +20,7 @@ import os
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
-from enum import Enum
+from enum import Enum, StrEnum
 from profiles import (CACHE_DIR_NAME, DATABASE_DIR_NAME, EXPORT_DIR_NAME, MEDIA_DIR_NAME, PROFILE_ENV_VAR,
                       PROFILES_DIR, list_profiles, read_profile)
 
@@ -172,6 +173,17 @@ class DialogTypes(Enum):
         if is_user:
             return DialogTypes.USER.name
         return DialogTypes.UNKNOWN.name
+
+
+class UnavailableReason(StrEnum):
+    """
+    Why a file of a saved message is not available (the values are stored in `files.unavailable_reason`).
+    Почему файл сохраненного сообщения недоступен (значения хранятся в `files.unavailable_reason`).
+    """
+
+    TOO_LARGE = 'too_large'  # Over the download limit, not downloaded / Больше лимита, не загружен
+    DELETED = 'deleted'  # Deleted in Telegram / Удален в Telegram
+    MISSING_ON_DISK = 'missing_on_disk'  # Lost on the disk / Потерян на диске
 
 
 class MessageFileTypes(Enum):
