@@ -45,6 +45,9 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
     with state_lock:
         tg_handler = get_tg_handler()
         db_handler = get_db_handler()
+        # A new dialog starts without the filter by the source chat (it belongs to the previous dialog)
+        # Новый диалог начинается без фильтра по чату-источнику (он относился к прежнему диалогу)
+        tg_handler.message_sort_filter.selected_source_list = None
         # Get a list of message groups for the selected dialogue
         # Получаем список групп сообщений для выбранного диалога
         tg_message_groups = tg_handler.get_message_group_list(dialog_id)
@@ -61,8 +64,11 @@ def tg_get_messages(request: Request, dialog_id: int) -> JSONResponse:
         tg_handler.current_state.message_details = None
         # Refresh message list, message counter, and clear current message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей текущего сообщения
+        # The filter by the source chat is shown only in "Saved Messages" (the fragment is empty in the other dialogs)
+        # Фильтр по чату-источнику показывается только в «Избранном» (в остальных диалогах фрагмент пуст)
         return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
                           'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                          'tg_source_filter': render_fragment(request, 'tg_source_filter.html'),
                           'tg_details': '', })
 
 
@@ -125,12 +131,15 @@ def tg_dialog_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         # Очистка списка сообщений и деталей сообщений в текущем состоянии клиента
         tg_handler.current_state.message_group_list = []
         tg_handler.current_state.message_details = None
-        # Update list of dialogs and the dialog counter, clear list of messages, message details, and message counter
-        # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения
-        # и счетчика сообщений
+        tg_handler.current_state.source_chat_list = []
+        tg_handler.message_sort_filter.selected_source_list = None
+        # Update list of dialogs and the dialog counter, clear list of messages, message details, message counter and
+        # the filter by the source chat
+        # Обновление списка диалогов и счетчика диалогов, очистка списка сообщений, деталей сообщения, счетчика
+        # сообщений и фильтра по чату-источнику
         return ui_update({'tg_dialogs': render_fragment(request, 'tg_dialogs.html'),
                           'tg-chats-count': f'({len(tg_handler.current_state.dialog_list)})',
-                          'tg-messages-count': '', 'tg_messages': '', 'tg_details': '', })
+                          'tg-messages-count': '', 'tg_messages': '', 'tg_source_filter': '', 'tg_details': '', })
 
 
 @router.post('/tg_message_apply_filters')
@@ -149,6 +158,7 @@ def tg_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         mess_filter.date_from = form_str(form, form_cfg['date_from'])
         mess_filter.date_to = form_str(form, form_cfg['date_to'])
         mess_filter.message_query = form_str(form, form_cfg['message_query'])
+        mess_filter.selected_source_list = form_list(form, form_cfg['source_select'])
         # Getting a list of messages using filters / Получение списка сообщений с применением фильтров
         tg_handler.current_state.message_group_list = tg_handler.get_message_group_list(
             tg_handler.current_state.selected_dialog_id)  # type: ignore[arg-type]
@@ -156,8 +166,11 @@ def tg_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         tg_handler.current_state.message_details = None
         # Updating the message list, message counter, and clearing the message details
         # Обновление списка сообщений, счетчика сообщений и очистка деталей сообщения
+        # The filter list is redrawn with the selection kept (the options come from all the loaded messages)
+        # Список фильтра перерисовывается с сохранением выбора (пункты берутся из всех загруженных сообщений)
         return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
                           'tg-messages-count': f'({len(tg_handler.current_state.message_group_list)})',
+                          'tg_source_filter': render_fragment(request, 'tg_source_filter.html'),
                           'tg_details': '', })
 
 
@@ -211,6 +224,9 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
                                                              'plain_text': tg_message_group.plain_text,
                                                              'truncated_text': tg_message_group.truncated_text,
                                                              'sender_id': tg_message_group.sender_id,
+                                                             'source_chat_id': tg_message_group.source_chat_id,
+                                                             'source_chat_title':
+                                                                 tg_message_group.source_chat_title or None,
                                                              'dialog_id': tg_dialog.dialog_id})
                 # Set the relationship for the message group, if not already set
                 # Устанавливаем relationship для группы сообщений, если не установлен
@@ -303,4 +319,5 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
         return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
                           'tg-messages-count': f'({len(message_groups)})',
                           dialog_select_id: db_handler.get_select_content_string(
-                              db_handler.current_state.dialog_list, 'dialog_id', 'title')})
+                              db_handler.current_state.dialog_list, 'dialog_id', 'title'),
+                          FormCfg.db_message_filter['source_filter']: render_fragment(request, 'db_source_filter.html')})

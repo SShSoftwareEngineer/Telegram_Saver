@@ -22,7 +22,7 @@ from mimetypes import guess_extension
 from sys import maxsize
 from threading import Event, Lock, Thread, current_thread
 from textwrap import shorten
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, cast
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,12 +30,12 @@ from telethon.tl.custom import Dialog, Message
 from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, PhotoSize, PhotoCachedSize, PhotoStrippedSize, \
     PhotoSizeProgressive, MessageMediaWebPage
 from telethon import TelegramClient
+from telethon.utils import get_display_name, get_peer_id
 from dotenv import dotenv_values
 from config import ProjectDirs, GlobalConst, MessageFileTypes, DialogTypes, ensure_profile_selected
 from profiles import read_profile_info, write_profile_info
-from utils import (parse_date_string, clean_file_path, format_file_size, format_files_report, local_day_start,
-                   remove_empty_dirs,
-                   status_messages, to_local)
+from utils import (ChatSource, parse_date_string, clean_file_path, format_file_size, format_files_report,
+                   local_day_start, remove_empty_dirs, status_messages, to_local)
 from message_renderer import render_message_html
 from media_text import describe_media
 
@@ -362,6 +362,34 @@ class TgFile:  # pylint: disable=too-many-instance-attributes
         return clean_file_path(file_name) or file_name
 
 
+def get_message_source(message: Message) -> tuple[int | None, str]:
+    """
+    Finds the chat a message of "Saved Messages" was forwarded from. The chain: `fwd_from.saved_from_peer` (the chat
+    the message was forwarded to "Saved Messages" from), else `fwd_from.from_id` (the original author), else
+    `fwd_from.from_name` (the author hides the account: only a name). `sender_id` does not fit: in "Saved Messages" it
+    is always the user.
+    Определяет чат, из которого переслано сообщение «Избранного». Цепочка: `fwd_from.saved_from_peer` (чат, откуда
+    сообщение переслано в «Избранное»), иначе `fwd_from.from_id` (исходный автор), иначе `fwd_from.from_name` (автор
+    скрыл аккаунт: только имя). `sender_id` не подходит: в «Избранном» это всегда сам пользователь.
+    Attributes:
+        message (Message): Telegram message
+    Returns:
+        tuple[int | None, str]: the marked chat ID (the same as `dialog_id`) and the title, which is empty if there is
+            an ID (the handler finds it); (None, name) for a hidden author; (None, '') if the message is not forwarded
+    """
+
+    fwd_from = getattr(message, 'fwd_from', None)
+    if fwd_from is None:
+        return None, ''
+    for peer in (getattr(fwd_from, 'saved_from_peer', None), getattr(fwd_from, 'from_id', None)):
+        if peer is not None:
+            try:
+                return get_peer_id(peer), ''
+            except TypeError:  # Not a peer Telethon knows / Не тот peer, который знает Telethon
+                continue
+    return None, (getattr(fwd_from, 'from_name', None) or '').strip()
+
+
 @dataclass
 class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     """
@@ -377,6 +405,9 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         plain_text (str): text of the message group without formatting (for search and truncation)
         truncated_text (str): truncated plain text of message group
         sender_id (int | None): message sender ID (the number `message.sender_id`, not the raw `Peer` object)
+        source_chat_id (int | None): the chat the message was forwarded from (only in "Saved Messages", see
+            `get_message_source`), None if unknown or hidden
+        source_chat_title (str): its title (set by `TelegramHandler`), or the name of the author if there is no ID
         files_report (str | None): summary of message group files
         saved_to_db (bool): database saving status
     """
@@ -390,6 +421,8 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
     plain_text: str = ''
     truncated_text: str = ''
     sender_id: int | None = None
+    source_chat_id: int | None = None
+    source_chat_title: str = ''
     files_report: str | None = ''
     saved_to_db: bool = False
 
@@ -407,13 +440,28 @@ class TgMessageGroup:  # pylint: disable=too-many-instance-attributes
         self.ids = []
         self.files = []
 
-    def add_message(self, message: Message) -> None:
+    @property
+    def source(self) -> ChatSource | None:
+        """
+        The chat the message was forwarded from, None if there is none
+        Чат, из которого переслано сообщение, None если его нет
+        """
+
+        if self.source_chat_id is None and not self.source_chat_title:
+            return None
+        return ChatSource(self.source_chat_id, self.source_chat_title)
+
+    def add_message(self, message: Message, with_source: bool = False) -> None:
         """
         Adds a message to a message group
         Добавляет сообщение в группу сообщений
         Attributes:
             message (Message): added message
+            with_source (bool): take the source of the forwarding (for "Saved Messages"); the first message of the
+                group that has it gives the source of the group
         """
+        if with_source and self.source is None:
+            self.source_chat_id, self.source_chat_title = get_message_source(message)
         # `sender_id` is a number (the marked ID); `message.from_id` is a raw `Peer` object that the database and the
         # templates cannot use. It can be None, e.g. for own outgoing messages in a private chat.
         # `sender_id` - число (маркированный ID); `message.from_id` - сырой объект `Peer`, который не подходит для БД и
@@ -504,19 +552,39 @@ class TgMessageSortFilter:
     _date_from: datetime | None = None
     _date_to: datetime | None = None
     _message_query: str | None = None
+    _selected_source_list: list[str] | None = None
 
     def set_default_filters(self) -> None:
         """
         Sets the default filters of the tab: the last `tg_last_days_by_default` days (from the start of the local day),
-        newest first (as the radio buttons of the filter form are set), no text filter.
+        newest first (as the radio buttons of the filter form are set), no text filter, no filter by the source chat.
         Устанавливает фильтры вкладки по умолчанию: последние `tg_last_days_by_default` дней (с начала локального дня),
-        сначала новые (как выставлены радиокнопки формы фильтра), фильтра по тексту нет.
+        сначала новые (как выставлены радиокнопки формы фильтра), фильтров по тексту и по чату-источнику нет.
         """
 
         self._sort_order = True
         self._date_from = local_day_start(GlobalConst.tg_last_days_by_default)
         self._date_to = None
         self._message_query = None
+        self._selected_source_list = None
+
+    @property
+    def selected_source_list(self) -> list[str] | None:
+        """
+        Returns the keys (`ChatSource.key`) of the source chats selected for filtering the messages of "Saved Messages"
+        Возвращает ключи (`ChatSource.key`) чатов-источников, выбранных для фильтрации сообщений «Избранного»
+        """
+        return self._selected_source_list
+
+    @selected_source_list.setter
+    def selected_source_list(self, value: list[str] | None):
+        """
+        Sets the keys of the selected source chats (an empty list or None: no filter)
+        Задает ключи выбранных чатов-источников (пустой список или None: фильтра нет)
+        Attributes:
+            value (list[str] | None): keys of the selected sources
+        """
+        self._selected_source_list = list(value) if value else None
 
     @property
     def sort_order(self) -> bool:
@@ -615,15 +683,18 @@ class TgCurrentState:
         selected_dialog_id (int | None): selected dialog ID
         message_group_list (list[TgMessageGroup] | None): current message group list
         message_details (dict[str, Any] | None): selected message details
+        source_chat_list (list[ChatSource]): the chats the messages of the open "Saved Messages" were forwarded from
+            (the options of the filter by the source chat); empty in the other dialogs
     """
 
     dialog_list: list[TgDialog] | None = None
     selected_dialog_id: int | None = None
     message_group_list: list[TgMessageGroup] | None = None
     message_details: dict[str, Any] | None = None
+    source_chat_list: list[ChatSource] = field(default_factory=list)
 
 
-class TelegramHandler:
+class TelegramHandler:  # pylint: disable=too-many-instance-attributes
     """
     Класс для представления операций с клиентом Telegram
     A class for handling Telegram client operations
@@ -654,6 +725,9 @@ class TelegramHandler:
         # форма вкладки показывает его даты. Список сообщений пуст, пока не выбран чат.
         self.message_sort_filter = TgMessageSortFilter()
         self.message_sort_filter.set_default_filters()
+        # Titles of the source chats found in Telegram (chat ID -> title, empty if not found), for the session
+        # Названия чатов-источников, найденные в Telegram (ID чата -> название, пусто, если не найдено), на сеанс
+        self._source_titles: dict[int, str] = {}
         # Start the event loop of the Telegram client in a background daemon thread
         # Запускаем цикл событий клиента Telegram в фоновом потоке (daemon)
         self._loop = new_event_loop()
@@ -912,6 +986,62 @@ class TelegramHandler:
         status_messages.mess_update('', f'{len(message_list)} messages loaded')
         return message_list
 
+    def _find_chat_title(self, chat_id: int) -> str:
+        """
+        Finds the title of a chat by its ID: in the dialogs, else asks Telegram (a chat the account does not know any
+        more cannot be found: an empty title)
+        Находит название чата по его ID: среди диалогов, иначе спрашивает Telegram (чат, который аккаунт больше не
+        знает, найти нельзя: пустое название)
+        Attributes:
+            chat_id (int): the marked chat ID
+        Returns:
+            str: the title, empty if it is not found
+        """
+
+        dialog = self.get_dialog_by_id(chat_id)
+        if dialog is not None and dialog.title:
+            return dialog.title
+        try:
+            return get_display_name(self.get_entity(chat_id)) or ''
+        except Exception as error:  # pylint: disable=broad-exception-caught
+            logger.info('Title of the source chat %s is not found: %s', chat_id, error)
+            return ''
+
+    def _resolve_source_titles(self, message_group_list: list[TgMessageGroup]) -> None:
+        """
+        Sets the titles of the source chats of the groups (once per chat: the results are kept for the session)
+        Задает названия чатов-источников групп (один раз на чат: результаты хранятся до конца сеанса)
+        Attributes:
+            message_group_list (list[TgMessageGroup]): message groups of "Saved Messages"
+        """
+
+        for group in message_group_list:
+            if group.source_chat_id is None:
+                continue
+            if group.source_chat_id not in self._source_titles:
+                self._source_titles[group.source_chat_id] = self._find_chat_title(group.source_chat_id)
+            group.source_chat_title = self._source_titles[group.source_chat_id]
+
+    @staticmethod
+    def _get_source_chat_list(message_group_list: list[TgMessageGroup]) -> list[ChatSource]:
+        """
+        The different source chats of the groups (the options of the filter by the source chat), the chat the newest
+        message was forwarded from is first, as in Telegram
+        Различные чаты-источники групп (пункты фильтра по чату-источнику), первым идет чат, из которого пересылали
+        последний раз, как в Telegram
+        Attributes:
+            message_group_list (list[TgMessageGroup]): message groups of "Saved Messages"
+        Returns:
+            list[ChatSource]: the sources without repeats
+        """
+
+        newest: dict[str, tuple[datetime, ChatSource]] = {}
+        for group in message_group_list:
+            source = group.source
+            if source is not None and (source.key not in newest or group.date > newest[source.key][0]):
+                newest[source.key] = (group.date, source)
+        return [source for _, source in sorted(newest.values(), key=lambda item: item[0], reverse=True)]
+
     def get_message_group_list(self, dialog_id: int) -> list[TgMessageGroup]:
         """
         Create list of message groups from messages in specified chat, taking in accordance filters, sorting, grouping.
@@ -925,6 +1055,7 @@ class TelegramHandler:
         # Creating a list of message groups based on grouping parameters and text filters
         # Создание списка групп сообщений с учетом параметра группировки и фильтра по тексту
         message_group_list: list[TgMessageGroup] = []
+        is_saved_messages = dialog_id == self.me.id
         # Creating a list of messages based on grouping by message.grouped_id
         # Составление списка сообщений с учетом группировки по message.grouped_id
         for message in self.get_message_list(dialog_id):
@@ -941,7 +1072,9 @@ class TelegramHandler:
                 message_group_list.append(tg_message_group)
             # Add the current message to the appropriate message group
             # Добавляем текущее сообщение в соответствующую группу сообщений
-            tg_message_group.add_message(message)
+            # The source of the forwarding is read only in "Saved Messages"
+            # Источник пересылки читается только в «Избранном»
+            tg_message_group.add_message(message, with_source=is_saved_messages)
             # Get information about the message file, if it exists / Получаем информацию о файле сообщения, если он есть
             message_file = self.get_message_file_info(dialog_id, tg_message_group, message, False)
             # Add the file, if it exists, to the appropriate message group
@@ -953,6 +1086,18 @@ class TelegramHandler:
                 if message_file.file_type == MessageFileTypes.VIDEO:
                     message_file = self.get_message_file_info(dialog_id, tg_message_group, message, True)
                     tg_message_group.add_message_file(message_file)
+        # "Saved Messages": the titles of the source chats, the options of the filter (made of all the loaded groups, so
+        # the list does not shrink when a filter is applied) and the filter by the source chat itself
+        # «Избранное»: названия чатов-источников, пункты фильтра (из всех загруженных групп, чтобы список не сужался при
+        # применении фильтра) и сам фильтр по чату-источнику
+        self.current_state.source_chat_list = []
+        if is_saved_messages:
+            self._resolve_source_titles(message_group_list)
+            self.current_state.source_chat_list = self._get_source_chat_list(message_group_list)
+            if self.message_sort_filter.selected_source_list:
+                selected_keys = set(self.message_sort_filter.selected_source_list)
+                message_group_list = [group for group in message_group_list
+                                      if group.source is not None and group.source.key in selected_keys]
         # Apply filter based on message group text, if specified
         # Применение фильтра по тексту группы сообщений, если он задан
         if self.message_sort_filter.message_query:
@@ -1001,6 +1146,8 @@ class TelegramHandler:
                       'html': current_message_group.html,
                       'files': current_message_group.files,
                       'files_report': current_message_group.files_report if current_message_group.files_report else '',
+                      'source_id': current_message_group.source_chat_id,
+                      'source_title': current_message_group.source.label if current_message_group.source else '',
                       'saved_to_db': current_message_group.saved_to_db}
         # Download the previews of the files to the cache (a saved message has its files in the media directory, they
         # are not downloaded again): only the small ones (`DOWNLOAD_AUTO`), the others wait for the button

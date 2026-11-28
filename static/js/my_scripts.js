@@ -255,6 +255,8 @@ function updateElementsFromResponse(data, resetScroll = false) {
         if (resetScroll && element.classList.contains('scroll')) {
             element.scrollTop = 0;
         }
+        // The chat list of the database tab was redrawn: its selection is gone / Список чатов БД перерисован
+        if (id === 'db_dialog_select') syncDbSourceFilter();
     });
     // `checked`: the state of the checkboxes / `checked`: состояние чек-боксов
     Object.entries(data.checked || {}).forEach(([id, state]) => {
@@ -300,6 +302,10 @@ function updateCheckedDependentButtons() {
 // A page load (also a reload with the checkbox states restored by the browser) / Загрузка страницы (в том числе
 // повторная с состоянием чек-боксов, восстановленным браузером)
 document.addEventListener('DOMContentLoaded', updateCheckedDependentButtons);
+// The browser may restore the chosen chats after the load (reload, back): show the source filter accordingly
+// Браузер может восстановить выбранные чаты уже после загрузки (перезагрузка, назад): показать фильтр источников
+window.addEventListener('load', () => syncDbSourceFilter());
+window.addEventListener('pageshow', () => syncDbSourceFilter());
 
 // Function that implements button press, with configuration of form elements and URL handler
 // Функция, реализующая нажатие кнопки, с конфигурацией элементов формы и URL обработчика
@@ -337,6 +343,31 @@ function callHandler(url) {
             updateElementsFromResponse(data);
         }
     });
+}
+
+
+// The filter by the source chat of the database tab works only for "Saved Messages" (only they have a source): its row
+// is shown while the dialog filter is that one chat alone (the CSS reacts to the class `favorites-only`); when it goes
+// away its choice is reset, so a hidden choice cannot filter the other chats
+// Фильтр по чату-источнику вкладки БД работает только для «Избранного» (только у него есть источник): его строка
+// показывается, пока фильтр диалогов - один этот чат (CSS реагирует на класс `favorites-only`); когда она пропадает,
+// ее выбор сбрасывается, чтобы скрытый выбор не фильтровал остальные чаты
+// Without the argument the ID comes from `data-favorites-id` of the dialog select: that way it also works after the
+// browser restores the selection on a reload (no `change` event) and after the server redraws the select
+// Без аргумента ID берется из `data-favorites-id` списка диалогов: так работает и после восстановления выбора браузером
+// при перезагрузке (события `change` нет), и после перерисовки списка сервером
+function syncDbSourceFilter(favoritesId) {
+    const dialogSelect = document.getElementById('db_dialog_select');
+    const container = document.querySelector('.db-container-tab_2');
+    if (!dialogSelect || !container) return;
+    if (favoritesId === undefined) favoritesId = dialogSelect.dataset.favoritesId;
+    const selected = Array.from(dialogSelect.selectedOptions).map(option => option.value);
+    const favoritesOnly = selected.length === 1 && selected[0] === String(favoritesId);
+    container.classList.toggle('favorites-only', favoritesOnly);
+    const sourceSelect = document.getElementById('db_source_select');
+    if (!favoritesOnly && sourceSelect) {
+        sourceSelect.value = '';
+    }
 }
 
 

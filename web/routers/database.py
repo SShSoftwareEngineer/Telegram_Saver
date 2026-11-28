@@ -33,6 +33,13 @@ def db_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         # Установка значений фильтра списка сообщений из базы данных по значениям из формы
         mess_filter = db_handler.message_sort_filter
         mess_filter.selected_dialog_list = form_list(form, form_cfg['dialog_select'])  # type: ignore[assignment]
+        # The source chat exists only in "Saved Messages": the filter works only when it is the only chosen chat (the
+        # page hides it otherwise), so a stale choice cannot hide the messages of the other chats
+        # Чат-источник есть только у «Избранного»: фильтр работает, только если выбран один этот чат (иначе страница его
+        # скрывает), поэтому устаревший выбор не скроет сообщения остальных чатов
+        mess_filter.selected_source_list = (
+            form_list(form, form_cfg['source_select'])
+            if mess_filter.selected_dialog_list == [str(get_tg_handler().me.id)] else None)
         mess_filter.sorting_field = form_str(form, form_cfg['sorting_field'])
         mess_filter.sort_order = form_str(form, form_cfg['sorting_order'])
         mess_filter.date_from = form_str(form, form_cfg['date_from'])
@@ -164,6 +171,9 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
         # Записи удалены окончательно (транзакция зафиксирована): теперь удаляем файлы этих сообщений и оставшиеся
         # пустыми директории. Ошибки файлов идут в строку статуса и не прерывают запрос: файлы остаются.
         deleted_count, file_errors = delete_media_files(ProjectDirs.media_dir, file_paths)
+        # The chosen source chat may have lost all its messages: drop the choice, or the list would stay empty
+        # Выбранный чат-источник мог потерять все сообщения: сбрасываем выбор, иначе список останется пустым
+        db_handler.drop_missing_source_filter()
         # Updating the message list after deletion from the database
         # Обновление списка сообщений после удаления из базы данных
         db_handler.current_state.message_group_list = db_handler.get_message_group_list()
@@ -189,7 +199,10 @@ def db_delete_selected_from_database(request: Request, form: FormDep) -> JSONRes
                 FormCfg.db_detail_tags['curr_message_tags']: '',
                 FormCfg.db_detail_tags['all_detail_tags']: db_handler.get_all_tags_select(),
                 FormCfg.db_message_filter['dialog_select']: db_handler.get_select_content_string(
-                    db_handler.current_state.dialog_list, 'dialog_id', 'title')}
+                    db_handler.current_state.dialog_list, 'dialog_id', 'title'),
+                # A source chat whose messages are all deleted leaves the filter / Чат-источник, все сообщения
+                # которого удалены, уходит из фильтра
+                FormCfg.db_message_filter['source_filter']: render_fragment(request, 'db_source_filter.html')}
         # Deleted messages are no longer saved: recalculate the save flags of the opened Telegram dialog and redraw
         # its list (nothing to redraw until a dialog is opened)
         # Удаленные сообщения больше не сохранены: пересчитываем признаки сохранения открытого диалога Telegram и

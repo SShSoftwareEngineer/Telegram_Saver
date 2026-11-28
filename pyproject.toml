@@ -16,7 +16,8 @@ dependencies = [
     "jinja2 (>=3.1.6,<4.0.0)",
     "python-multipart (>=0.0.33,<1.0.0)",
     "cryptg (>=0.6.1,<0.7.0)",
-    "alembic (>=1.18,<2.0.0)"
+    "alembic (>=1.18,<2.0.0)",
+    "uliweb-alembic (>=0.6.9,<0.7.0)"
 ]
 
 [build-system]

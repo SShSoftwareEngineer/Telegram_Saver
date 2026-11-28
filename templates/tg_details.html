@@ -53,8 +53,14 @@ Variables:
         {# Displaying a date of message / Вывод даты сообщения #}
         <b>{{ message_date }}</b>
 
-        {# Beginning of dialog title / Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(tg_details.dialog_id, tg_details.dialog_title, True) }} {{ tg_details.dialog_title|truncate(25) }}</span>
+        {# Beginning of the title: the chat the message of "Saved Messages" was forwarded from (instead of "Saved
+           Messages"), else the dialog / Начало названия: чат, из которого переслано сообщение «Избранного» (вместо
+           «Избранного»), иначе диалог #}
+        {% if tg_details.source_title %}
+            <span style="color: #777777" title="Forwarded from">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(tg_details.source_id or 0, tg_details.source_title, True) }} {{ tg_details.source_title|truncate(25) }}</span>
+        {% else %}
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(tg_details.dialog_id, tg_details.dialog_title, True) }} {{ tg_details.dialog_title|truncate(25) }}</span>
+        {% endif %}
     </div>
 
     {# Message text / Вывод текста сообщения #}

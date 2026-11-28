@@ -1469,6 +1469,22 @@ files = [
 typing-extensions = ">=4.15.0"
 
 [[package]]
+name = "uliweb-alembic"
+version = "0.6.9"
+description = "A port of alembic for uliweb framework."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "uliweb-alembic-0.6.9.tar.gz", hash = "sha256:f8044301d6252dac2a509d5dcee515255b986d7496e916fbb21632c8a1749ef0"},
+    {file = "uliweb_alembic-0.6.9-py2.py3-none-any.whl", hash = "sha256:f81c8570548e4d36d85120838951f8936125d22b34df40d5ad90967441dd9599"},
+]
+
+[package.dependencies]
+Mako = "*"
+SQLAlchemy = ">=0.7.3"
+
+[[package]]
 name = "uvicorn"
 version = "0.54.0"
 description = "The lightning-fast ASGI server."
@@ -1490,4 +1506,4 @@ standard = ["httptools (>=0.8.0)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14"
-content-hash = "48b7570b94acab57f7e0b560c7f6fe7c8bd0e029e6b8d653e45ecd871abd1beb"
+content-hash = "a4ad460440e568065e54edd28d3d8397f80dfb9515d82cc92c52dd3d960defdb"

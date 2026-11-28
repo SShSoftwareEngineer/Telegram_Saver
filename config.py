@@ -281,16 +281,20 @@ class FormCfg:
     # Telegram message filter form configuration / Конфигурация формы фильтра сообщений Telegram
     tg_message_filter = {'sorting_order': 'tg_mess_sort_order', 'date_from': 'tg_mess_date_from',
                          'date_to': 'tg_mess_date_to', 'message_query': 'tg_message_query',
+                         'source_select': 'tg_source_select', 'source_filter': 'tg_source_filter',
                          'radio': ['sorting_order'],
-                         'input': ['date_from', 'date_to', 'message_query']}
+                         'input': ['date_from', 'date_to', 'message_query'], 'select': ['source_select']}
     # Database message filter form configuration / Конфигурация формы фильтра сообщений базы данных
-    db_message_filter = {'dialog_select': 'db_dialog_select', 'sorting_field': 'db_mess_sort_field',
+    db_message_filter = {'dialog_select': 'db_dialog_select', 'source_select': 'db_source_select',
+                         'source_filter': 'db_source_filter',
+                         'sorting_field': 'db_mess_sort_field',
                          'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
                          'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
                          'tag_mode': 'db_tag_mode',
                          'radio': ['sorting_field', 'sorting_order', 'tag_mode'],
-                         'input': ['date_from', 'date_to', 'message_query', 'tag_query'], 'select': ['dialog_select']}
+                         'input': ['date_from', 'date_to', 'message_query', 'tag_query'],
+                         'select': ['dialog_select', 'source_select']}
     # Database tag control form configuration / Конфигурация формы управления тегов базы данных
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',

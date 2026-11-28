@@ -20,6 +20,7 @@ from utils import status_messages
 from web.routers import database as database_routes
 
 DIALOG_SELECT = FormCfg.db_message_filter['dialog_select']
+SOURCE_SELECT = FormCfg.db_message_filter['source_filter']
 CURR_TAGS = FormCfg.db_detail_tags['curr_message_tags']
 ALL_TAGS = FormCfg.db_detail_tags['all_detail_tags']
 CHECKBOX = FormCfg.db_checkbox_list['db_checkbox_list']
@@ -232,7 +233,8 @@ def test_delete_selected_group_with_tags(client: TestClient, db_handler: Databas
 
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS, ALL_TAGS, DIALOG_SELECT}
+    assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS, ALL_TAGS, DIALOG_SELECT,
+                       SOURCE_SELECT}
     assert data['db-messages-count'] == '(1)'
     assert data['db_details'] == '' and data[CURR_TAGS] == ''
     assert 'Second' in data['db_messages'] and 'First' not in data['db_messages']
