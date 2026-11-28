@@ -15,7 +15,7 @@ from markupsafe import Markup
 from starlette.datastructures import FormData
 from starlette.templating import Jinja2Templates
 import config
-from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs
+from config import GlobalConst, MessageFileTypes, FormCfg, ProjectDirs, UnavailableReason
 from profiles import profile_title
 from telegram_handler import get_tg_handler
 from database_handler import get_db_handler
@@ -48,6 +48,7 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
     return {
         'constants': GlobalConst,
         'tg_file_types': MessageFileTypes,
+        'unavailable_reasons': UnavailableReason,
         'form_ctrl_cfg': FormCfg,
         'tg_me': tg_handler.me,
         'profile_title': profile_title(config.PROFILE) if config.PROFILE else '',
@@ -58,7 +59,11 @@ def inject_field_names(_request: Request) -> dict[str, Any]:
         'tg_details': tg_handler.current_state.message_details,
         'db_mess_date_from': filter_date(db_handler.message_sort_filter.date_from),
         'db_mess_date_to': filter_date(db_handler.message_sort_filter.date_to),
+        'tg_source_list': tg_handler.current_state.source_chat_list,
+        'tg_source_selected': tg_handler.message_sort_filter.selected_source_list or [],
         'db_all_dialog_list': db_handler.all_dialogues_list,
+        'db_source_list': db_handler.get_source_list(),
+        'db_source_selected': db_handler.message_sort_filter.selected_source_list or [],
         'db_all_tags_select': Markup(db_handler.get_all_tags_select()),
         'db_messages': db_handler.current_state.message_group_list,
         'db_details': db_handler.current_state.message_details,

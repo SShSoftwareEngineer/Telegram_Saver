@@ -1,0 +1,24 @@
+{#
+The filter of the database messages by the chat they were forwarded from: one line above the message list. It is shown
+only when some saved messages have a source; the options go from the newest forwarding to the oldest. The choice works at
+once, without a button: the filters of the form are applied.
+Variables:
+  - db_source_list: the source chats (ChatSource) of the saved messages
+  - db_source_selected: keys of the selected sources (at most one)
+Фильтр сообщений базы данных по чату, из которого они пересланы: одна строка над списком сообщений. Показывается только
+если у каких-то сохраненных сообщений есть источник; пункты идут от самой свежей пересылки к давней. Выбор срабатывает
+сразу, без кнопки: применяются фильтры формы.
+#}
+{% set form_cfg = form_ctrl_cfg.db_message_filter %}
+{% if db_source_list %}
+    <select class="select-element source-filter-select"
+            id="{{ form_cfg.source_select }}"
+            name="{{ form_cfg.source_select }}"
+            title="Show only the messages forwarded from this chat (the other filters of the form are applied too)"
+            onchange="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/db_message_apply_filters', true)">
+        <option value="">All sources (forwarded from)</option>
+        {% for source in db_source_list %}
+            <option value="{{ source.key }}"{% if source.key in db_source_selected %} selected{% endif %}>{{ source.label }}</option>
+        {% endfor %}
+    </select>
+{% endif %}

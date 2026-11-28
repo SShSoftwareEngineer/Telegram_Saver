@@ -64,11 +64,16 @@ Variables:
                         {% endif %}
                     </div>
                 </div>
-                <div class="grid">
+                <div class="grid tg-action_bar">
                     {# Action bar above the list of Telegram message groups
                        Панель действий над списком групп сообщений Telegram #}
                     {% include "tg_action_bar.html" %}
                 </div>
+                {# The filter by the source chat has its own grid cell under the buttons: the cell exists only while the
+                   filter is shown (the server fills it, see tg_source_filter.html and the CSS)
+                   Фильтр по чату-источнику - в своей ячейке сетки под кнопками: ячейка есть, только пока фильтр
+                   показан (заполняет сервер, см. tg_source_filter.html и CSS) #}
+                <div class="tg-source" id="{{ form_ctrl_cfg.tg_message_filter.source_filter }}">{% include "tg_source_filter.html" %}</div>
                 <div class="tg-messages">
                     <div class="grid scroll" id="tg_messages">
                         {# Displaying a list of Telegram message groups / Вывод списка групп сообщений Telegram #}
@@ -104,6 +109,11 @@ Variables:
                        Панель действий над списком групп сообщений из базы данных #}
                     {% include "db_action_bar.html" %}
                 </div>
+                {# The filter by the source chat: its own grid cell under the buttons, shown only while the dialog filter
+                   is "Saved Messages" alone (see db_source_filter.html, syncDbSourceFilter and the CSS)
+                   Фильтр по чату-источнику: своя ячейка сетки под кнопками, показывается, только пока в фильтре
+                   диалогов выбрано одно «Избранное» (см. db_source_filter.html, syncDbSourceFilter и CSS) #}
+                <div class="db-source" id="{{ form_ctrl_cfg.db_message_filter.source_filter }}">{% include "db_source_filter.html" %}</div>
                 <div class="db-messages">
                     {# Displaying a list of message groups from the database / Вывод списка групп сообщений из базы данных #}
                     <div class="grid scroll" id="db_messages">

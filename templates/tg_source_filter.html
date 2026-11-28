@@ -1,0 +1,26 @@
+{#
+The filter of the Telegram messages by the chat they were forwarded from: one line above the message list. It is shown
+only in "Saved Messages" and only when some of the loaded messages are forwarded (the server redraws it with the message
+list: the options come from all the loaded messages, the newest forwarding first, the chosen one stays chosen). The
+choice works at once, without a button: the filters of the form are applied.
+Variables:
+  - tg_source_list: the source chats (ChatSource) of the open "Saved Messages"
+  - tg_source_selected: keys of the selected sources (at most one)
+Фильтр сообщений Telegram по чату, из которого они пересланы: одна строка над списком сообщений. Показывается только в
+«Избранном» и только если среди загруженных сообщений есть пересланные (сервер перерисовывает его вместе со списком
+сообщений: пункты берутся из всех загруженных сообщений, сначала самые свежие пересылки, выбранный остается выбранным).
+Выбор срабатывает сразу, без кнопки: применяются фильтры формы.
+#}
+{% set form_cfg = form_ctrl_cfg.tg_message_filter %}
+{% if tg_source_list %}
+    <select class="select-element source-filter-select"
+            id="{{ form_cfg.source_select }}"
+            name="{{ form_cfg.source_select }}"
+            title="Show only the messages forwarded from this chat (the other filters of the form are applied too)"
+            onchange="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_message_apply_filters', true)">
+        <option value="">All sources (forwarded from)</option>
+        {% for source in tg_source_list %}
+            <option value="{{ source.key }}"{% if source.key in tg_source_selected %} selected{% endif %}>{{ source.label }}</option>
+        {% endfor %}
+    </select>
+{% endif %}

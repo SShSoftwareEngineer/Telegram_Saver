@@ -35,14 +35,32 @@ Variables:
         </button>
     </div>
 
-    <div class="tg-save_db action-bar-button-area">
-        {# Save selected messages to database / Сохранить выбранные сообщения в базе данных #}
+    <div class="tg-action-mode radio-row">
+        {# What the button "Do it" does with the checked messages; it returns to "Save" after each press (a safeguard
+           against a repeated deletion). The deleting actions work only in "Saved Messages" (see `syncTgActionModes`)
+           Что кнопка «Do it» делает с отмеченными сообщениями; после каждого нажатия возвращается «Save» (защита от
+           повторного удаления). Удаляющие действия работают только в «Избранном» (см. `syncTgActionModes`) #}
+        <span class="radio-option">
+            <input type="radio" id="tg_action_mode_save" name="tg_action_mode" value="save" checked>
+            <label for="tg_action_mode_save" title="Save the checked messages to the database">Save</label>
+        </span>
+        <span class="radio-option">
+            <input type="radio" id="tg_action_mode_delete" name="tg_action_mode" value="delete" disabled>
+            <label for="tg_action_mode_delete" title="Delete the checked messages from Telegram (the copies in the database stay)">Delete</label>
+        </span>
+        <span class="radio-option">
+            <input type="radio" id="tg_action_mode_save_delete" name="tg_action_mode" value="save_delete" disabled>
+            <label for="tg_action_mode_save_delete" title="Save the checked messages to the database, then delete them from Telegram">Save &amp; Delete</label>
+        </span>
+    </div>
+
+    <div class="tg-do-it action-bar-button-area">
         {# Disabled until a message is checked (see `updateCheckedDependentButtons`) / Неактивна, пока нет отмеченных #}
         <button class="action-bar-button"
                 disabled data-needs-checked=".tg-message-checkbox"
-                title="Saves the checked messages to the database"
-                onclick="pressFormButton({{ form_ctrl_cfg.get_form_cfg(form_cfg) }}, '/tg_save_selected_message_to_db')">
-            Save selection to database
+                title="Does the chosen action with the checked messages"
+                onclick="doTgAction({{ form_ctrl_cfg.get_form_cfg(form_cfg) }})">
+            Do it
         </button>
     </div>
 

@@ -9,6 +9,7 @@ HOST, PORT: the address of the local web server
 class ProjectDirs: directories and files of the profile (settings, session, database, media, export, cache)
 class GlobalConst: constants of the project (limits, formats, labels, key names)
 class DialogTypes(Enum): IDs and names of the dialog types in Telegram
+class UnavailableReason(StrEnum): why a file of a saved message is not available (stored in the database)
 class MessageFileTypes(Enum): names, types, extensions and signatures of message files
 class TableNames: names of the database tables
 class FormCfg: configurations of the web interface form controls
@@ -19,7 +20,7 @@ import os
 from typing import Any
 from dataclasses import dataclass
 from pathlib import Path
-from enum import Enum
+from enum import Enum, StrEnum
 from profiles import (CACHE_DIR_NAME, DATABASE_DIR_NAME, EXPORT_DIR_NAME, MEDIA_DIR_NAME, PROFILE_ENV_VAR,
                       PROFILES_DIR, list_profiles, read_profile)
 
@@ -174,6 +175,17 @@ class DialogTypes(Enum):
         return DialogTypes.UNKNOWN.name
 
 
+class UnavailableReason(StrEnum):
+    """
+    Why a file of a saved message is not available (the values are stored in `files.unavailable_reason`).
+    Почему файл сохраненного сообщения недоступен (значения хранятся в `files.unavailable_reason`).
+    """
+
+    TOO_LARGE = 'too_large'  # Over the download limit, not downloaded / Больше лимита, не загружен
+    DELETED = 'deleted'  # Deleted in Telegram / Удален в Telegram
+    MISSING_ON_DISK = 'missing_on_disk'  # Lost on the disk / Потерян на диске
+
+
 class MessageFileTypes(Enum):
     """
     The class contains the names, types, extensions, and signatures of message files.
@@ -269,16 +281,20 @@ class FormCfg:
     # Telegram message filter form configuration / Конфигурация формы фильтра сообщений Telegram
     tg_message_filter = {'sorting_order': 'tg_mess_sort_order', 'date_from': 'tg_mess_date_from',
                          'date_to': 'tg_mess_date_to', 'message_query': 'tg_message_query',
+                         'source_select': 'tg_source_select', 'source_filter': 'tg_source_filter',
                          'radio': ['sorting_order'],
-                         'input': ['date_from', 'date_to', 'message_query']}
+                         'input': ['date_from', 'date_to', 'message_query'], 'select': ['source_select']}
     # Database message filter form configuration / Конфигурация формы фильтра сообщений базы данных
-    db_message_filter = {'dialog_select': 'db_dialog_select', 'sorting_field': 'db_mess_sort_field',
+    db_message_filter = {'dialog_select': 'db_dialog_select', 'source_select': 'db_source_select',
+                         'source_filter': 'db_source_filter',
+                         'sorting_field': 'db_mess_sort_field',
                          'sorting_order': 'db_mess_sort_order',
                          'date_from': 'db_mess_date_from', 'date_to': 'db_mess_date_to',
                          'message_query': 'db_message_query', 'tag_query': 'db_tag_query',
                          'tag_mode': 'db_tag_mode',
                          'radio': ['sorting_field', 'sorting_order', 'tag_mode'],
-                         'input': ['date_from', 'date_to', 'message_query', 'tag_query'], 'select': ['dialog_select']}
+                         'input': ['date_from', 'date_to', 'message_query', 'tag_query'],
+                         'select': ['dialog_select', 'source_select']}
     # Database tag control form configuration / Конфигурация формы управления тегов базы данных
     db_detail_tags = {'edit_tag_name': 'db_edit_tag_name', 'old_tag_name': 'db_old_tag_name',
                       'curr_message_tags': 'db_current_message_tags', 'all_detail_tags': 'db_all_detail_tags',

@@ -33,9 +33,9 @@ def test_checked_buttons_are_disabled_on_load(client: TestClient):
 
 
 def test_save_button_of_telegram_waits_for_telegram_checkboxes(client: TestClient):
-    """The "save to database" button waits for the Telegram checkboxes"""
+    """The button "Do it" (save / delete / both, see `doTgAction`) waits for the Telegram checkboxes"""
     page = client.get('/').text
-    save = [tag for tag in marked(page) if '/tg_save_selected_message_to_db' in tag]
+    save = [tag for tag in marked(page) if 'doTgAction(' in tag]
     assert len(save) == 1
     assert f'data-needs-checked="{TG_CHECKBOX}"' in save[0]
 

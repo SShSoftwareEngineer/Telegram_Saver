@@ -31,7 +31,8 @@ def make_tg_file(file_type: MessageFileTypes, size: int, name: str = 'f.bin') ->
 
 def make_handler(files: list[TgFile], download=None) -> SimpleNamespace:
     """Handler stub with a message group of the files; `download` replaces `download_message_file`"""
-    group = SimpleNamespace(date=datetime(2026, 1, 2), html='', files=files, files_report='', saved_to_db=False)
+    group = SimpleNamespace(date=datetime(2026, 1, 2), html='', files=files, files_report='', saved_to_db=False,
+                           source=None, source_chat_id=None)
     handler = SimpleNamespace(
         current_state=SimpleNamespace(message_group_list=[group]),
         get_message_group_by_id=lambda groups, group_id: groups[0],

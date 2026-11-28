@@ -17,13 +17,15 @@ Variables:
             name="{{ form_cfg.dialog_select }}"
             size="14"
             title="For multiple selections, hold down Ctrl/Cmd"
+            data-favorites-id="{{ tg_me.id }}"
+            onchange="syncDbSourceFilter()"
             multiple>
         {% for db_dialog in db_all_dialog_list %}
             <option value="{{ db_dialog.dialog_id }}">{{ db_dialog.title }}</option>
         {% endfor %}
     </select>
     <button type="button"
-            onclick="clearFormFields(['{{ form_cfg.dialog_select }}'])"
+            onclick="clearFormFields(['{{ form_cfg.dialog_select }}']); syncDbSourceFilter()"
             class="clear-button X-button"> ✖
     </button>
 </div>

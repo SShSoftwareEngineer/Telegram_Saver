@@ -11,6 +11,8 @@ to_utc: a function to convert a datetime to UTC (naive datetimes are local time)
 to_local: a function to convert a datetime to the local time zone of the system (naive datetimes are local time)
 clean_file_path: a function to clean a file or directory name from invalid characters
 format_files_report: a function to form the summary line of the files of a message group (`2 Images, Video`)
+class ChatSource: the chat a message of "Saved Messages" was forwarded from (key and label of a filter option)
+split_source_keys: a function for the filter by the source chat
 limit_list: a function to cut a long list of report lines and mark the continuation
 delete_media_files: a function to delete media files and the directories left empty
 status_messages: a global instance of StatusMessages
@@ -288,6 +290,64 @@ def format_files_report(file_type_ids: Iterable[int]) -> str:
     counts = Counter(file_type.alt_text for file_type in map(MessageFileTypes.get_file_type_by_type_id, file_type_ids)
                      if file_type not in UNCOUNTED_FILE_TYPES)
     return ', '.join(f'{count} {alt_text}s' if count > 1 else alt_text for alt_text, count in sorted(counts.items()))
+
+
+# The prefix of the key of a source without a chat ID (the forwarded message has only the name of its author)
+# Префикс ключа источника без ID чата (у пересланного сообщения есть только имя его автора)
+SOURCE_NAME_PREFIX = 'name:'
+
+
+@dataclass(frozen=True)
+class ChatSource:
+    """
+    The chat a message of "Saved Messages" was forwarded from (the filter by the source of the forwarding).
+    Чат, из которого переслано сообщение «Избранного» (фильтр по источнику пересылки).
+    Attributes:
+        chat_id (int | None): the marked ID of the chat (the same as `dialog_id`), None if Telegram gives only a name
+            (the author hides the link to the account)
+        title (str): the title of the chat, or the name of the author if there is no ID
+    """
+
+    chat_id: int | None
+    title: str
+
+    @property
+    def key(self) -> str:
+        """
+        The value of the option of the filter list: the chat ID, or `name:<name>` for a source without an ID
+        Значение пункта списка фильтра: ID чата или `name:<имя>` для источника без ID
+        """
+        return str(self.chat_id) if self.chat_id is not None else f'{SOURCE_NAME_PREFIX}{self.title}'
+
+    @property
+    def label(self) -> str:
+        """The text of the option: the title, or the ID if the title is not known / Текст пункта: название или ID"""
+        return self.title or f'Chat {self.chat_id}'
+
+
+def split_source_keys(keys: Iterable[str]) -> tuple[list[int], list[str]]:
+    """
+    Splits the selected keys of the source filter (`ChatSource.key`) into chat IDs and names of the authors without ID;
+    a key that is neither is ignored
+    Делит выбранные ключи фильтра источников (`ChatSource.key`) на ID чатов и имена авторов без ID; ключ, который не
+    относится ни к тем, ни к другим, пропускается
+    Attributes:
+        keys (Iterable[str]): selected keys
+    Returns:
+        tuple[list[int], list[str]]: the chat IDs and the names
+    """
+
+    chat_ids: list[int] = []
+    names: list[str] = []
+    for key in keys:
+        if key.startswith(SOURCE_NAME_PREFIX):
+            names.append(key.removeprefix(SOURCE_NAME_PREFIX))
+        else:
+            try:
+                chat_ids.append(int(key))
+            except ValueError:
+                continue
+    return chat_ids, names
 
 
 def limit_list(items: list[str], max_items: int) -> list[str]:

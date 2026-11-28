@@ -18,6 +18,7 @@ from telegram_handler import TgFile, TgMessageGroup
 DIALOG_ID = -1001234567891
 CHECKBOX = FormCfg.tg_checkbox_list['tg_checkbox_list']
 DIALOG_SELECT = FormCfg.db_message_filter['dialog_select']
+SOURCE_SELECT = FormCfg.db_message_filter['source_filter']
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ def test_save_selected_groups(client: TestClient, tg_handler: SimpleNamespace, t
 
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT}
+    assert set(data) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT, SOURCE_SELECT}
     assert data['tg-messages-count'] == '(3)'
     assert f'<option value="{DIALOG_ID}" >Test chat</option>' in data[DIALOG_SELECT]
     # The database: the dialog, two groups, for each an image and an HTML file / База данных: диалог, две группы, файлы
@@ -97,7 +98,7 @@ def test_save_nothing_selected(client: TestClient, tg_handler: SimpleNamespace, 
     monkeypatch.setattr(db_handler, 'get_dialog_list', get_dialog_list)
     response = client.post('/tg_save_selected_message_to_db')
     assert response.status_code == 200
-    assert set(response.ui()) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT}
+    assert set(response.ui()) == {'tg_messages', 'tg-messages-count', DIALOG_SELECT, SOURCE_SELECT}
     assert db_handler.session.query(DbMessageGroup).count() == 0
     tg_handler.download_message_file.assert_not_called()
     get_dialog_list.assert_not_called()

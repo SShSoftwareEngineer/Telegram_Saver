@@ -29,13 +29,15 @@ from html import escape
 from pathlib import Path
 from threading import Lock
 from typing import List, Any, Type, TypeVar, Iterator  # List - necessary for relationships
-from sqlalchemy import create_engine, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
+from sqlalchemy import create_engine, BigInteger, Integer, ForeignKey, Text, String, Table, Column, select, asc, desc, and_, or_, \
     Boolean, update, delete, event, func, Select, DateTime
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, selectinload, Session
 from sqlalchemy.types import TypeDecorator
 from config import ProjectDirs, GlobalConst, TableNames, DialogTypes, MessageFileTypes, TagsSorting
-from utils import format_files_report, local_day_start, parse_date_string, status_messages, to_local, to_utc
+from schema_migrations import migrate_database
+from utils import (ChatSource, format_files_report, local_day_start, parse_date_string,
+                   split_source_keys, status_messages, to_local, to_utc)
 
 
 def is_no_tags_name(name: str) -> bool:
@@ -146,10 +148,19 @@ class DbMessageGroup(Base):  # pylint: disable=too-few-public-methods
     html: Mapped[str] = mapped_column(Text, nullable=True)
     plain_text: Mapped[str] = mapped_column(Text, nullable=True)
     truncated_text: Mapped[str] = mapped_column(Text, nullable=True)
-    sender_id: Mapped[int] = mapped_column(Integer, nullable=True)
+    # Telegram IDs do not fit into int32 (for example 8837960131 or -100... of channels): BigInteger
+    # ID Telegram не помещаются в int32 (например, 8837960131 или -100... у каналов): BigInteger
+    sender_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    # The chat the message of "Saved Messages" was forwarded from (see `telegram_handler.get_message_source`): the ID
+    # and the title; the title alone is the name of an author who hides the account; both are empty for the other
+    # messages
+    # Чат, из которого переслано сообщение «Избранного» (см. `telegram_handler.get_message_source`): ID и название;
+    # одно название - имя автора, скрывшего аккаунт; у остальных сообщений оба пусты
+    source_chat_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+    source_chat_title: Mapped[str] = mapped_column(Text, nullable=True)
     selected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     # Relationships to 'DbDialog' table
-    dialog_id: Mapped[int] = mapped_column(Integer, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
+    dialog_id: Mapped[int] = mapped_column(BigInteger, ForeignKey(f'{TableNames.dialogs}.dialog_id'))
     dialog: Mapped['DbDialog'] = relationship(back_populates='message_groups')
     # Relationships to 'DbFile' table
     files: Mapped[List['DbFile']] = relationship(back_populates='message_group', cascade="all, delete-orphan")
@@ -201,7 +212,7 @@ class DbDialog(Base):  # pylint: disable=too-few-public-methods
     """
 
     __tablename__ = TableNames.dialogs  # Table name in the database / Имя таблицы в базе данных
-    dialog_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True, index=True, nullable=False)
+    dialog_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(Text)
     # Relationships to 'DbMessageGroup' table
     message_groups: Mapped['DbMessageGroup'] = relationship(back_populates='dialog')
@@ -232,9 +243,14 @@ class DbFile(Base):  # pylint: disable=too-few-public-methods
 
     __tablename__ = TableNames.files  # Table name in the database / Имя таблицы в базе данных
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, index=True)
-    message_id: Mapped[int] = mapped_column(Integer)
+    message_id: Mapped[int] = mapped_column(BigInteger)
     file_path: Mapped[str] = mapped_column(String, unique=True)
     size: Mapped[int] = mapped_column(Integer, nullable=True)
+    # Why the file is not available (`UnavailableReason`), None - it is available or the reason is not known. Shown on the
+    # database tab; written later (the report journal of maintenance)
+    # Почему файл недоступен (`UnavailableReason`), None - он доступен или причина неизвестна. Показывается на вкладке БД;
+    # запись - позже (журнал отчетов обслуживания)
+    unavailable_reason: Mapped[str] = mapped_column(String, nullable=True)
     # Relationships to 'DbMessageGroup' table
     grouped_id: Mapped[str] = mapped_column(String,
                                             ForeignKey(f'{TableNames.message_groups}.grouped_id', ondelete='CASCADE'))
@@ -275,6 +291,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     Класс для представления параметров сортировки и фильтра для групп сообщений в базе данных.
     Attributes:
         selected_dialog_list (list[int] | None): list of selected dialog IDs for filtering messages
+        selected_source_list (list[str] | None): keys of the selected chats the messages were forwarded from
         sorting_field (str): field to sort messages by (date or dialog)
         sort_order (bool): sort order: descending (True) or ascending (False)
         date_from (datetime | None): date from which to get messages
@@ -285,6 +302,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
     """
 
     _selected_dialog_list: list[int] | None = None
+    _selected_source_list: list[str] | None = None
     _sorting_field = None
     _sort_order: bool = False
     _date_from: datetime | None = None
@@ -315,6 +333,24 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
             self._selected_dialog_list = value
         else:
             self._selected_dialog_list = None
+
+    @property
+    def selected_source_list(self) -> list[str] | None:
+        """
+        Returns the keys (`ChatSource.key`) of the selected source chats for filtering the forwarded messages
+        Возвращает ключи (`ChatSource.key`) выбранных чатов-источников для фильтрации пересланных сообщений
+        """
+        return self._selected_source_list
+
+    @selected_source_list.setter
+    def selected_source_list(self, value: list[str] | None):
+        """
+        Sets the keys of the selected source chats (an empty list or None: no filter)
+        Задает ключи выбранных чатов-источников (пустой список или None: фильтра нет)
+        Attributes:
+            value (list[str] | None): keys of the selected sources
+        """
+        self._selected_source_list = list(value) if value else None
 
     @property
     def sorting_field(self):
@@ -475,6 +511,7 @@ class DbMessageSortFilter:  # pylint: disable=too-many-instance-attributes
         self._message_query = None
         self._tag_query = None
         self._tag_match_all = False
+        self._selected_source_list = None
 
 
 @dataclass
@@ -613,13 +650,13 @@ class DatabaseHandler:
         # access is serialized by a shared lock outside this class.
         # check_same_thread=False: сессия создается в одном потоке, а используется из пула потоков веб-сервера;
         # доступ сериализуется общим замком вне этого класса.
+        # The schema first: a new database gets its tables, an old one gets the pending migrations (with a backup copy)
+        # Сначала схема: новая база получает таблицы, старая - недостающие миграции (с резервной копией)
+        migrate_database(Base.metadata)
         self.engine = create_engine(f'sqlite:///{ProjectDirs.data_base_file}',
                                     connect_args={'check_same_thread': False})
         self.setup_database_connection()
         self.session = Session(self.engine)
-        # Creating tables in the database if they do not exist
-        # Создаем таблицы в базе данных, если они отсутствуют
-        Base.metadata.create_all(self.engine)
         # Checking the availability of data in the static table with dialogue types and adding them if necessary.
         # Проверяем наличие данных в статической таблице с типами диалогов и добавляем их при необходимости
         for dialog_type in DialogTypes:
@@ -750,6 +787,13 @@ class DatabaseHandler:
         # Filter by selected dialogs / Фильтр по выбранным диалогам
         if self.message_sort_filter.selected_dialog_list:
             select_stmt = select_stmt.where(DbMessageGroup.dialog_id.in_(self.message_sort_filter.selected_dialog_list))
+        # Filter by the chats the messages were forwarded from: by the chat ID, or by the name of an author without ID
+        # Фильтр по чатам, из которых пересланы сообщения: по ID чата или по имени автора без ID
+        if self.message_sort_filter.selected_source_list:
+            source_ids, source_names = split_source_keys(self.message_sort_filter.selected_source_list)
+            select_stmt = select_stmt.where(or_(
+                DbMessageGroup.source_chat_id.in_(source_ids),
+                and_(DbMessageGroup.source_chat_id.is_(None), DbMessageGroup.source_chat_title.in_(source_names))))
         # Filter by date from and to / Фильтр по дате от и до
         if self.message_sort_filter.date_from:
             select_stmt = select_stmt.where(DbMessageGroup.date >= self.message_sort_filter.date_from)
@@ -801,6 +845,41 @@ class DatabaseHandler:
                                     f'{len(query_result)} chats loaded from the database', True)
         return list(query_result)
 
+    def get_source_list(self) -> list[ChatSource]:
+        """
+        The chats the saved messages were forwarded from ("Saved Messages"), without repeats, the chat the newest message
+        was forwarded from is first (as in Telegram). If a chat was saved under different titles (renamed), the title
+        of its newest message is taken.
+        Чаты, из которых пересланы сохраненные сообщения («Избранное»), без повторов, первым идет чат, из которого
+        пересылали последний раз (как в Telegram). Если чат сохранен под разными названиями (переименован), берется
+        название его самого нового сообщения.
+        Returns:
+            list[ChatSource]: the sources
+        """
+
+        stmt = (select(DbMessageGroup.source_chat_id, DbMessageGroup.source_chat_title)
+                .where(or_(DbMessageGroup.source_chat_id.is_not(None), DbMessageGroup.source_chat_title.is_not(None)))
+                .order_by(DbMessageGroup.date.desc()))
+        sources: dict[str, ChatSource] = {}
+        for chat_id, title in self.session.execute(stmt).all():
+            source = ChatSource(chat_id, title or '')
+            if source.key not in sources and (chat_id is not None or title):
+                sources[source.key] = source
+        return list(sources.values())
+
+    def drop_missing_source_filter(self) -> None:
+        """
+        Resets the filter by the source chat if the chat has no saved messages any more (after a deletion): the filter
+        list no longer has it, so the selection must not stay on the server and hide everything
+        Сбрасывает фильтр по чату-источнику, если у чата не осталось сохраненных сообщений (после удаления): в списке
+        фильтра его уже нет, поэтому выбор не должен оставаться на сервере и скрывать все
+        """
+
+        selected = self.message_sort_filter.selected_source_list
+        if selected:
+            existing = {source.key for source in self.get_source_list()}
+            self.message_sort_filter.selected_source_list = [key for key in selected if key in existing]
+
     @staticmethod
     def get_select_content_string(db_object_list: list, value: str, visible_text: str) -> str:
         """
@@ -839,6 +918,11 @@ class DatabaseHandler:
                       'files': current_message_group.files,
                       'files_report': format_files_report(
                           db_file.file_type_id for db_file in current_message_group.files),
+                      'source_id': current_message_group.source_chat_id,
+                      'source_title': (ChatSource(current_message_group.source_chat_id,
+                                                  current_message_group.source_chat_title or '').label
+                                       if current_message_group.source_chat_id is not None
+                                       or current_message_group.source_chat_title else ''),
                       'tags': current_message_group.tags if current_message_group.tags else []}
         db_details['existing_files'] = [db_file for db_file in (db_details.get('files') or []) if db_file.is_exists()]
         # The files that are in the database but not on the disk (the HTML file of the message is restored by the

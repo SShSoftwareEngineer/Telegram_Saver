@@ -68,7 +68,7 @@ def test_get_messages(client: TestClient, tg_handler: SimpleNamespace, dialog_id
     response = client.get(f'/tg_messages/{dialog_id}')
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details'}
+    assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details', 'tg_source_filter'}
     assert data['tg-messages-count'] == '(2)'
     assert data['tg_details'] == ''
     assert f'/tg_details/{dialog_id}/{dialog_id}_1' in data['tg_messages']
@@ -160,7 +160,7 @@ def test_dialog_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
         cfg['dialog_title_query']: 'chat'})
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'tg_dialogs', 'tg-chats-count', 'tg-messages-count', 'tg_messages', 'tg_details'}
+    assert set(data) == {'tg_dialogs', 'tg-chats-count', 'tg-messages-count', 'tg_messages', 'tg_details', 'tg_source_filter'}
     assert data['tg-chats-count'] == '(1)'
     assert data['tg-messages-count'] == data['tg_messages'] == data['tg_details'] == ''
     dial_filter = tg_handler.dialog_sort_filter
@@ -191,7 +191,7 @@ def test_message_apply_filters(client: TestClient, tg_handler: SimpleNamespace):
         cfg['message_query']: 'hello'})
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details'}
+    assert set(data) == {'tg_messages', 'tg-messages-count', 'tg_details', 'tg_source_filter'}
     assert data['tg-messages-count'] == '(1)'
     assert data['tg_details'] == ''
     mess_filter = tg_handler.message_sort_filter

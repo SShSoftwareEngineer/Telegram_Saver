@@ -147,9 +147,28 @@ html, body {
 .tg-save_to_db { grid-area: save_to_db; }
 .tg-chats { grid-area: chats; }
 .tg-action_bar { grid-area: action_bar; }
+.tg-source { grid-area: source; display: none; }
 .tg-messages { grid-area: messages; }
 .tg-details { grid-area: details; }
 /* @formatter:on */
+
+/* The filter by the source chat has its own row under the action bar: the row exists only while the filter shows a
+   select ("Saved Messages" with forwarded messages), otherwise the grid is as before and the message list is not
+   squeezed / Фильтр по чату-источнику занимает отдельную строку под панелью действий: строка есть, только пока в
+   фильтре есть select («Избранное» с пересланными), иначе сетка прежняя и список сообщений не сжимается */
+.tg-container-tab_1:has(.tg-source select) {
+    grid-template-areas:
+        "filter_h chat_h message_h detail_h"
+        "filters chats action_bar details"
+        "filters chats source details"
+        "filters chats messages details"
+        "save_to_db chats messages details";
+    grid-template-rows: auto auto auto auto 1fr;
+}
+
+.tg-container-tab_1:has(.tg-source select) .tg-source {
+    display: block;
+}
 
 .tg-filter-divider {
     height: 1px;
@@ -187,11 +206,28 @@ html, body {
 .db-details_h { grid-area: details_h; }
 .db-tags_h { grid-area: tags_h; }
 .db-filters { grid-area: filters; }
-.db-action_bar { grid-area: action_bar; }
+.db-action-bar { grid-area: action_bar; }
+.db-source { grid-area: source; display: none; }
 .db-messages { grid-area: messages; }
 .db-details { grid-area: details; }
 .db-tags { grid-area: tags; }
 /* @formatter:on */
+
+/* The same for the database tab; the filter also waits until the dialog filter is "Saved Messages" alone (the class
+   `favorites-only` is set by `syncDbSourceFilter`) / То же для вкладки БД; фильтр ждет еще, пока в фильтре диалогов
+   выбрано одно «Избранное» (класс `favorites-only` ставит `syncDbSourceFilter`) */
+.db-container-tab_2.favorites-only:has(.db-source select) {
+    grid-template-areas:
+        "filters_h messages_h details_h tags_h"
+        "filters action_bar details tags"
+        "filters source details tags"
+        "filters messages details tags";
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.db-container-tab_2.favorites-only:has(.db-source select) .db-source {
+    display: block;
+}
 
 
 /* ===== Action bars for selecting messages from a list ===== */
@@ -218,9 +254,9 @@ button[data-needs-checked]:disabled {
 .tg-action-bar-grid {
     display: grid;
     grid-template-areas:
-        "select deselect invertsel"
-        "save_db save_db save_db";
-    grid-template-columns: 1fr 1fr 1fr;
+        "select select select select deselect deselect deselect deselect invertsel invertsel invertsel invertsel"
+        "mode mode mode mode mode mode mode mode mode mode doit doit";
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     min-height: 0;
     height: 100%;
     gap: 5px;
@@ -230,7 +266,9 @@ button[data-needs-checked]:disabled {
 .tg-select { grid-area: select }
 .tg-deselect { grid-area: deselect }
 .tg-invert { grid-area: invertsel }
-.tg-save_db { grid-area: save_db }
+.tg-action-mode { grid-area: mode; align-self: center; column-gap: 8px; }
+.tg-do-it { grid-area: doit }
+.tg-do-it .action-bar-button { margin: 2px 0; padding: 1px 4px; }
 /* @formatter:on */
 
 /* CSS Grid layout of the action bar for selecting database messages / CSS Grid разметки панели действий для выбора сообщений базы данных */
@@ -431,6 +469,11 @@ button[data-needs-checked]:disabled {
     border-radius: 4px;
 }
 
+/* The one-line filter by the source chat under the action bar / Однострочный фильтр по чату-источнику под панелью */
+.source-filter-select {
+    width: 100%;
+}
+
 /* The special "(No tags)" item of the list of all tags (messages without tags) / Особый пункт списка всех тегов */
 .no-tags-option {
     font-weight: bold;
@@ -509,6 +552,11 @@ button[data-needs-checked]:disabled {
    Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
 .message-checkbox {
     float: right;
+}
+
+/* The mark "saved" next to the check-box in "Saved Messages" / Метка «сохранено» рядом с чек-боксом в «Избранном» */
+.saved-mark {
+    color: green;
 }
 
 /* Mark indicating the presence of a saved message in the database / Отметка о наличии сохраненного сообщения в БД */

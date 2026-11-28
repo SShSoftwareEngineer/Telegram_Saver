@@ -16,7 +16,8 @@ and messages, and saves the ones you choose to an SQLite database and to a local
 - **Export**: selected messages to a standalone HTML page with copied media files
 - **Maintenance**: report of media files without database records, recreation of lost message HTML files, re-download
   of missing files (up to 100 per run), database backup
-- **Database abstraction**: SQLAlchemy ORM with SQLite (the schema is designed to be portable to PostgreSQL)
+- **Database abstraction**: SQLAlchemy ORM with SQLite (the schema is designed to be portable to PostgreSQL); the schema
+  is versioned with Alembic migrations that are applied at the start (a backup copy of the database is made first)
 
 ## Architecture
 - **Telegram**: Telethon; its asyncio event loop runs in a background thread
@@ -130,10 +131,24 @@ database maintenance menu.
 - **Pros**: zero configuration, a single file, suitable for personal use
 - **Location**: `profiles/<profile name>/database/telegram_archive.db`
 
+### Schema migrations
+
+The schema is versioned with Alembic (`migrations/versions/`, the same scripts for all profiles). At the start the
+application brings the database of the selected profile up to date: a new database is created, an old one gets the
+pending migrations after a backup copy `database/backup/telegram_archive_before_migration_<date>.db`. Every profile
+is migrated when it is started. A schema change is always a new revision, never an edit of an old one:
+`alembic revision --autogenerate -m "description"` (PowerShell: `$env:TELEGRAM_SAVER_PROFILE='<profile>'` first).
+
+**The start stops with "the database was migrated by a newer version"** - the database has a schema revision that this
+code does not know (for example, you went back to an older git branch after a newer one had migrated the profile). The
+database is not changed. Either start the newer code (the branch that made the migration), or restore the database
+from the copy `*_before_migration_*` in `database/backup/` (it holds the schema before that migration; the data saved
+after the migration is lost) and start the older code.
+
 ### PostgreSQL
 
-The schema is designed with SQLAlchemy ORM to be portable, but PostgreSQL is not supported yet: Telegram IDs do not
-fit into `int32`, so the ID columns must first become `BigInteger` (see the roadmap).
+The schema is designed with SQLAlchemy ORM to be portable and the Telegram IDs are `BigInteger`, but PostgreSQL is not
+supported yet (see the roadmap).
 
 ## Tests
 ```bash

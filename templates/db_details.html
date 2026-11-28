@@ -24,8 +24,14 @@ Variables:
         {# Displaying a date of message / Вывод даты сообщения #}
         <b>{{ message_date }}</b>
 
-        {# Beginning of dialog title / Вывод начала названия диалога #}
-        <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(db_details.dialog_id, db_details.dialog_title, True) }} {{ db_details.dialog_title|truncate(constants.truncated_title_length) }}</span>
+        {# Beginning of the title: the chat the message of "Saved Messages" was forwarded from (instead of "Saved
+           Messages"), else the dialog / Начало названия: чат, из которого переслано сообщение «Избранного» (вместо
+           «Избранного»), иначе диалог #}
+        {% if db_details.source_title %}
+            <span style="color: #777777" title="Forwarded from">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(db_details.source_id or 0, db_details.source_title, True) }} {{ db_details.source_title|truncate(constants.truncated_title_length) }}</span>
+        {% else %}
+            <span style="color: #777777">&nbsp;&nbsp;|&nbsp;&nbsp; {{ avatar(db_details.dialog_id, db_details.dialog_title, True) }} {{ db_details.dialog_title|truncate(constants.truncated_title_length) }}</span>
+        {% endif %}
     </div>
 
     {# Message text / Вывод текста сообщения #}
@@ -53,7 +59,13 @@ Variables:
     {% for message_file in db_details.missing_files or [] %}
         <div class="media-file-name">
             {{ message_file.file_path.rsplit('/', 1)[-1] }} &middot; {{ message_file.size|file_size }}:
-            {% if (message_file.size or 0) > constants.button_download_size %}
+            {# The stored reason wins; without it the reason is guessed by the size (the old records) /
+               Сохраненная причина главнее; без нее причина определяется по размеру (старые записи) #}
+            {% if message_file.unavailable_reason == unavailable_reasons.DELETED %}
+                deleted in Telegram, it cannot be downloaded again
+            {% elif message_file.unavailable_reason == unavailable_reasons.TOO_LARGE
+                    or (not message_file.unavailable_reason
+                        and (message_file.size or 0) > constants.button_download_size) %}
                 not downloaded, larger than the limit ({{ constants.button_download_size|file_size }})
             {% else %}
                 file not found on the disk (the database maintenance can download it again)
