@@ -254,9 +254,9 @@ button[data-needs-checked]:disabled {
 .tg-action-bar-grid {
     display: grid;
     grid-template-areas:
-        "select deselect invertsel"
-        "save_db save_db save_db";
-    grid-template-columns: 1fr 1fr 1fr;
+        "select select select select deselect deselect deselect deselect invertsel invertsel invertsel invertsel"
+        "mode mode mode mode mode mode mode mode mode mode doit doit";
+    grid-template-columns: repeat(12, minmax(0, 1fr));
     min-height: 0;
     height: 100%;
     gap: 5px;
@@ -266,7 +266,9 @@ button[data-needs-checked]:disabled {
 .tg-select { grid-area: select }
 .tg-deselect { grid-area: deselect }
 .tg-invert { grid-area: invertsel }
-.tg-save_db { grid-area: save_db }
+.tg-action-mode { grid-area: mode; align-self: center; column-gap: 8px; }
+.tg-do-it { grid-area: doit }
+.tg-do-it .action-bar-button { margin: 2px 0; padding: 1px 4px; }
 /* @formatter:on */
 
 /* CSS Grid layout of the action bar for selecting database messages / CSS Grid разметки панели действий для выбора сообщений базы данных */
@@ -550,6 +552,11 @@ button[data-needs-checked]:disabled {
    Чекбокс сохранения выбранных сообщений в БД или манипуляций с сохраненными сообщениям в БД */
 .message-checkbox {
     float: right;
+}
+
+/* The mark "saved" next to the check-box in "Saved Messages" / Метка «сохранено» рядом с чек-боксом в «Избранном» */
+.saved-mark {
+    color: green;
 }
 
 /* Mark indicating the presence of a saved message in the database / Отметка о наличии сохраненного сообщения в БД */

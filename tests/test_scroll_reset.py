@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 SCRIPT = Path(__file__).resolve().parent.parent / 'static' / 'js' / 'my_scripts.js'
 FILTER_ROUTES = ('/tg_dialog_apply_filters', '/tg_message_apply_filters', '/db_message_apply_filters')
-SAME_LIST_ROUTES = ('/tg_save_selected_message_to_db', '/db_export_selected_message_to_html',
+SAME_LIST_ROUTES = ('/db_export_selected_message_to_html',
                     '/db_delete_selected_from_database', '/db_tag_add', '/db_tag_remove', '/db_tag_update')
 
 
@@ -40,6 +40,13 @@ def test_buttons_that_change_the_same_list_keep_the_scroll(client: TestClient):
         calls = press_calls(page, route)
         assert len(calls) == 1, route
         assert 'true' not in calls[0], calls[0]
+
+
+def test_do_it_button_keeps_the_scroll_on_saving_and_resets_it_after_deleting():
+    """`doTgAction`: saving keeps the position (the same list), the deleting actions reload the list: from the top"""
+    script = SCRIPT.read_text(encoding='utf-8')
+    assert "pressFormButton(config, '/tg_save_selected_message_to_db');" in script
+    assert "'/tg_save_and_delete_selected_messages' : '/tg_delete_selected_messages', true)" in script
 
 
 def test_script_passes_the_scroll_flag_on():

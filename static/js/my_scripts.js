@@ -257,6 +257,7 @@ function updateElementsFromResponse(data, resetScroll = false) {
         }
         // The chat list of the database tab was redrawn: its selection is gone / Список чатов БД перерисован
         if (id === 'db_dialog_select') syncDbSourceFilter();
+        if (id === 'tg_messages') syncTgActionModes();
     });
     // `checked`: the state of the checkboxes / `checked`: состояние чек-боксов
     Object.entries(data.checked || {}).forEach(([id, state]) => {
@@ -347,11 +348,11 @@ function callHandler(url) {
 
 
 // The filter by the source chat of the database tab works only for "Saved Messages" (only they have a source): its row
-// is shown while the dialog filter is that one chat alone (the CSS reacts to the class `favorites-only`); when it goes
-// away its choice is reset, so a hidden choice cannot filter the other chats
+// is shown while the dialog filter is that one chat alone (the CSS reacts to the class `favorites-only`). Its value is
+// not touched here: the server redraws the select with every list, so it always shows the filter of the list
 // Фильтр по чату-источнику вкладки БД работает только для «Избранного» (только у него есть источник): его строка
-// показывается, пока фильтр диалогов - один этот чат (CSS реагирует на класс `favorites-only`); когда она пропадает,
-// ее выбор сбрасывается, чтобы скрытый выбор не фильтровал остальные чаты
+// показывается, пока фильтр диалогов - один этот чат (CSS реагирует на класс `favorites-only`). Значение здесь не
+// трогается: сервер перерисовывает select вместе с каждым списком, поэтому он всегда показывает фильтр списка
 // Without the argument the ID comes from `data-favorites-id` of the dialog select: that way it also works after the
 // browser restores the selection on a reload (no `change` event) and after the server redraws the select
 // Без аргумента ID берется из `data-favorites-id` списка диалогов: так работает и после восстановления выбора браузером
@@ -364,10 +365,6 @@ function syncDbSourceFilter(favoritesId) {
     const selected = Array.from(dialogSelect.selectedOptions).map(option => option.value);
     const favoritesOnly = selected.length === 1 && selected[0] === String(favoritesId);
     container.classList.toggle('favorites-only', favoritesOnly);
-    const sourceSelect = document.getElementById('db_source_select');
-    if (!favoritesOnly && sourceSelect) {
-        sourceSelect.value = '';
-    }
 }
 
 
@@ -577,6 +574,63 @@ function deleteSelectedButton(config, url) {
         }
     }
 }
+
+
+// The button "Do it" of the Telegram action bar does what the radio buttons say: save the checked messages, delete them
+// from Telegram, or both (the saving goes first, a failure leaves them in Telegram). The deleting actions ask for the
+// confirmation that counts the messages and warns about the ones that are not saved in the database (they are lost for
+// good unless the saving goes with it); the server allows them only in "Saved Messages". The choice returns to "Save"
+// after each press, whatever the answer: a safeguard against a repeated deletion
+// Кнопка «Do it» панели действий Telegram делает то, что выбрано радиокнопками: сохранить отмеченные сообщения, удалить
+// их из Telegram или и то и другое (сохранение идет первым, при сбое они остаются в Telegram). Удаляющие действия просят
+// подтверждение с подсчетом сообщений и предупреждением о несохраненных в базе данных (они пропадут навсегда, если
+// не сохранять вместе с удалением); сервер разрешает их только в «Избранном». После каждого нажатия выбор
+// возвращается на «Save», каким бы ни был ответ: защита от повторного удаления
+/**
+ * @param {Object} config
+ */
+function doTgAction(config) {
+    const modeInput = document.querySelector('input[name="tg_action_mode"]:checked');
+    const mode = modeInput ? modeInput.value : 'save';
+    const saveRadio = document.getElementById('tg_action_mode_save');
+    if (saveRadio) saveRadio.checked = true;
+    if (mode === 'save') {
+        pressFormButton(config, '/tg_save_selected_message_to_db');
+        return;
+    }
+    const checked = document.querySelectorAll('.tg-message-checkbox:checked');
+    if (checked.length === 0) return;
+    const saveFirst = mode === 'save_delete';
+    const notSaved = Array.from(checked).filter(checkbox => !checkbox.dataset.saved).length;
+    let text = saveFirst
+        ? `Save ${notSaved} message(s) to the database and delete ${checked.length} message(s) from Telegram?`
+        : `Delete ${checked.length} message(s) from Telegram?`;
+    text += '\nThis action cannot be undone!';
+    if (!saveFirst && notSaved > 0) {
+        text += `\n\nWARNING: ${notSaved} of them are NOT saved to the database and will be lost forever.`;
+    }
+    if (checked.length > notSaved) {
+        text += `\n\n${checked.length - notSaved} of them are saved: their copies stay in the database.`;
+    }
+    if (confirm(text)) {
+        pressFormButton(config, saveFirst ? '/tg_save_and_delete_selected_messages' : '/tg_delete_selected_messages', true);
+    }
+}
+
+// The deleting actions are available only while "Saved Messages" is open (the list of messages carries the marker
+// `data-favorites`); otherwise the choice is "Save"
+// Удаляющие действия доступны, только пока открыто «Избранное» (список сообщений несет маркер `data-favorites`);
+// иначе выбрано «Save»
+function syncTgActionModes() {
+    const inFavorites = !!document.querySelector('#tg_messages [data-favorites]');
+    ['tg_action_mode_delete', 'tg_action_mode_save_delete'].forEach(id => {
+        const radio = document.getElementById(id);
+        if (radio) radio.disabled = !inFavorites;
+    });
+    const saveRadio = document.getElementById('tg_action_mode_save');
+    if (!inFavorites && saveRadio) saveRadio.checked = true;
+}
+document.addEventListener('DOMContentLoaded', syncTgActionModes);
 
 
 // Functions for working with notifications

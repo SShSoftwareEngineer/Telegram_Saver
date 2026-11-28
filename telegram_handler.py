@@ -1170,6 +1170,30 @@ class TelegramHandler:  # pylint: disable=too-many-instance-attributes
         status_messages.mess_update('', 'Message details loaded')
         return tg_details
 
+    def delete_messages(self, dialog_id: int, message_ids: list[int]) -> int:
+        """
+        Deletes messages from the chat in Telegram (irreversible). Only "Saved Messages" is allowed: there the account
+        always has the right to delete (the other chats are a separate task of the roadmap)
+        Удаляет сообщения из чата в Telegram (необратимо). Разрешено только «Избранное»: там у аккаунта всегда есть
+        право удаления (остальные чаты - отдельная задача плана)
+        Attributes:
+            dialog_id (int): dialog ID, it must be the account's own chat / ID диалога, только собственный чат аккаунта
+            message_ids (list[int]): IDs of the messages (all the messages of the groups, an album goes entirely) /
+                ID сообщений (все сообщения групп, альбом удаляется целиком)
+        Returns:
+            int: the number of the messages deleted by Telegram / число сообщений, удаленных Telegram
+        """
+
+        if dialog_id != self.me.id:
+            raise PermissionError('Messages can be deleted from Telegram only in "Saved Messages"')
+        if not message_ids:
+            return 0
+        entity = self.get_entity(dialog_id)
+        results = self._run(self.client.delete_messages(entity, message_ids))
+        deleted = sum(getattr(result, 'pts_count', 0) for result in results)
+        status_messages.mess_update('', f'{deleted} messages deleted from Telegram')
+        return deleted
+
     def download_pending_file(self, dialog_id: int, message_group_id: str, file_path: str) -> dict:
         """
         Downloads a file of the open message to the cache by the button, whatever its size; the status bar shows the

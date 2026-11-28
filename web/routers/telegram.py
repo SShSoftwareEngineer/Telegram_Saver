@@ -17,6 +17,8 @@ from web.ui import ui_update
 
 router = APIRouter()
 
+DELETE_ONLY_SAVED_MESSAGES = 'Messages can be deleted from Telegram only in "Saved Messages"'
+
 
 @router.get('/tg_dialogs')
 def tg_get_dialogs(request: Request) -> JSONResponse:
@@ -174,6 +176,153 @@ def tg_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
                           'tg_details': '', })
 
 
+def save_groups(request: Request, selected_messages_ids: list[str]) -> dict[str, str]:
+    """
+    Saves the marked message groups to the database and the file system; the caller holds the state lock.
+    Returns the HTML fragments to update (empty if there is nothing to update).
+    Сохраняет отмеченные группы сообщений в БД и файловой системе; замок состояния держит вызывающий.
+    Возвращает фрагменты HTML для обновления (пусто, если обновлять нечего).
+    """
+    tg_handler = get_tg_handler()
+    db_handler = get_db_handler()
+    message_groups = tg_handler.current_state.message_group_list
+    if message_groups is None:
+        # No dialog has been opened yet, so there is nothing to save: an empty JSON changes nothing on the page.
+        # Flask failed here with a TypeError (500).
+        # Диалог еще не открывался, сохранять нечего: пустой JSON ничего не меняет на странице.
+        # Во Flask здесь возникала ошибка TypeError (500).
+        return {}
+    # Processing the list of message groups in the current state of the client
+    # Обработка списка групп сообщений в текущего состояния клиента
+    for tg_message_group in message_groups:
+        if tg_message_group.grouped_id not in selected_messages_ids or tg_message_group.saved_to_db:
+            # Not marked, or already saved (in "Saved Messages" the saved groups have a check-box too, for deletion)
+            # Не отмечена или уже сохранена (в «Избранном» у сохраненных групп тоже есть чек-бокс, для удаления)
+            continue
+        # If the message group ID is in the list marked for saving, save it to the database. One transaction per
+        # group: an error rolls back only this group, the groups saved before it stay (as in Flask, where
+        # `commit` was called for every group). The session starts the transaction itself on the first query.
+        # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных.
+        # Одна транзакция на группу: ошибка откатывает только эту группу, сохраненные ранее остаются (как во Flask,
+        # где `commit` вызывался для каждой группы). Транзакцию сессия начинает сама при первом запросе.
+        with db_handler.transaction():
+            # Save or update the dialog / Сохраняем или обновляем диалог
+            tg_dialog: TgDialog = tg_handler.get_dialog_by_id(  # type: ignore[assignment]
+                tg_message_group.dialog_id)
+            db_dialog = db_handler.upsert_record(DbDialog, {'dialog_id': tg_dialog.dialog_id},
+                                                 {'title': tg_dialog.title,
+                                                  'dialog_type_id': tg_dialog.type.value})
+            # Set the relationship for the dialog if it is not already set
+            # Устанавливаем relationship для диалога, если не установлен
+            if db_dialog.dialog_type is None:
+                db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
+                    dialog_type_id=tg_dialog.type.value).first()
+            # Saving a group of messages / Сохраняем группу сообщений
+            db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
+                                                        {'date': tg_message_group.date,
+                                                         'html': tg_message_group.html,
+                                                         'plain_text': tg_message_group.plain_text,
+                                                         'truncated_text': tg_message_group.truncated_text,
+                                                         'sender_id': tg_message_group.sender_id,
+                                                         'source_chat_id': tg_message_group.source_chat_id,
+                                                         'source_chat_title':
+                                                             tg_message_group.source_chat_title or None,
+                                                         'dialog_id': tg_dialog.dialog_id})
+            # Set the relationship for the message group, if not already set
+            # Устанавливаем relationship для группы сообщений, если не установлен
+            if db_message_group.dialog is None:
+                db_message_group.dialog = db_dialog
+            # Save or update data about message files belonging to the group
+            # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
+            status_messages.mess_update('Downloading files', '', new_list=True)
+            for tg_file in tg_message_group.files:
+                db_file = db_handler.upsert_record(DbFile, {'file_path': tg_file.file_path},
+                                                   {'message_id': tg_file.message_id,
+                                                    'size': tg_file.size,
+                                                    'grouped_id': tg_message_group.grouped_id,
+                                                    'file_type_id': tg_file.file_type.type_id})
+                # Set relationships for the file, if not already set
+                # Устанавливаем relationships для файла, если не установлено
+                if db_file.message_group is None:
+                    db_file.message_group = db_message_group
+                if db_file.file_type is None:
+                    db_file.file_type = db_handler.session.query(DbFileType).filter_by(
+                        file_type_id=tg_file.file_type.type_id).first()
+                # Download file if it is not in specified directory of the file system and its size is less than
+                # the limit / Скачиваем файл, если его нет в заданной директории файловой системы и его размер
+                # меньше предельного
+                status_messages.mess_update('Downloading files', tg_file.file_path)
+                if (tg_file.download_level == DOWNLOAD_CONFIRM and not tg_file.is_exists()
+                        and not tg_file.is_cached()):
+                    # A big file is saved only if it was downloaded by the button "Download anyway" before
+                    # Большой файл сохраняется, только если до этого он был загружен кнопкой «Download anyway»
+                    report_msg = (f'{tg_file.file_path} skipped: {format_file_size(tg_file.size)} is over the '
+                                  f'limit of {format_file_size(GlobalConst.button_download_size)} '
+                                  f'(use "Download anyway" before saving)')
+                else:
+                    downloading_result = tg_handler.download_message_file(
+                        tg_file, progress_callback=make_progress_reporter('Downloading files'))
+                    report_msg = f'{tg_file.file_path} downloaded successfully' \
+                        if downloading_result else f'Failed to download file {tg_file.file_path}'
+                status_messages.mess_update('Downloading files', report_msg)
+            # Not a commit: the group is not saved until the HTML file is written, the rollback is still possible
+            # Это не фиксация: группа не сохранена, пока не записан HTML файл, откат еще возможен
+            db_handler.session.flush()
+            # Generating paths to files and subdirectories in the file system
+            # Формирование пути к файлу и вложенных директорий в файловой системе
+            file_name = TgFile.get_self_file_name(tg_message_group.date,  # type: ignore[arg-type]
+                                                  MessageFileTypes.CONTENT, tg_message_group.grouped_id, 0,
+                                                  MessageFileTypes.CONTENT.default_ext)
+            file_path = (Path(ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir()
+                         / file_name)
+            # Render the HTML file with the message content and save it in the file system (the same code
+            # restores a lost file in maintenance)
+            # Строим HTML файл с контентом сообщения и сохраняем его в файловой системе (тот же код восстанавливает
+            # потерянный файл в сервисном обслуживании)
+            html_size = write_message_html(request, db_message_group, file_path)
+            # Create a record about the HTML file in the database for the corresponding message group. The path is
+            # relative to the media directory, like the other files (deletion and maintenance rely on it)
+            # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений. Путь относительно
+            # директории медиа, как у остальных файлов (на него опираются удаление и сервисное обслуживание)
+            relative_path = file_path.relative_to(ProjectDirs.media_dir).as_posix()
+            db_file = db_handler.upsert_record(DbFile, {'file_path': relative_path},
+                                               {'message_id': 0,
+                                                'size': html_size,
+                                                'grouped_id': tg_message_group.grouped_id,
+                                                'file_type_id': MessageFileTypes.CONTENT.type_id})
+            # Set relationships for the file, if not already set
+            # Устанавливаем relationships для файла, если не установлено
+            if db_file.message_group is None:
+                db_file.message_group = db_message_group
+            if db_file.file_type is None:
+                db_file.file_type = db_handler.session.query(DbFileType).filter_by(
+                    file_type_id=MessageFileTypes.CONTENT.type_id).first()
+        # The transaction is committed on leaving `with`; after that, set the save flag for the message group
+        # Транзакция зафиксирована при выходе из `with`; после этого устанавливаем признак сохранения группы
+        tg_message_group.saved_to_db = True
+    # Nothing was marked: nothing was saved, so the database lists and the flags stay as they were (as in Flask)
+    # Ничего не отмечено: ничего не сохранялось, поэтому списки БД и признаки остаются прежними (как во Flask)
+    if selected_messages_ids:
+        # Updating the list of dialogs stored in the database
+        # Обновляем список диалогов, сохраненных в базе данных
+        db_handler.all_dialogues_list = db_handler.get_dialog_list()
+        db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
+        # Set the save flag for message groups that are already saved in the database (one pass after the loop;
+        # in Flask it was nested in the loop over the same list and shadowed the loop variable)
+        # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных (один проход
+        # после цикла; во Flask он был вложен в цикл по тому же списку и перекрывал переменную цикла)
+        for tg_message_group in message_groups:
+            tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
+    # Update the message list, message counter, and dialogue list in the database dialogue filter
+    # Обновление списка сообщений, счетчика сообщений и списка диалогов в фильтре диалогов базы данных
+    dialog_select_id = FormCfg.db_message_filter['dialog_select']
+    return {'tg_messages': render_fragment(request, 'tg_messages.html'),
+                      'tg-messages-count': f'({len(message_groups)})',
+                      dialog_select_id: db_handler.get_select_content_string(
+                          db_handler.current_state.dialog_list, 'dialog_id', 'title'),
+                      FormCfg.db_message_filter['source_filter']: render_fragment(request, 'db_source_filter.html')}
+
+
 @router.post('/tg_save_selected_message_to_db')
 def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONResponse:
     """
@@ -185,139 +334,81 @@ def tg_save_selected_message_to_db(request: Request, form: FormDep) -> JSONRespo
     selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip()
                              for x in form_list(form, FormCfg.tg_checkbox_list['tg_checkbox_list'])]
     with state_lock:
+        return ui_update(save_groups(request, selected_messages_ids))
+
+
+def delete_groups(request: Request, selected_messages_ids: list[str]) -> dict[str, str]:
+    """
+    Deletes the marked groups of "Saved Messages" in Telegram and reloads the list; the caller holds the state lock.
+    Returns the HTML fragments to update (empty if nothing was marked).
+    Удаляет отмеченные группы «Избранного» в Telegram и перечитывает список; замок состояния держит вызывающий.
+    Возвращает фрагменты HTML для обновления (пусто, если ничего не отмечено).
+    """
+    tg_handler = get_tg_handler()
+    db_handler = get_db_handler()
+    state = tg_handler.current_state
+    if state.selected_dialog_id != tg_handler.me.id:
+        raise HTTPException(status_code=403, detail=DELETE_ONLY_SAVED_MESSAGES)
+    # The messages of the marked groups (an album goes entirely) / Сообщения отмеченных групп (альбом целиком)
+    message_ids = [message_id for group in state.message_group_list or []
+                   if group.grouped_id in selected_messages_ids for message_id in group.ids]
+    if not message_ids:
+        return {}
+    try:
+        tg_handler.delete_messages(tg_handler.me.id, message_ids)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+    def load_groups() -> None:
+        """Reload the list of "Saved Messages" with the filters / Перечитать список «Избранного» с фильтрами"""
+        state.message_group_list = tg_handler.get_message_group_list(tg_handler.me.id)
+        for group in state.message_group_list:
+            group.saved_to_db = db_handler.message_group_exists(group.grouped_id)
+
+    load_groups()
+    # The chosen source may have gone with the deleted messages: then no filter, or the list would be empty
+    # Выбранный источник мог исчезнуть вместе с удаленными сообщениями: тогда без фильтра, иначе список был бы пуст
+    selected_sources = tg_handler.message_sort_filter.selected_source_list
+    if selected_sources and not set(selected_sources) & {x.key for x in state.source_chat_list}:
+        tg_handler.message_sort_filter.selected_source_list = None
+        load_groups()
+    # The open message may be deleted: clear the details / Открытое сообщение могло быть удалено: очистка деталей
+    state.message_details = None
+    return {'tg_messages': render_fragment(request, 'tg_messages.html'),
+                      'tg-messages-count': f'({len(state.message_group_list)})',
+                      'tg_source_filter': render_fragment(request, 'tg_source_filter.html'),
+                      'tg_details': '', }
+
+
+@router.post('/tg_delete_selected_messages')
+def tg_delete_selected_messages(request: Request, form: FormDep) -> JSONResponse:
+    """
+    Deleting marked messages from "Saved Messages" in Telegram (irreversible, the page asks for confirmation first).
+    The copies in the database stay. Other chats are refused.
+    Удаление отмеченных сообщений из «Избранного» в Telegram (необратимо, страница сначала просит подтверждение).
+    Копии в базе данных остаются. Другие чаты отклоняются.
+    """
+    selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip()
+                             for x in form_list(form, FormCfg.tg_checkbox_list['tg_checkbox_list'])]
+    with state_lock:
+        return ui_update(delete_groups(request, selected_messages_ids))
+
+
+@router.post('/tg_save_and_delete_selected_messages')
+def tg_save_and_delete_selected_messages(request: Request, form: FormDep) -> JSONResponse:
+    """
+    Saving the marked messages to the database and then deleting them from "Saved Messages" in Telegram. The
+    deletion starts only after the saving: a failure while saving (an exception) leaves everything in Telegram.
+    Сохранение отмеченных сообщений в БД и затем их удаление из «Избранного» в Telegram. Удаление начинается только
+    после сохранения: сбой при сохранении (исключение) оставляет все в Telegram.
+    """
+    selected_messages_ids = [x.replace(GlobalConst.select_in_telegram, '').strip()
+                             for x in form_list(form, FormCfg.tg_checkbox_list['tg_checkbox_list'])]
+    with state_lock:
         tg_handler = get_tg_handler()
-        db_handler = get_db_handler()
-        message_groups = tg_handler.current_state.message_group_list
-        if message_groups is None:
-            # No dialog has been opened yet, so there is nothing to save: an empty JSON changes nothing on the page.
-            # Flask failed here with a TypeError (500).
-            # Диалог еще не открывался, сохранять нечего: пустой JSON ничего не меняет на странице.
-            # Во Flask здесь возникала ошибка TypeError (500).
-            return ui_update()
-        # Processing the list of message groups in the current state of the client
-        # Обработка списка групп сообщений в текущего состояния клиента
-        for tg_message_group in message_groups:
-            if tg_message_group.grouped_id not in selected_messages_ids:
-                continue
-            # If the message group ID is in the list marked for saving, save it to the database. One transaction per
-            # group: an error rolls back only this group, the groups saved before it stay (as in Flask, where
-            # `commit` was called for every group). The session starts the transaction itself on the first query.
-            # Если ID группы сообщений находится в списке отмеченных для сохранения, сохраняем её в базе данных.
-            # Одна транзакция на группу: ошибка откатывает только эту группу, сохраненные ранее остаются (как во Flask,
-            # где `commit` вызывался для каждой группы). Транзакцию сессия начинает сама при первом запросе.
-            with db_handler.transaction():
-                # Save or update the dialog / Сохраняем или обновляем диалог
-                tg_dialog: TgDialog = tg_handler.get_dialog_by_id(  # type: ignore[assignment]
-                    tg_message_group.dialog_id)
-                db_dialog = db_handler.upsert_record(DbDialog, {'dialog_id': tg_dialog.dialog_id},
-                                                     {'title': tg_dialog.title,
-                                                      'dialog_type_id': tg_dialog.type.value})
-                # Set the relationship for the dialog if it is not already set
-                # Устанавливаем relationship для диалога, если не установлен
-                if db_dialog.dialog_type is None:
-                    db_dialog.dialog_type = db_handler.session.query(DbDialogType).filter_by(
-                        dialog_type_id=tg_dialog.type.value).first()
-                # Saving a group of messages / Сохраняем группу сообщений
-                db_message_group = db_handler.upsert_record(DbMessageGroup, {'grouped_id': tg_message_group.grouped_id},
-                                                            {'date': tg_message_group.date,
-                                                             'html': tg_message_group.html,
-                                                             'plain_text': tg_message_group.plain_text,
-                                                             'truncated_text': tg_message_group.truncated_text,
-                                                             'sender_id': tg_message_group.sender_id,
-                                                             'source_chat_id': tg_message_group.source_chat_id,
-                                                             'source_chat_title':
-                                                                 tg_message_group.source_chat_title or None,
-                                                             'dialog_id': tg_dialog.dialog_id})
-                # Set the relationship for the message group, if not already set
-                # Устанавливаем relationship для группы сообщений, если не установлен
-                if db_message_group.dialog is None:
-                    db_message_group.dialog = db_dialog
-                # Save or update data about message files belonging to the group
-                # Сохраняем или обновляем данные о файлах сообщений, входящих в группу
-                status_messages.mess_update('Downloading files', '', new_list=True)
-                for tg_file in tg_message_group.files:
-                    db_file = db_handler.upsert_record(DbFile, {'file_path': tg_file.file_path},
-                                                       {'message_id': tg_file.message_id,
-                                                        'size': tg_file.size,
-                                                        'grouped_id': tg_message_group.grouped_id,
-                                                        'file_type_id': tg_file.file_type.type_id})
-                    # Set relationships for the file, if not already set
-                    # Устанавливаем relationships для файла, если не установлено
-                    if db_file.message_group is None:
-                        db_file.message_group = db_message_group
-                    if db_file.file_type is None:
-                        db_file.file_type = db_handler.session.query(DbFileType).filter_by(
-                            file_type_id=tg_file.file_type.type_id).first()
-                    # Download file if it is not in specified directory of the file system and its size is less than
-                    # the limit / Скачиваем файл, если его нет в заданной директории файловой системы и его размер
-                    # меньше предельного
-                    status_messages.mess_update('Downloading files', tg_file.file_path)
-                    if (tg_file.download_level == DOWNLOAD_CONFIRM and not tg_file.is_exists()
-                            and not tg_file.is_cached()):
-                        # A big file is saved only if it was downloaded by the button "Download anyway" before
-                        # Большой файл сохраняется, только если до этого он был загружен кнопкой «Download anyway»
-                        report_msg = (f'{tg_file.file_path} skipped: {format_file_size(tg_file.size)} is over the '
-                                      f'limit of {format_file_size(GlobalConst.button_download_size)} '
-                                      f'(use "Download anyway" before saving)')
-                    else:
-                        downloading_result = tg_handler.download_message_file(
-                            tg_file, progress_callback=make_progress_reporter('Downloading files'))
-                        report_msg = f'{tg_file.file_path} downloaded successfully' \
-                            if downloading_result else f'Failed to download file {tg_file.file_path}'
-                    status_messages.mess_update('Downloading files', report_msg)
-                # Not a commit: the group is not saved until the HTML file is written, the rollback is still possible
-                # Это не фиксация: группа не сохранена, пока не записан HTML файл, откат еще возможен
-                db_handler.session.flush()
-                # Generating paths to files and subdirectories in the file system
-                # Формирование пути к файлу и вложенных директорий в файловой системе
-                file_name = TgFile.get_self_file_name(tg_message_group.date,  # type: ignore[arg-type]
-                                                      MessageFileTypes.CONTENT, tg_message_group.grouped_id, 0,
-                                                      MessageFileTypes.CONTENT.default_ext)
-                file_path = (Path(ProjectDirs.media_dir) / tg_dialog.get_self_dir() / tg_message_group.get_self_dir()
-                             / file_name)
-                # Render the HTML file with the message content and save it in the file system (the same code
-                # restores a lost file in maintenance)
-                # Строим HTML файл с контентом сообщения и сохраняем его в файловой системе (тот же код восстанавливает
-                # потерянный файл в сервисном обслуживании)
-                html_size = write_message_html(request, db_message_group, file_path)
-                # Create a record about the HTML file in the database for the corresponding message group. The path is
-                # relative to the media directory, like the other files (deletion and maintenance rely on it)
-                # Создаем запись о HTML файле в базе данных для соответствующей группы сообщений. Путь относительно
-                # директории медиа, как у остальных файлов (на него опираются удаление и сервисное обслуживание)
-                relative_path = file_path.relative_to(ProjectDirs.media_dir).as_posix()
-                db_file = db_handler.upsert_record(DbFile, {'file_path': relative_path},
-                                                   {'message_id': 0,
-                                                    'size': html_size,
-                                                    'grouped_id': tg_message_group.grouped_id,
-                                                    'file_type_id': MessageFileTypes.CONTENT.type_id})
-                # Set relationships for the file, if not already set
-                # Устанавливаем relationships для файла, если не установлено
-                if db_file.message_group is None:
-                    db_file.message_group = db_message_group
-                if db_file.file_type is None:
-                    db_file.file_type = db_handler.session.query(DbFileType).filter_by(
-                        file_type_id=MessageFileTypes.CONTENT.type_id).first()
-            # The transaction is committed on leaving `with`; after that, set the save flag for the message group
-            # Транзакция зафиксирована при выходе из `with`; после этого устанавливаем признак сохранения группы
-            tg_message_group.saved_to_db = True
-        # Nothing was marked: nothing was saved, so the database lists and the flags stay as they were (as in Flask)
-        # Ничего не отмечено: ничего не сохранялось, поэтому списки БД и признаки остаются прежними (как во Flask)
-        if selected_messages_ids:
-            # Updating the list of dialogs stored in the database
-            # Обновляем список диалогов, сохраненных в базе данных
-            db_handler.all_dialogues_list = db_handler.get_dialog_list()
-            db_handler.current_state.dialog_list = db_handler.all_dialogues_list.copy()
-            # Set the save flag for message groups that are already saved in the database (one pass after the loop;
-            # in Flask it was nested in the loop over the same list and shadowed the loop variable)
-            # Устанавливаем признак сохранения для групп сообщений, которые уже сохранены в базе данных (один проход
-            # после цикла; во Flask он был вложен в цикл по тому же списку и перекрывал переменную цикла)
-            for tg_message_group in message_groups:
-                tg_message_group.saved_to_db = db_handler.message_group_exists(tg_message_group.grouped_id)
-        # Update the message list, message counter, and dialogue list in the database dialogue filter
-        # Обновление списка сообщений, счетчика сообщений и списка диалогов в фильтре диалогов базы данных
-        dialog_select_id = FormCfg.db_message_filter['dialog_select']
-        return ui_update({'tg_messages': render_fragment(request, 'tg_messages.html'),
-                          'tg-messages-count': f'({len(message_groups)})',
-                          dialog_select_id: db_handler.get_select_content_string(
-                              db_handler.current_state.dialog_list, 'dialog_id', 'title'),
-                          FormCfg.db_message_filter['source_filter']: render_fragment(request, 'db_source_filter.html')})
+        if tg_handler.current_state.selected_dialog_id != tg_handler.me.id:
+            raise HTTPException(status_code=403, detail=DELETE_ONLY_SAVED_MESSAGES)
+        # The list is redrawn by the deletion, the fragments of the database lists come from the saving
+        # Список перерисовывает удаление, фрагменты списков БД приходят от сохранения
+        return ui_update({**save_groups(request, selected_messages_ids),
+                          **delete_groups(request, selected_messages_ids)})

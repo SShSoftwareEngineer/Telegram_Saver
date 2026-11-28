@@ -10,7 +10,7 @@ Variables:
 
 
 {# Displaying a list of message groups from Telegram / Вывод списка групп сообщений Telegram #}
-<ul class="dialogs-messages-list">
+<ul class="dialogs-messages-list"{% if tg_messages and tg_messages[0].dialog_id == tg_me.id %} data-favorites="1"{% endif %}>
     {% for tg_message in tg_messages %}
         {% set message_grouped_id = constants.mess_group_id+'_mess = '+tg_message.grouped_id %}
 
@@ -31,17 +31,34 @@ Variables:
 
             {# Display a label indicating saving to the database or a checkbox for marking for saving
                Вывод метки о сохранении в БД или чекбокса для отметки на сохранение #}
-            {% if tg_message.saved_to_db %}
+            {% if tg_message.saved_to_db and tg_message.dialog_id == tg_me.id %}
+                {# "Saved Messages": a saved group has a check-box too, to delete it from Telegram (`data-saved` tells the
+                   confirmation which of the marked ones are safe in the database)
+                   «Избранное»: у сохраненной группы тоже есть чек-бокс, для удаления из Telegram (`data-saved` сообщает
+                   подтверждению, какие из отмеченных есть в базе данных) #}
+                {% set checkbox_name = constants.select_in_telegram+' '+tg_message.grouped_id %}
+                <span class="message-checkbox">
+                    <span class="saved-mark">{{ constants.saved_to_db_label }}</span>
+                    <input type="checkbox" class="tg-message-checkbox" data-saved="1"
+                           id="{{ checkbox_name }}" name="{{ checkbox_name }}"
+                           title="Delete"
+                           onchange="updateCheckboxCounter('.tg-message-checkbox', 'tg-messages-count');">
+                </span>
+            {% elif tg_message.saved_to_db %}
                 <span class="selected-message-checkbox">{{ constants.saved_to_db_label }}</span>
             {% else %}
 
                 {# Creating a checkbox for marking items to save to the database / Создание чекбокса для отметки на сохранение в БД #}
                 <span class="message-checkbox">
                     {% set checkbox_name = constants.select_in_telegram+' '+tg_message.grouped_id %}
+                    {# "Saved Messages": no label, what the check-box means depends on the chosen action of the action bar
+                       «Избранное»: без подписи, смысл чек-бокса зависит от выбранного действия панели #}
+                    {% set in_favorites = tg_message.dialog_id == tg_me.id %}
                     <input type="checkbox" class="tg-message-checkbox"
                            id="{{ checkbox_name }}" name="{{ checkbox_name }}"
+                           {% if in_favorites %}title="Save / Delete"{% endif %}
                            onchange="updateCheckboxCounter('.tg-message-checkbox', 'tg-messages-count');">
-                    <label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>
+                    {% if not in_favorites %}<label for="{{ checkbox_name }}">{{ constants.save_to_db_label }}</label>{% endif %}
                 </span>
             {% endif %}
 

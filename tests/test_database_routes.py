@@ -83,7 +83,8 @@ def test_apply_filters(client: TestClient, db_handler: DatabaseHandler):
 
     assert response.status_code == 200
     data = response.ui()
-    assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS}
+    assert set(data) == {'db_messages', 'db-messages-count', 'db_details', CURR_TAGS,
+                         FormCfg.db_message_filter['source_filter']}
     assert data['db-messages-count'] == '(1)'
     assert data['db_details'] == '' and data[CURR_TAGS] == ''
     assert 'alpha other' in data['db_messages'] and 'alpha text' not in data['db_messages']

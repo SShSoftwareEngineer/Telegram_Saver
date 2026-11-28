@@ -59,7 +59,10 @@ def db_message_apply_filters(request: Request, form: FormDep) -> JSONResponse:
         return ui_update({'db_messages': render_fragment(request, 'db_messages.html'),
                           'db-messages-count': f'({len(db_handler.current_state.message_group_list)})',
                           'db_details': '',
-                          FormCfg.db_detail_tags['curr_message_tags']: '', })
+                          FormCfg.db_detail_tags['curr_message_tags']: '',
+                          # The select shows the filter that the list really has (it is not reset by the page)
+                          # Select показывает фильтр, который действительно у списка (страница его не сбрасывает)
+                          FormCfg.db_message_filter['source_filter']: render_fragment(request, 'db_source_filter.html')})
 
 
 @router.get('/db_details/{message_group_id}')
